@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#161b22" />
+      <stop offset="60%" stop-color="#0d1117" />
+      <stop offset="100%" stop-color="#05080c" />
+    </radialGradient>
+    <linearGradient id="glowAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#58a6ff" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+    <linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="500" fill="url(#bgGrad)" />
+
+  <!-- Subtle celestial rings -->
+  <circle cx="270" cy="250" r="170" fill="none" stroke="#58a6ff" stroke-width="1.5" opacity="0.12" />
+  <circle cx="270" cy="250" r="210" fill="none" stroke="#fbbf24" stroke-width="1" opacity="0.08" stroke-dasharray="4 8" />
+
+  <!-- Stars -->
+  <circle cx="80" cy="90" r="1.5" fill="#ffffff" opacity="0.6" />
+  <circle cx="160" cy="140" r="2" fill="#58a6ff" opacity="0.8" />
+  <circle cx="240" cy="70" r="2.5" fill="#ffffff" opacity="0.9" />
+  <circle cx="320" cy="120" r="1.5" fill="#ffffff" opacity="0.5" />
+  <circle cx="450" cy="60" r="2" fill="#38bdf8" opacity="0.7" />
+  <circle cx="680" cy="90" r="1.5" fill="#ffffff" opacity="0.6" />
+  <circle cx="780" cy="60" r="2" fill="#ffffff" opacity="0.8" />
+  <circle cx="880" cy="110" r="2.5" fill="#58a6ff" opacity="0.8" />
+  <circle cx="950" cy="70" r="1.5" fill="#ffffff" opacity="0.5" />
+  <circle cx="100" cy="380" r="2" fill="#ffffff" opacity="0.6" />
+  <circle cx="220" cy="420" r="1.5" fill="#ffffff" opacity="0.4" />
+  <circle cx="820" cy="420" r="2" fill="#ffffff" opacity="0.6" />
+  <circle cx="920" cy="360" r="1.5" fill="#ffffff" opacity="0.5" />
+
+  <!-- Large Crescent Moon with Glow (Left-Center) -->
+  <g transform="translate(100, 80)">
+    <!-- Stylized Moon -->
+    <path d="M 210 80 A 110 110 0 1 0 310 240 A 130 130 0 1 1 210 80 Z" fill="url(#goldAccent)" filter="url(#glowFilter)" />
+    <!-- Twinkle Sparkle -->
+    <path d="M 130 75 Q 130 95 150 95 Q 130 95 130 115 Q 130 95 110 95 Q 130 95 130 75 Z" fill="#38bdf8" filter="url(#glowFilter)" />
+  </g>
+
+  <!-- Typography & Branding (Right side) -->
+  <g transform="translate(450, 155)">
+    <!-- Category Badge -->
+    <rect x="0" y="0" width="165" height="28" rx="14" fill="#58a6ff" fill-opacity="0.12" stroke="#58a6ff" stroke-opacity="0.3" stroke-width="1.5" />
+    <text x="82" y="18" fill="#58a6ff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" letter-spacing="1.5" text-anchor="middle">ASTRONOMY GUIDE</text>
+
+    <!-- Main Title -->
+    <text x="0" y="75" fill="#e6edf3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="52" font-weight="800" letter-spacing="-0.5">SkyOracle</text>
+
+    <!-- Subtitle -->
+    <text x="0" y="112" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="500">Stargazing Forecast &amp; Astronomical Ephemeris</text>
+
+    <!-- Feature Pills -->
+    <g transform="translate(0, 145)">
+      <!-- Pill 1: Observing Window -->
+      <g>
+        <rect x="0" y="0" width="160" height="34" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1" />
+        <!-- Telescope icon vector -->
+        <g transform="translate(14, 9) scale(0.65)" stroke="#58a6ff" stroke-width="2" fill="none" stroke-linecap="round">
+          <line x1="3" y1="21" x2="21" y2="3" />
+          <path d="M12 4l8 8" />
+          <line x1="10" y1="14" x2="6" y2="22" />
+          <line x1="14" y1="10" x2="18" y2="22" />
+        </g>
+        <text x="36" y="21" fill="#e6edf3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">Observing Window</text>
+      </g>
+
+      <!-- Pill 2: Naked-Eye Planets -->
+      <g transform="translate(172, 0)">
+        <rect x="0" y="0" width="155" height="34" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1" />
+        <!-- Planet with ring vector -->
+        <g transform="translate(14, 9) scale(0.65)" stroke="#fbbf24" stroke-width="2" fill="none">
+          <circle cx="12" cy="12" r="6" />
+          <ellipse cx="12" cy="12" rx="11" ry="3.5" transform="rotate(-20 12 12)" />
+        </g>
+        <text x="36" y="21" fill="#e6edf3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">Naked-Eye Planets</text>
+      </g>
+
+      <!-- Pill 3: Realistic Moon -->
+      <g transform="translate(339, 0)">
+        <rect x="0" y="0" width="145" height="34" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1" />
+        <!-- Moon crescent vector -->
+        <g transform="translate(14, 9) scale(0.65)" stroke="#38bdf8" stroke-width="2" fill="none" stroke-linecap="round">
+          <path d="M18 12a8 8 0 1 1-8-8 6 6 0 0 0 8 8z" />
+        </g>
+        <text x="36" y="21" fill="#e6edf3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">Realistic Moon</text>
+      </g>
+    </g>
+
+    <!-- Offline & Privacy Tag -->
+    <text x="2" y="218" fill="#56d4dd" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" letter-spacing="0.5">100% Offline Astronomy Math · No Ads · Open Telemetry</text>
+  </g>
+
+  <!-- Border Frame -->
+  <rect x="1" y="1" width="1022" height="498" rx="0" fill="none" stroke="#30363d" stroke-width="2" />
+</svg>

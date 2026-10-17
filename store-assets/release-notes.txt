@@ -1,0 +1,6 @@
+Initial release of SkyOracle:
+• Location-tailored stargazing forecast, score, and dark-sky observing window
+• Complete solar twilight breakdown (Civil, Nautical, and Astronomical dusk/dawn)
+• Photorealistic moon phase canvas with live illumination % and rise/set times
+• Naked-eye planet ephemeris for Mercury, Venus, Mars, Jupiter, and Saturn
+• 100% ad-free, tracking-free, and offline-capable Meeus astronomical calculations

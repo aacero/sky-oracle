@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy — SkyOracle</title>
+    <meta name="theme-color" content="#0d1117" />
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #0d1117;
+        color: #e6edf3;
+        line-height: 1.6;
+        padding: 2rem 1rem;
+        margin: 0;
+      }
+      .container {
+        max-width: 720px;
+        margin: 0 auto;
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 1rem;
+        padding: 2rem;
+      }
+      h1, h2 { color: #58a6ff; }
+      a { color: #58a6ff; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 9999px;
+        background-color: rgba(88, 166, 255, 0.15);
+        color: #58a6ff;
+        font-size: 0.8rem;
+        font-weight: bold;
+        border: 1px solid rgba(88, 166, 255, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+        <h1>Privacy Policy</h1>
+        <span class="badge">SkyOracle</span>
+      </div>
+      <p><em>Last updated: October 17, 2026</em></p>
+
+      <h2>1. Overview</h2>
+      <p>
+        <strong>SkyOracle</strong> (developed by Lapsed Academics) is designed with privacy as a foundational principle. 
+        The app provides stargazing forecasts, celestial ephemeris, twilight schedules, and naked-eye planetary visibility guides.
+      </p>
+
+      <h2>2. Information Collection and Use</h2>
+      <p>
+        <strong>No Personal Data Collection:</strong> We do not require registration, login accounts, email addresses, or personal identity information. We do not sell, rent, or share personal data with advertisers or data brokers.
+      </p>
+      <p>
+        <strong>Location Information:</strong> If you explicitly grant location access (via GPS or IP-based network lookup), geographic coordinates (latitude and longitude) are used on your device exclusively to calculate:
+      </p>
+      <ul>
+        <li>Local solar twilights (sunset, civil, nautical, and astronomical dusk/dawn).</li>
+        <li>Rise and set times for the Moon and planets relative to your horizon.</li>
+        <li>Hourly cloud cover forecasts from the open weather API.</li>
+      </ul>
+      <p>
+        Your coordinates are stored locally in your device's browser/application storage for your convenience and are never transmitted to or stored on any proprietary servers.
+      </p>
+
+      <h2>3. Third-Party Services</h2>
+      <p>
+        The application queries the following public, privacy-friendly endpoints to retrieve open telemetry:
+      </p>
+      <ul>
+        <li><strong>Open-Meteo API:</strong> Cloud cover forecasts and optional city name search (<a href="https://open-meteo.com/en/features#privacy" target="_blank" rel="noopener">Open-Meteo Privacy Policy</a>). Open-Meteo does not require API keys or log user identities.</li>
+        <li><strong>ipwho.is:</strong> Used solely as a seamless fallback if browser geolocation fails (<a href="https://ipwhois.io/privacy" target="_blank" rel="noopener">IPWhoIs Privacy Policy</a>).</li>
+      </ul>
+
+      <h2>4. Data Storage and Offline Operation</h2>
+      <p>
+        Astronomical math (solar twilights, planetary ephemeris, moon phase and age) is executed 100% offline within your device. 
+        Recent locations you search or save remain stored locally on your device.
+      </p>
+
+      <h2>5. Contact</h2>
+      <p>
+        If you have any questions or feedback regarding this Privacy Policy, please open an issue on our GitHub repository:
+        <br />
+        <a href="https://github.com/aacero/sky-oracle">github.com/aacero/sky-oracle</a>
+      </p>
+    </div>
+  </body>
+</html>

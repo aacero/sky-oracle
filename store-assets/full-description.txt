@@ -1,0 +1,33 @@
+SkyOracle delivers an instant, location-tailored astronomical observing forecast, complete solar twilight breakdowns, photorealistic moon phase tracking, and naked-eye planet ephemeris. Whether you are stepping outside with binoculars, setting up an astrophotography rig, or curious about the night sky, get clear, actionable answers in seconds.
+
+KEY FEATURES:
+
+• TONIGHT'S OBSERVING VERDICT & SCORE
+An immediate, data-driven stargazing score (0–100) and recommendation tailored to your local coordinates. Evaluates cloud cover, atmospheric transparency, moon interference, and darkness so you know instantly if it is worth going outside.
+
+• OPTIMAL OBSERVING WINDOW
+Calculates the exact hours tonight offering peak dark-sky conditions for deep-sky observation and planetary viewing.
+
+• SOLAR TWILIGHT TIMELINE
+Precise local times for every phase of dusk and dawn:
+  - Sunset & Sunrise
+  - Civil Twilight (golden hour & dusk)
+  - Nautical Twilight (horizon fades, bright stars emerge)
+  - Astronomical Twilight (true astronomical darkness begins)
+
+• PHOTOREALISTIC MOON PHASE & ILLUMINATION
+Detailed canvas rendering of the current lunar disk with accurate illumination percentage, phase angle, and exact moonrise and moonset times.
+
+• NAKED-EYE PLANET EPHEMERIS
+Real-time tracking for all five classic planets visible to the unaided eye: Mercury, Venus, Mars, Jupiter, and Saturn. See current apparent magnitude, altitude, azimuth, and home constellation at a glance.
+
+• HIGH-PRECISION OFFLINE ASTRONOMY
+Ephemeris engine powered by Jean Meeus's rigorous "Astronomical Algorithms". Celestial positions and solar events compute directly on your device with sub-arcminute accuracy—even completely offline.
+
+• PRIVACY-FIRST & CLEAN
+  - 100% Ad-free and distraction-free
+  - No user accounts or logins required
+  - Zero third-party trackers or telemetry
+  - Location coordinates stay strictly on your device
+
+Step outside and explore the cosmos tonight!

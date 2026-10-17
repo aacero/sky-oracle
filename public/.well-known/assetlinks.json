@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.lapsedacademics.skytonight",
+      "sha256_cert_fingerprints": [
+        "66:B3:04:90:AA:9E:51:88:D1:B0:8E:0C:C1:E3:65:F9:86:46:02:02:72:C8:8E:1D:10:9B:92:47:8D:CF:26:49"
+      ]
+    }
+  }
+]

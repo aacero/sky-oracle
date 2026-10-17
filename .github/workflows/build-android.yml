@@ -1,0 +1,132 @@
+name: Build Android App Bundle (Google Play)
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Bubblewrap Environment Paths
+        run: |
+          # Bubblewrap checks for $ANDROID_HOME/tools or $ANDROID_HOME/bin
+          if [ -d "$ANDROID_HOME/cmdline-tools/latest" ] && [ ! -e "$ANDROID_HOME/tools" ]; then
+            echo "Creating symlink $ANDROID_HOME/tools -> $ANDROID_HOME/cmdline-tools/latest"
+            sudo ln -s "$ANDROID_HOME/cmdline-tools/latest" "$ANDROID_HOME/tools"
+          fi
+
+          mkdir -p ~/.bubblewrap
+          cat << EOF > ~/.bubblewrap/config.json
+          {
+            "jdkPath": "$JAVA_HOME",
+            "androidSdkPath": "$ANDROID_HOME"
+          }
+          EOF
+          cat ~/.bubblewrap/config.json
+
+      - name: Setup Signing Keystore
+        id: keystore
+        run: |
+          KEY_PASS="skytonight_upload_key"
+          if [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
+            KEY_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
+          fi
+
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "Using existing keystore from repository secrets..."
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android.keystore
+          else
+            echo "Generating new release upload keystore..."
+            keytool -genkey -v \
+              -keystore ./android.keystore \
+              -alias android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "$KEY_PASS" \
+              -keypass "$KEY_PASS" \
+              -dname "CN=Sky Tonight, OU=Lapsed Academics, O=Lapsed Academics, L=Jacksonville, ST=Florida, C=US"
+          fi
+
+          cp ./android.keystore android/android.keystore
+
+          # Extract SHA-256 fingerprint for Digital Asset Links
+          SHA256_FP=$(keytool -list -v -keystore ./android.keystore -alias android -storepass "$KEY_PASS" | grep "SHA256:" | awk '{print $2}')
+          echo "SHA256_FINGERPRINT=$SHA256_FP" >> $GITHUB_ENV
+
+          cat << EOF > BUILD_INFO.txt
+          ==================================================
+          The Sky Tonight — Google Play Android Bundle Build
+          ==================================================
+          Package ID: com.lapsedacademics.skytonight
+          Version Name: 1.0.0
+          Version Code: 1
+          Web App URL: https://aacero.github.io/sky-tonight/
+          Signing Key Alias: android
+          Upload Keystore SHA-256 Fingerprint:
+          $SHA256_FP
+
+          Google Play Console Upload Steps:
+          1. Download 'app-release-bundle.aab' from this workflow run.
+          2. Open Google Play Console -> The Sky Tonight -> Testing -> Internal testing (or Production).
+          3. Click 'Create new release', upload 'app-release-bundle.aab', and click Save.
+          4. Google Play App Signing will generate your final app distribution key.
+          ==================================================
+          EOF
+
+          echo "### 🚀 Android Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package ID**: \`com.lapsedacademics.skytonight\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target PWA**: https://aacero.github.io/sky-tonight/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Upload Keystore SHA-256**: \`$SHA256_FP\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Scaffold & Update Android Project
+        run: |
+          npx -y @bubblewrap/cli update --skipVersionUpgrade --manifest ./android/twa-manifest.json
+
+      - name: Build Android App Bundle (.aab) & APK
+        run: |
+          KEY_PASS="skytonight_upload_key"
+          if [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
+            KEY_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
+          fi
+
+          export BUBBLEWRAP_KEYSTORE_PASSWORD="$KEY_PASS"
+          export BUBBLEWRAP_KEY_PASSWORD="$KEY_PASS"
+
+          npx -y @bubblewrap/cli build --skipPwaValidation --manifest ./android/twa-manifest.json --signingKeyPath ./android.keystore
+
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p output
+          find . -name "*.aab" -exec cp {} output/ \;
+          find . -name "*release*.apk" -exec cp {} output/ \;
+          cp ./android.keystore output/upload-keystore.keystore || true
+          cp BUILD_INFO.txt output/ || true
+          ls -lh output/
+
+      - name: Upload Android Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-play-release-bundle
+          path: output/
+          retention-days: 30
