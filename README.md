@@ -115,6 +115,8 @@ public/
 └── sw.js                  # Service Worker with offline asset caching
 ```
 
+For detailed architectural lineage and instructions on keeping this application synchronized with the upstream Linux desktop widgets in **SkyPhoenix EdgeHub** (`MoonWidget.qml` & `SkyTonightWidget.qml`), see **[docs/LINEAGE_AND_SYNC.md](docs/LINEAGE_AND_SYNC.md)**.
+
 ---
 
 ## Mobile Installation & Packaging

@@ -3,6 +3,7 @@ import {
   calculateMoonInfo,
   calculateAllPlanets,
   formatTime,
+  formatShortDate,
   SunEvents,
   MoonInfo,
   PlanetInfo
@@ -89,7 +90,7 @@ async function refreshAll() {
   try {
     // 1. Compute local astronomical ephemeris (100% offline, <1ms)
     state.sunEvents = calculateSunEvents(state.currentDate, state.location.lat, state.location.lon);
-    state.moon = calculateMoonInfo(state.currentDate);
+    state.moon = calculateMoonInfo(state.currentDate, state.location.lat, state.location.lon);
     state.planets = calculateAllPlanets(state.currentDate, state.location.lat, state.location.lon);
 
     // 2. Fetch cloud cover telemetry from Open-Meteo
@@ -541,23 +542,70 @@ function render() {
               <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
                 <span>🌙</span> MOON PHASE & ILLUMINATION
               </h3>
-              <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-400 border border-amber-400/30">
-                ${state.moon?.illum || 0}% Illuminated
-              </span>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 text-[#58a6ff] border border-[#58a6ff]/30">
+                  ${state.moon?.phaseDirection || 'Waxing'}
+                </span>
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-400 border border-amber-400/30">
+                  ${state.moon?.illum || 0}% Illuminated
+                </span>
+              </div>
             </div>
 
+            <!-- Top Row: Moon Canvas + Details -->
             <div class="flex items-center justify-between gap-4">
               <div class="flex items-center gap-4">
                 <canvas id="moonCanvas" width="180" height="180" class="w-20 h-20 sm:w-24 sm:h-24 shrink-0 drop-shadow-[0_0_14px_rgba(251,191,36,0.3)]"></canvas>
                 <div>
                   <h4 class="text-lg font-bold text-[#e6edf3]">${state.moon?.name || 'Waxing Moon'}</h4>
                   <p class="text-xs text-[#8b949e] mt-0.5">
-                    Age: <span class="text-white font-medium">${state.moon?.age.toFixed(1) || '0'} days</span> in synodic cycle
+                    Age: <span class="text-white font-medium">${state.moon?.age.toFixed(1) || '0'} days</span> · ${state.moon?.phaseDirection || 'Waxing'}
                   </p>
-                  <p class="text-xs text-[#8b949e]">
+                  <p class="text-xs text-[#8b949e] mt-0.5">
+                    Altitude: <span class="${(state.moon?.isUp ?? false) ? 'text-emerald-400' : 'text-[#8b949e]'} font-medium">
+                      ${state.moon?.altitude !== undefined ? `${state.moon.altitude > 0 ? '+' : ''}${state.moon.altitude.toFixed(1)}° (${state.moon.isUp ? 'Above Horizon' : 'Below Horizon'})` : '—'}
+                    </span>
+                  </p>
+                  <p class="text-xs text-[#8b949e] mt-0.5">
                     Deep sky impact: <span class="${(state.moon?.illum || 0) < 30 ? 'text-emerald-400' : 'text-amber-400'} font-medium">${(state.moon?.illum || 0) < 30 ? 'Minimal (Faint DSOs visible)' : 'Moderate wash out'}</span>
                   </p>
                 </div>
+              </div>
+            </div>
+
+            <!-- Lunar Cycle Progress Bar -->
+            <div class="mt-4 pt-3 border-t border-[#30363d]/60">
+              <div class="flex justify-between items-center text-[10px] font-bold text-[#8b949e] tracking-wider uppercase mb-1.5">
+                <span>LUNAR CYCLE</span>
+                <span>${Math.round((state.moon?.cyclePos || 0) * 100)}%</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-[#21262d] overflow-hidden relative">
+                <div class="h-full bg-gradient-to-r from-amber-400/80 to-amber-300 rounded-full transition-all duration-500" style="width: ${Math.max(2, Math.min(100, Math.round((state.moon?.cyclePos || 0) * 100)))}%"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[#8b949e] font-semibold mt-1">
+                <span>NEW</span>
+                <span>FULL</span>
+                <span>NEW</span>
+              </div>
+            </div>
+
+            <!-- Rise / Set / Next Dates Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3 pt-3 border-t border-[#30363d]/60 text-xs">
+              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Next Rise</span>
+                <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.rise || null)}</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Next Set</span>
+                <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.set || null)}</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Next New</span>
+                <span class="text-sm font-bold text-[#58a6ff]">${formatShortDate(state.moon?.nextNew || null)}</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Next Full</span>
+                <span class="text-sm font-bold text-amber-300">${formatShortDate(state.moon?.nextFull || null)}</span>
               </div>
             </div>
           </section>

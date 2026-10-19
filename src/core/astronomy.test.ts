@@ -3,10 +3,13 @@ import {
   solarAltitude,
   calculateSunEvents,
   calculateMoonInfo,
+  calculateMoonRiseSet,
+  lunarAltitude,
   calculateAllPlanets,
   getConstellation,
   formatHour,
-  formatHourCompact
+  formatHourCompact,
+  formatShortDate
 } from './astronomy.ts';
 
 describe('Astronomy Engine', () => {
@@ -52,7 +55,7 @@ describe('Astronomy Engine', () => {
   });
 
   describe('Moon Phase & Illumination', () => {
-    it('computes valid moon metrics', () => {
+    it('computes valid moon metrics without coordinates', () => {
       const moon = calculateMoonInfo(EQUINOX_DATE);
       expect(moon.illum).toBeGreaterThanOrEqual(0);
       expect(moon.illum).toBeLessThanOrEqual(100);
@@ -62,6 +65,51 @@ describe('Astronomy Engine', () => {
       expect(moon.glyph.length).toBeGreaterThan(0);
       expect(moon.cyclePos).toBeGreaterThanOrEqual(0);
       expect(moon.cyclePos).toBeLessThanOrEqual(1);
+      expect(['Waxing', 'Waning']).toContain(moon.phaseDirection);
+      expect(moon.nextNew).toBeInstanceOf(Date);
+      expect(moon.nextFull).toBeInstanceOf(Date);
+      expect(moon.nextNew!.getTime()).toBeGreaterThan(EQUINOX_DATE.getTime());
+      expect(moon.nextFull!.getTime()).toBeGreaterThan(EQUINOX_DATE.getTime());
+      expect(moon.rise).toBeNull();
+      expect(moon.set).toBeNull();
+    });
+
+    it('computes local moonrise, moonset, and altitude with coordinates', () => {
+      const moon = calculateMoonInfo(EQUINOX_DATE, ST_AUGUSTINE.lat, ST_AUGUSTINE.lon);
+      expect(moon.altitude).toBeDefined();
+      expect(typeof moon.altitude).toBe('number');
+      expect(moon.altitude!).toBeGreaterThanOrEqual(-90);
+      expect(moon.altitude!).toBeLessThanOrEqual(90);
+      expect(typeof moon.isUp).toBe('boolean');
+
+      expect(moon.rise).toBeInstanceOf(Date);
+      expect(moon.set).toBeInstanceOf(Date);
+      expect(moon.rise!.getTime()).toBeGreaterThanOrEqual(EQUINOX_DATE.getTime());
+      expect(moon.set!.getTime()).toBeGreaterThanOrEqual(EQUINOX_DATE.getTime());
+
+      // Next events should be within 36 hours
+      const horizonMs = 36 * 3600000;
+      expect(moon.rise!.getTime() - EQUINOX_DATE.getTime()).toBeLessThanOrEqual(horizonMs);
+      expect(moon.set!.getTime() - EQUINOX_DATE.getTime()).toBeLessThanOrEqual(horizonMs);
+    });
+
+    it('computes lunar altitude accurately', () => {
+      const alt = lunarAltitude(EQUINOX_DATE, ST_AUGUSTINE.lat, ST_AUGUSTINE.lon);
+      expect(alt).toBeGreaterThanOrEqual(-90);
+      expect(alt).toBeLessThanOrEqual(90);
+    });
+
+    it('directly calculates moon rise and set events', () => {
+      const events = calculateMoonRiseSet(EQUINOX_DATE, ST_AUGUSTINE.lat, ST_AUGUSTINE.lon);
+      expect(events.rise).toBeInstanceOf(Date);
+      expect(events.set).toBeInstanceOf(Date);
+    });
+
+    it('formats short dates correctly', () => {
+      const testDate = new Date('2026-10-26T12:00:00.000Z');
+      const formatted = formatShortDate(testDate, 'UTC');
+      expect(formatted).toMatch(/Mon.*Oct.*26/);
+      expect(formatShortDate(null)).toBe('—');
     });
   });
 

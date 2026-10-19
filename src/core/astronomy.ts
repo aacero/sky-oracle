@@ -25,6 +25,13 @@ export interface MoonInfo {
   name: string;       // e.g. "Waxing Crescent"
   glyph: string;      // e.g. "🌒"
   cyclePos: number;   // 0.0 - 1.0
+  phaseDirection: 'Waxing' | 'Waning';
+  rise?: Date | null;
+  set?: Date | null;
+  nextNew?: Date | null;
+  nextFull?: Date | null;
+  altitude?: number;  // current altitude in degrees
+  isUp?: boolean;     // true if altitude >= 0.125 deg
 }
 
 export interface PlanetInfo {
@@ -125,7 +132,7 @@ export function calculateSunEvents(refDate: Date, latitude: number, longitude: n
 
 // ── 2. Moon Phase & Illumination ──────────────────────────────────────────
 
-export function calculateMoonInfo(date: Date): MoonInfo {
+export function calculateMoonInfo(date: Date, latitude?: number, longitude?: number): MoonInfo {
   const jd = date.getTime() / 86400000 + 2440587.5;
   const days = jd - 2451545.0;
   const T = days / 36525;
@@ -164,7 +171,137 @@ export function calculateMoonInfo(date: Date): MoonInfo {
     }
   }
 
-  return { illum, age, name, glyph, cyclePos: phaseFrac };
+  const phaseDirection: 'Waxing' | 'Waning' = phaseFrac < 0.5 ? 'Waxing' : 'Waning';
+
+  // Synodic month = 2551443.0 seconds (~29.53059 days)
+  const synodicMs = 2551443.0 * 1000;
+  const getNextPhaseDate = (targetPos: number): Date => {
+    let ahead = targetPos - phaseFrac;
+    if (ahead <= 0) ahead += 1;
+    return new Date(date.getTime() + ahead * synodicMs);
+  };
+
+  const nextNew = getNextPhaseDate(0);
+  const nextFull = getNextPhaseDate(0.5);
+
+  let rise: Date | null = null;
+  let set: Date | null = null;
+  let altitude: number | undefined;
+  let isUp: boolean | undefined;
+
+  if (latitude !== undefined && longitude !== undefined && (latitude !== 0 || longitude !== 0)) {
+    altitude = Math.round(lunarAltitude(date, latitude, longitude) * 10) / 10;
+    isUp = altitude >= 0.125;
+    const rs = calculateMoonRiseSet(date, latitude, longitude);
+    rise = rs.rise;
+    set = rs.set;
+  }
+
+  return {
+    illum,
+    age,
+    name,
+    glyph,
+    cyclePos: phaseFrac,
+    phaseDirection,
+    nextNew,
+    nextFull,
+    rise,
+    set,
+    altitude,
+    isUp
+  };
+}
+
+export function moonPosition(date: Date): { ra: number; dec: number } {
+  const jd = date.getTime() / 86400000 + 2440587.5;
+  const d = jd - 2451545.0;
+  const T = d / 36525;
+  const RAD = Math.PI / 180;
+  const DEG = 180 / Math.PI;
+
+  const Lp = (218.3164477 + 481267.88123421 * T) * RAD;
+  const Dm = (297.8501921 + 445267.1114034 * T) * RAD;
+  const M = (357.5291092 + 35999.0502909 * T) * RAD;
+  const Mp = (134.9633964 + 477198.8675055 * T) * RAD;
+  const F = (93.2720950 + 483202.0175233 * T) * RAD;
+
+  let l = Lp * DEG
+    + 6.289 * Math.sin(Mp)
+    + 1.274 * Math.sin(2 * Dm - Mp)
+    + 0.658 * Math.sin(2 * Dm)
+    + 0.214 * Math.sin(2 * Mp)
+    - 0.186 * Math.sin(M)
+    - 0.114 * Math.sin(2 * F);
+  l = ((l % 360) + 360) % 360;
+
+  const b = 5.128 * Math.sin(F)
+    + 0.280 * Math.sin(Mp + F)
+    + 0.277 * Math.sin(Mp - F)
+    + 0.173 * Math.sin(2 * Dm - F);
+
+  const eps = (23.439 - 0.0000004 * d) * RAD;
+  const lR = l * RAD;
+  const bR = b * RAD;
+
+  const sinDec = Math.sin(bR) * Math.cos(eps) + Math.cos(bR) * Math.sin(eps) * Math.sin(lR);
+  const dec = Math.asin(sinDec);
+
+  const y = Math.cos(bR) * Math.cos(eps) * Math.sin(lR) - Math.sin(bR) * Math.sin(eps);
+  const x = Math.cos(bR) * Math.cos(lR);
+  const ra = ((Math.atan2(y, x) * DEG) % 360 + 360) % 360;
+
+  return { ra, dec };
+}
+
+export function lunarAltitude(date: Date, lat: number, lon: number): number {
+  const jd = date.getTime() / 86400000 + 2440587.5;
+  const d = jd - 2451545.0;
+  const pos = moonPosition(date);
+  const gmst = ((280.46061837 + 360.98564736629 * d) % 360 + 360) % 360;
+  const lmst = (gmst + lon + 360) % 360;
+  const ha = (lmst - pos.ra + 360) % 360;
+
+  const latR = lat * Math.PI / 180;
+  const decR = pos.dec;
+  const haR = ha * Math.PI / 180;
+
+  const sinAlt = Math.sin(latR) * Math.sin(decR) + Math.cos(latR) * Math.cos(decR) * Math.cos(haR);
+  return Math.asin(sinAlt) * 180 / Math.PI;
+}
+
+export function calculateMoonRiseSet(refDate: Date, lat: number, lon: number): { rise: Date | null; set: Date | null } {
+  const startMs = refDate.getTime();
+  const endMs = startMs + 36 * 3600000;
+  const stepMs = 5 * 60 * 1000;
+  const targetAlt = 0.125;
+
+  let rise: Date | null = null;
+  let set: Date | null = null;
+
+  let prevAlt = lunarAltitude(refDate, lat, lon);
+  let prevMs = startMs;
+
+  for (let ms = startMs + stepMs; ms <= endMs && (!rise || !set); ms += stepMs) {
+    const curDate = new Date(ms);
+    const curAlt = lunarAltitude(curDate, lat, lon);
+
+    if (prevAlt < targetAlt && curAlt >= targetAlt && !rise) {
+      const span = curAlt - prevAlt;
+      const frac = Math.abs(span) < 0.0001 ? 0.5 : (targetAlt - prevAlt) / span;
+      rise = new Date(prevMs + (ms - prevMs) * Math.max(0, Math.min(1, frac)));
+    }
+    if (prevAlt >= targetAlt && curAlt < targetAlt && !set) {
+      const span = curAlt - prevAlt;
+      const frac = Math.abs(span) < 0.0001 ? 0.5 : (targetAlt - prevAlt) / span;
+      set = new Date(prevMs + (ms - prevMs) * Math.max(0, Math.min(1, frac)));
+    }
+
+    prevAlt = curAlt;
+    prevMs = ms;
+  }
+
+  return { rise, set };
 }
 
 // ── 3. Constellations (IAU Ecliptic Boundaries) ───────────────────────────
@@ -446,6 +583,22 @@ export function formatTime(d: Date | null, timeZone?: string): string {
     hr = hr ? hr : 12;
     const minStr = min < 10 ? '0' + min : String(min);
     return `${hr}:${minStr} ${ampm}`;
+  }
+}
+
+export function formatShortDate(d: Date | null, timeZone?: string): string {
+  if (!d || isNaN(d.getTime())) return "—";
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      timeZone
+    }).format(d);
+  } catch {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
   }
 }
 
