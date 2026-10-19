@@ -30,7 +30,7 @@ Komi Store automatically indexes SkyOracle releases directly from GitHub. Search
 
 ### 3. Direct APK Sideload
 Download the latest signed APK directly from our **[Releases](https://github.com/aacero/sky-oracle/releases/latest)** page:
-- **Latest Build**: [`SkyOracle-v1.0.0.apk`](https://github.com/aacero/sky-oracle/releases/download/v1.0.0/SkyOracle-v1.0.0.apk) (SHA-256: `b760908a2b1910705bbbb7d9c4185e26ba3f04fc164658fd47ed35c25d8bf8dc`)
+- **Latest Build**: [`SkyOracle-v1.0.1.apk`](https://github.com/aacero/sky-oracle/releases/download/v1.0.1/SkyOracle-v1.0.1.apk) (SHA-256: `07f57905e43a48a6f6e8119aa998c46d6007f41a386ec03e3d3028b83dda6521`)
 
 ### 4. Progressive Web App (PWA)
 Open **[aacero.github.io/sky-tonight/](https://aacero.github.io/sky-tonight/)** in any modern mobile or desktop browser (Chrome, Firefox, Safari, Edge) and tap **"Install"** or **"Add to Home Screen"**.
