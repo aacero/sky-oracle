@@ -24,6 +24,8 @@ import {
   SavedLocation
 } from './core/storage.ts';
 
+export const APP_VERSION = '1.0.2';
+
 // ── Application State ───────────────────────────────────────────────────────
 
 interface AppState {
@@ -313,7 +315,7 @@ function render() {
         <div>
           <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-[#e6edf3] flex items-center gap-2">
             SkyOracle
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 text-[#58a6ff] border border-[#58a6ff]/30">PWA</span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 text-[#58a6ff] border border-[#58a6ff]/30 font-mono">v${APP_VERSION}</span>
           </h1>
           <p class="text-xs text-[#8b949e]">Stargazing forecast, ephemeris & planet guide</p>
         </div>
@@ -603,7 +605,7 @@ function render() {
 
     <!-- Footer -->
     <footer class="pt-6 border-t border-[#30363d] flex flex-col sm:flex-row items-center justify-between text-xs text-[#8b949e] gap-2">
-      <div>SkyOracle · Offline NOAA/Meeus Astronomy + Open-Meteo Telemetry</div>
+      <div>SkyOracle <span class="font-mono text-[#58a6ff]">v${APP_VERSION}</span> · Offline NOAA/Meeus Astronomy + Open-Meteo Telemetry</div>
       <div class="flex items-center gap-3">
         <span>No API Keys Needed</span>
         <span>·</span>

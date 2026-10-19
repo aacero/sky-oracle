@@ -79,8 +79,8 @@ jobs:
           SkyOracle — Google Play Android Bundle Build
           ==================================================
           Package ID: com.lapsedacademics.skytonight
-          Version Name: 1.0.1
-          Version Code: 2
+          Version Name: 1.0.2
+          Version Code: 3
           Web App URL: https://aacero.github.io/sky-tonight/
           Signing Key Alias: android
           Upload Keystore SHA-256 Fingerprint:

@@ -20,8 +20,8 @@
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionCode": 2,
-  "appVersion": "1.0.1",
+  "appVersionCode": 3,
+  "appVersion": "1.0.2",
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://aacero.github.io/sky-tonight/manifest.json",
   "fallbackType": "customtabs",
