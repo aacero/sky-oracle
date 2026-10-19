@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sky-oracle-v1';
+const CACHE_NAME = 'sky-oracle-v1.0.2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -52,11 +52,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // App shell / static assets: Stale-while-revalidate / cache-first
+  // HTML navigation requests: Network first, cache fallback (prevents stale chunk 404s)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match('./')
+            .then((res) => res || caches.match('./index.html'));
+        })
+    );
+    return;
+  }
+
+  // Static assets: Cache-first with background revalidation
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch in background to update cache for next load
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));

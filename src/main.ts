@@ -486,11 +486,16 @@ function render() {
         <!-- Naked-Eye Planets Card -->
         <section class="rounded-2xl p-5 sm:p-6 bg-[#161b22] border border-[#30363d] shadow-lg flex flex-col justify-between">
           <div>
-            <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#30363d]">
+            <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#30363d] flex-wrap gap-2">
               <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
                 <span>🪐</span> NAKED-EYE PLANETS
               </h3>
-              <span class="text-xs text-[#56d4dd] font-semibold">Local Ephemeris</span>
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20" title="Planets in amber text are up all night or well-positioned in the evening sky">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  Amber = Evening / Night Viewable
+                </span>
+              </div>
             </div>
 
             <div class="flex flex-col gap-2.5">
@@ -616,17 +621,41 @@ function render() {
   drawMoonCanvas();
 }
 
+function renderSearchResultsList(results: GeocodingResult[]): string {
+  if (!results.length) return '';
+  return `
+    <div class="flex flex-col gap-1 max-h-56 overflow-y-auto">
+      <span class="text-[11px] font-bold uppercase tracking-wider text-[#8b949e] px-1">Search Results</span>
+      ${results.map(r => `
+        <button
+          type="button"
+          class="btnSelectCity flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.05] text-left transition cursor-pointer"
+          data-place="${r.name}${r.admin1 ? `, ${r.admin1}` : ''}${r.country ? `, ${r.country}` : ''}"
+          data-lat="${r.latitude}"
+          data-lon="${r.longitude}"
+        >
+          <div>
+            <div class="text-sm font-semibold text-[#e6edf3]">${r.name}</div>
+            <div class="text-xs text-[#8b949e]">${[r.admin1, r.country].filter(Boolean).join(', ')}</div>
+          </div>
+          <div class="text-xs font-mono text-[#58a6ff]">${r.latitude.toFixed(2)}°, ${r.longitude.toFixed(2)}°</div>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderSearchModal(): string {
   const recents = loadRecents();
 
   return `
-    <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-20 animate-fade-in">
+    <div id="searchModalOverlay" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-20 animate-fade-in">
       <div class="bg-[#161b22] border border-[#30363d] rounded-2xl w-full max-w-lg shadow-2xl p-5 flex flex-col gap-4">
         <div class="flex items-center justify-between pb-3 border-b border-[#30363d]">
           <h3 class="text-base font-bold text-[#e6edf3] flex items-center gap-2">
             <span>📍</span> Change Stargazing Location
           </h3>
-          <button id="btnCloseSearch" class="p-1 rounded-lg text-[#8b949e] hover:text-white transition cursor-pointer">
+          <button id="btnCloseSearch" class="p-1 rounded-lg text-[#8b949e] hover:text-white transition cursor-pointer" aria-label="Close">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
@@ -639,33 +668,18 @@ function renderSearchModal(): string {
             placeholder="Search city or location (e.g. Flagstaff, Denver, Tokyo)…"
             value="${state.searchQuery}"
             class="w-full px-4 py-2.5 rounded-xl bg-[#0d1117] border border-[#30363d] text-sm text-[#e6edf3] placeholder-[#8b949e] focus:outline-none focus:border-[#58a6ff] transition"
-            autofocus
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
           />
-          ${state.searchLoading ? `
-            <div class="absolute right-3 top-3 w-4 h-4 border-2 border-[#58a6ff] border-t-transparent rounded-full animate-spin"></div>
-          ` : ''}
+          <div id="searchLoadingSpinner" class="${state.searchLoading ? '' : 'hidden'} absolute right-3 top-3 w-4 h-4 border-2 border-[#58a6ff] border-t-transparent rounded-full animate-spin"></div>
         </div>
 
-        <!-- Search Results -->
-        ${state.searchResults.length > 0 ? `
-          <div class="flex flex-col gap-1 max-h-56 overflow-y-auto">
-            <span class="text-[11px] font-bold uppercase tracking-wider text-[#8b949e] px-1">Search Results</span>
-            ${state.searchResults.map(r => `
-              <button
-                class="btnSelectCity flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.05] text-left transition cursor-pointer"
-                data-place="${r.name}${r.admin1 ? `, ${r.admin1}` : ''}${r.country ? `, ${r.country}` : ''}"
-                data-lat="${r.latitude}"
-                data-lon="${r.longitude}"
-              >
-                <div>
-                  <div class="text-sm font-semibold text-[#e6edf3]">${r.name}</div>
-                  <div class="text-xs text-[#8b949e]">${[r.admin1, r.country].filter(Boolean).join(', ')}</div>
-                </div>
-                <div class="text-xs font-mono text-[#58a6ff]">${r.latitude.toFixed(2)}°, ${r.longitude.toFixed(2)}°</div>
-              </button>
-            `).join('')}
-          </div>
-        ` : ''}
+        <!-- Search Results Container -->
+        <div id="searchResultsContainer">
+          ${renderSearchResultsList(state.searchResults)}
+        </div>
 
         <!-- Recents List -->
         <div class="flex flex-col gap-2 pt-2 border-t border-[#30363d]/60">
@@ -673,6 +687,7 @@ function renderSearchModal(): string {
           <div class="flex flex-wrap gap-2">
             ${recents.map(r => `
               <button
+                type="button"
                 class="btnSelectCity px-3 py-1.5 rounded-lg bg-[#0d1117] hover:bg-[#21262d] border border-[#30363d] text-xs font-medium text-[#e6edf3] transition cursor-pointer"
                 data-place="${r.place}"
                 data-lat="${r.lat}"
@@ -689,18 +704,41 @@ function renderSearchModal(): string {
 }
 
 function attachEventHandlers() {
+  const selectCity = (el: HTMLElement) => {
+    const place = el.getAttribute('data-place') || 'Custom Location';
+    const lat = parseFloat(el.getAttribute('data-lat') || '0');
+    const lon = parseFloat(el.getAttribute('data-lon') || '0');
+
+    const loc: SavedLocation = { place, lat, lon };
+    state.location = loc;
+    saveLocation(loc);
+    state.searchOpen = false;
+    refreshAll();
+  };
+
   // Open search modal
   document.getElementById('btnOpenSearch')?.addEventListener('click', () => {
     state.searchOpen = true;
     state.searchQuery = '';
     state.searchResults = [];
+    state.searchLoading = false;
     render();
+    setTimeout(() => {
+      document.getElementById('inputCitySearch')?.focus();
+    }, 50);
   });
 
   // Close search modal
   document.getElementById('btnCloseSearch')?.addEventListener('click', () => {
     state.searchOpen = false;
     render();
+  });
+
+  document.getElementById('searchModalOverlay')?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).id === 'searchModalOverlay') {
+      state.searchOpen = false;
+      render();
+    }
   });
 
   // Geolocate
@@ -740,36 +778,51 @@ function attachEventHandlers() {
       const val = (e.target as HTMLInputElement).value;
       state.searchQuery = val;
       clearTimeout(debounceTimer);
+      const spinner = document.getElementById('searchLoadingSpinner');
+      const resultsContainer = document.getElementById('searchResultsContainer');
+
       if (val.trim().length >= 2) {
+        if (spinner) spinner.classList.remove('hidden');
         state.searchLoading = true;
-        render();
         debounceTimer = setTimeout(async () => {
-          state.searchResults = await searchCities(val);
+          const results = await searchCities(val);
+          state.searchResults = results;
           state.searchLoading = false;
-          render();
+          if (spinner) spinner.classList.add('hidden');
+          if (resultsContainer) {
+            resultsContainer.innerHTML = renderSearchResultsList(results);
+            resultsContainer.querySelectorAll<HTMLElement>('.btnSelectCity').forEach(btn => {
+              btn.addEventListener('click', () => selectCity(btn));
+            });
+          }
         }, 350);
       } else {
         state.searchResults = [];
+        state.searchLoading = false;
+        if (spinner) spinner.classList.add('hidden');
+        if (resultsContainer) {
+          resultsContainer.innerHTML = '';
+        }
+      }
+    });
+
+    inputSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const firstBtn = document.querySelector<HTMLElement>('#searchResultsContainer .btnSelectCity');
+        if (firstBtn) {
+          selectCity(firstBtn);
+        }
+      } else if (e.key === 'Escape') {
+        state.searchOpen = false;
         render();
       }
     });
   }
 
-  // City Result Selection
-  document.querySelectorAll('.btnSelectCity').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const el = (e.target as HTMLElement).closest('.btnSelectCity') as HTMLElement;
-      if (!el) return;
-      const place = el.getAttribute('data-place') || 'Custom Location';
-      const lat = parseFloat(el.getAttribute('data-lat') || '0');
-      const lon = parseFloat(el.getAttribute('data-lon') || '0');
-
-      const loc: SavedLocation = { place, lat, lon };
-      state.location = loc;
-      saveLocation(loc);
-      state.searchOpen = false;
-      refreshAll();
-    });
+  // City Result Selection for Recents & pre-existing buttons
+  document.querySelectorAll<HTMLElement>('.btnSelectCity').forEach(btn => {
+    btn.addEventListener('click', () => selectCity(btn));
   });
 }
 

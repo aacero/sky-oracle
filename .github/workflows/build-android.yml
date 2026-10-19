@@ -2,7 +2,7 @@ name: Build Android App Bundle (Google Play)
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
