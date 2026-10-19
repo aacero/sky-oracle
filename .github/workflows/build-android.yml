@@ -76,11 +76,11 @@ jobs:
 
           cat << EOF > BUILD_INFO.txt
           ==================================================
-          The Sky Tonight — Google Play Android Bundle Build
+          SkyOracle — Google Play Android Bundle Build
           ==================================================
           Package ID: com.lapsedacademics.skytonight
-          Version Name: 1.0.0
-          Version Code: 1
+          Version Name: 1.0.1
+          Version Code: 2
           Web App URL: https://aacero.github.io/sky-tonight/
           Signing Key Alias: android
           Upload Keystore SHA-256 Fingerprint:
@@ -88,7 +88,7 @@ jobs:
 
           Google Play Console Upload Steps:
           1. Download 'app-release-bundle.aab' from this workflow run.
-          2. Open Google Play Console -> The Sky Tonight -> Testing -> Internal testing (or Production).
+          2. Open Google Play Console -> SkyOracle -> Testing -> Internal testing (or Production).
           3. Click 'Create new release', upload 'app-release-bundle.aab', and click Save.
           4. Google Play App Signing will generate your final app distribution key.
           ==================================================
