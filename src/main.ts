@@ -19,6 +19,8 @@ import {
   loadLocation,
   saveLocation,
   loadRecents,
+  loadTempUnit,
+  saveTempUnit,
   SavedLocation
 } from './core/storage.ts';
 
@@ -27,6 +29,7 @@ import {
 interface AppState {
   location: SavedLocation;
   currentDate: Date;
+  tempUnit: 'F' | 'C';
   forecast: ObservingForecast | null;
   sunEvents: SunEvents | null;
   moon: MoonInfo | null;
@@ -43,6 +46,7 @@ interface AppState {
 const state: AppState = {
   location: loadLocation(),
   currentDate: new Date(),
+  tempUnit: loadTempUnit(),
   forecast: null,
   sunEvents: null,
   moon: null,
@@ -335,6 +339,11 @@ function render() {
           </button>
         ` : ''}
 
+        <!-- Unit Toggle Button -->
+        <button id="btnToggleUnit" title="Switch to ${state.tempUnit === 'F' ? 'Celsius' : 'Fahrenheit'}" class="px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-bold text-[#58a6ff] hover:text-white transition cursor-pointer">
+          °${state.tempUnit}
+        </button>
+
         <!-- Refresh Button -->
         <button id="btnRefresh" title="Refresh Forecast" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition cursor-pointer ${state.loading ? 'animate-spin text-[#58a6ff]' : ''}">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -375,6 +384,43 @@ function render() {
                 </p>
               </div>
             </div>
+
+            ${state.forecast ? `
+              <!-- Night Stargazing Weather Telemetry -->
+              <div class="flex items-center gap-2 sm:gap-3 mt-4 flex-wrap text-xs">
+                <!-- Temp Pill -->
+                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-[#30363d]/60">
+                  <span class="text-amber-400 font-bold">🌡️</span>
+                  <span class="font-bold text-[#e6edf3] text-sm">
+                    ${state.tempUnit === 'F' ? `${state.forecast.currentTempF}°F` : `${state.forecast.currentTempC}°C`}
+                  </span>
+                  <span class="text-[#8b949e]">
+                    (Overnight Low: <strong class="text-white font-medium">${state.tempUnit === 'F' ? `${state.forecast.minTempF}°F` : `${state.forecast.minTempC}°C`}</strong>)
+                  </span>
+                </div>
+
+                <!-- Feels Like Pill -->
+                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-[#30363d]/60">
+                  <span class="text-[#8b949e]">Feels:</span>
+                  <span class="font-semibold text-[#e6edf3]">
+                    ${state.tempUnit === 'F' ? `${state.forecast.feelsLikeF}°F` : `${state.forecast.feelsLikeC}°C`}
+                  </span>
+                </div>
+
+                <!-- Dew / Frost Alert Pill -->
+                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${state.forecast.dewRisk === 'high' ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : (state.forecast.dewRisk === 'moderate' ? 'bg-sky-500/10 border-sky-500/30 text-sky-300' : 'bg-white/[0.04] border-[#30363d]/60 text-[#8b949e]')}">
+                  <span>${state.forecast.minTempC <= 0 && state.forecast.dewRisk === 'high' ? '❄️' : '💧'}</span>
+                  <span class="font-medium">${state.forecast.dewRiskLabel}</span>
+                  <span class="text-[10px] opacity-75 font-mono">(${state.tempUnit === 'F' ? `Dew pt ${state.forecast.dewPointF}°` : `Dew pt ${state.forecast.dewPointC}°`})</span>
+                </div>
+
+                <!-- Wind Pill -->
+                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-[#30363d]/60 text-[#8b949e]">
+                  <span>💨</span>
+                  <span>Wind: <strong class="text-white font-medium">${state.tempUnit === 'F' ? `${state.forecast.windSpeedMph} mph` : `${state.forecast.windSpeedKmh} km/h`}</strong></span>
+                </div>
+              </div>
+            ` : ''}
           </div>
 
           <!-- Quick Stats Pill -->
@@ -398,7 +444,7 @@ function render() {
               ${state.forecast.hourlyWindow.map(h => {
                 const isBest = state.forecast?.bestWindow?.hr === h.hr;
                 return `
-                  <div class="flex flex-col items-center gap-1 group relative cursor-pointer" title="${h.label}: ${h.cloud}% clouds (${h.clarity}% clarity)${h.isDarkSky ? ' [True Dark Sky]' : ''}">
+                  <div class="flex flex-col items-center gap-1 group relative cursor-pointer" title="${h.label}: ${h.cloud}% clouds, ${state.tempUnit === 'F' ? `${h.tempF}°F (feels ${h.feelsLikeF}°F)` : `${h.tempC}°C (feels ${h.feelsLikeC}°C)`}, wind ${state.tempUnit === 'F' ? `${h.windSpeedMph} mph` : `${h.windSpeedKmh} km/h`}${h.isDarkSky ? ' [True Dark Sky]' : ''}">
                     <!-- Cloud % / Clear text -->
                     <span class="text-[10px] sm:text-xs font-semibold ${isBest ? 'text-amber-400 font-bold' : (h.cloud <= 20 ? 'text-emerald-400' : (h.cloud <= 55 ? 'text-[#58a6ff]' : 'text-[#8b949e]'))}">
                       ${h.cloud <= 5 ? '0%' : `${h.cloud}%`}
@@ -416,6 +462,11 @@ function render() {
                     <span class="text-[10px] sm:text-xs font-medium ${isBest ? 'text-white font-bold' : 'text-[#8b949e]'}">
                       <span class="sm:hidden">${h.labelCompact}</span>
                       <span class="hidden sm:inline">${h.label}</span>
+                    </span>
+
+                    <!-- Hourly Temperature -->
+                    <span class="text-[10px] sm:text-[11px] font-mono font-medium ${h.tempC <= 0 ? 'text-sky-300' : 'text-[#8b949e]'}">
+                      ${state.tempUnit === 'F' ? `${h.tempF}°` : `${h.tempC}°`}
                     </span>
                   </div>
                 `;
@@ -660,6 +711,13 @@ function attachEventHandlers() {
   // Refresh
   document.getElementById('btnRefresh')?.addEventListener('click', () => {
     refreshAll();
+  });
+
+  // Toggle Temperature Unit (°F / °C)
+  document.getElementById('btnToggleUnit')?.addEventListener('click', () => {
+    state.tempUnit = state.tempUnit === 'F' ? 'C' : 'F';
+    saveTempUnit(state.tempUnit);
+    render();
   });
 
   // Install PWA

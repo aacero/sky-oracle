@@ -10,6 +10,7 @@ export interface SavedLocation {
 
 const STORAGE_KEY_LOCATION = 'sky_tonight_location';
 const STORAGE_KEY_RECENTS = 'sky_tonight_recents';
+const STORAGE_KEY_UNIT = 'sky_tonight_temp_unit';
 
 // Default to St. Augustine, FL
 export const DEFAULT_LOCATION: SavedLocation = {
@@ -17,6 +18,23 @@ export const DEFAULT_LOCATION: SavedLocation = {
   lat: 29.9012,
   lon: -81.3124
 };
+
+export function loadTempUnit(): 'F' | 'C' {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_UNIT);
+    if (raw === 'F' || raw === 'C') return raw;
+  } catch {}
+  if (typeof navigator !== 'undefined' && navigator.language && navigator.language.includes('US')) {
+    return 'F';
+  }
+  return 'F'; // Default to Fahrenheit for US-centric stargazing, 1-tap togglable
+}
+
+export function saveTempUnit(unit: 'F' | 'C'): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_UNIT, unit);
+  } catch {}
+}
 
 export function loadLocation(): SavedLocation {
   try {

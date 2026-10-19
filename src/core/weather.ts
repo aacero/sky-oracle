@@ -11,6 +11,14 @@ export interface ObservingHour {
   hr: number;
   cloud: number;
   clarity: number; // 0 - 100%
+  tempC: number;
+  tempF: number;
+  feelsLikeC: number;
+  feelsLikeF: number;
+  dewPointC: number;
+  dewPointF: number;
+  windSpeedMph: number;
+  windSpeedKmh: number;
   label: string;
   labelCompact: string;
   isDarkSky: boolean;
@@ -20,6 +28,20 @@ export interface ObservingForecast {
   hourlyWindow: ObservingHour[];
   avgCloud: number;
   bestWindow: ObservingHour | null;
+  currentTempC: number;
+  currentTempF: number;
+  minTempC: number;
+  minTempF: number;
+  maxTempC: number;
+  maxTempF: number;
+  feelsLikeC: number;
+  feelsLikeF: number;
+  dewPointC: number;
+  dewPointF: number;
+  dewRisk: 'low' | 'moderate' | 'high';
+  dewRiskLabel: string;
+  windSpeedMph: number;
+  windSpeedKmh: number;
   verdict: string;
   verdictEmoji: string;
   verdictAccent: string;
@@ -46,7 +68,7 @@ export async function fetchCloudForecast(
   lon: number,
   refDate: Date = new Date()
 ): Promise<ObservingForecast> {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=cloud_cover&timezone=auto&forecast_days=2&past_days=1`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=cloud_cover,temperature_2m,apparent_temperature,dew_point_2m,wind_speed_10m&timezone=auto&forecast_days=2&past_days=1`;
 
   const resp = await fetch(url);
   if (!resp.ok) {
@@ -69,6 +91,10 @@ export function parseCloudPayload(
 
   const times: string[] = data.hourly.time;
   const clouds: number[] = data.hourly.cloud_cover;
+  const temps: number[] = data.hourly.temperature_2m || [];
+  const feels: number[] = data.hourly.apparent_temperature || [];
+  const dewPoints: number[] = data.hourly.dew_point_2m || [];
+  const winds: number[] = data.hourly.wind_speed_10m || [];
   const utcOffsetSec: number = typeof data.utc_offset_seconds === 'number' ? data.utc_offset_seconds : (lat && lon ? Math.round(lon / 15) * 3600 : 0);
   const tzOffsetMs = utcOffsetSec * 1000;
 
@@ -129,10 +155,34 @@ export function parseCloudPayload(
         : false;
 
       const cloud = clouds[k] ?? 0;
+      const rawTempC = temps[k] !== undefined ? temps[k] : 15;
+      const tempC = Math.round(rawTempC);
+      const tempF = Math.round(rawTempC * 9 / 5 + 32);
+
+      const rawFeelsC = feels[k] !== undefined ? feels[k] : rawTempC;
+      const feelsLikeC = Math.round(rawFeelsC);
+      const feelsLikeF = Math.round(rawFeelsC * 9 / 5 + 32);
+
+      const rawDewC = dewPoints[k] !== undefined ? dewPoints[k] : (rawTempC - 4);
+      const dewPointC = Math.round(rawDewC);
+      const dewPointF = Math.round(rawDewC * 9 / 5 + 32);
+
+      const rawWindKmh = winds[k] !== undefined ? winds[k] : 5;
+      const windSpeedKmh = Math.round(rawWindKmh);
+      const windSpeedMph = Math.round(rawWindKmh * 0.621371);
+
       win.push({
         hr,
         cloud,
         clarity: Math.max(0, 100 - cloud),
+        tempC,
+        tempF,
+        feelsLikeC,
+        feelsLikeF,
+        dewPointC,
+        dewPointF,
+        windSpeedMph,
+        windSpeedKmh,
         label: formatHour(hr),
         labelCompact: formatHourCompact(hr),
         isDarkSky
@@ -145,10 +195,34 @@ export function parseCloudPayload(
     for (let k = 0; k < Math.min(8, times.length); k++) {
       const hr = parseInt(times[k].slice(11, 13), 10);
       const cloud = clouds[k] ?? 0;
+      const rawTempC = temps[k] !== undefined ? temps[k] : 15;
+      const tempC = Math.round(rawTempC);
+      const tempF = Math.round(rawTempC * 9 / 5 + 32);
+
+      const rawFeelsC = feels[k] !== undefined ? feels[k] : rawTempC;
+      const feelsLikeC = Math.round(rawFeelsC);
+      const feelsLikeF = Math.round(rawFeelsC * 9 / 5 + 32);
+
+      const rawDewC = dewPoints[k] !== undefined ? dewPoints[k] : (rawTempC - 4);
+      const dewPointC = Math.round(rawDewC);
+      const dewPointF = Math.round(rawDewC * 9 / 5 + 32);
+
+      const rawWindKmh = winds[k] !== undefined ? winds[k] : 5;
+      const windSpeedKmh = Math.round(rawWindKmh);
+      const windSpeedMph = Math.round(rawWindKmh * 0.621371);
+
       win.push({
         hr,
         cloud,
         clarity: Math.max(0, 100 - cloud),
+        tempC,
+        tempF,
+        feelsLikeC,
+        feelsLikeF,
+        dewPointC,
+        dewPointF,
+        windSpeedMph,
+        windSpeedKmh,
         label: formatHour(hr),
         labelCompact: formatHourCompact(hr),
         isDarkSky: false
@@ -159,12 +233,51 @@ export function parseCloudPayload(
   // Calculate statistics
   let sum = 0;
   let best = win[0];
+  let minTempC = win[0]?.tempC ?? 15;
+  let minTempF = win[0]?.tempF ?? 59;
+  let maxTempC = win[0]?.tempC ?? 15;
+  let maxTempF = win[0]?.tempF ?? 59;
+  let minDewDepression = 999;
+
   for (let m = 0; m < win.length; m++) {
     sum += win[m].cloud;
     if (win[m].cloud < best.cloud) {
       best = win[m];
     }
+    if (win[m].tempC < minTempC) {
+      minTempC = win[m].tempC;
+      minTempF = win[m].tempF;
+    }
+    if (win[m].tempC > maxTempC) {
+      maxTempC = win[m].tempC;
+      maxTempF = win[m].tempF;
+    }
+    const depression = win[m].tempC - win[m].dewPointC;
+    if (depression < minDewDepression) {
+      minDewDepression = depression;
+    }
   }
+
+  let dewRisk: 'low' | 'moderate' | 'high' = 'low';
+  let dewRiskLabel = 'Low (Dry air)';
+  if (minDewDepression <= 1.5) {
+    dewRisk = 'high';
+    dewRiskLabel = minTempC <= 0 ? 'High Frost Risk (Heater essential)' : 'High Dew Risk (Dew heater recommended)';
+  } else if (minDewDepression <= 3.5) {
+    dewRisk = 'moderate';
+    dewRiskLabel = 'Moderate (Dew shield advised)';
+  }
+
+  const currentHour = win[0] || {
+    tempC: 15,
+    tempF: 59,
+    feelsLikeC: 15,
+    feelsLikeF: 59,
+    dewPointC: 10,
+    dewPointF: 50,
+    windSpeedMph: 5,
+    windSpeedKmh: 8
+  };
 
   const avgCloud = Math.round(sum / (win.length || 1));
   let verdict = "Clear — great for observing";
@@ -200,6 +313,20 @@ export function parseCloudPayload(
     hourlyWindow: win,
     avgCloud,
     bestWindow: best,
+    currentTempC: currentHour.tempC,
+    currentTempF: currentHour.tempF,
+    minTempC,
+    minTempF,
+    maxTempC,
+    maxTempF,
+    feelsLikeC: currentHour.feelsLikeC,
+    feelsLikeF: currentHour.feelsLikeF,
+    dewPointC: currentHour.dewPointC,
+    dewPointF: currentHour.dewPointF,
+    dewRisk,
+    dewRiskLabel,
+    windSpeedMph: currentHour.windSpeedMph,
+    windSpeedKmh: currentHour.windSpeedKmh,
     verdict,
     verdictEmoji,
     verdictAccent,
