@@ -4,24 +4,58 @@ A fast, lightweight, standalone Progressive Web App (PWA) and Android app for st
 
 Provides dynamic dark-sky observing forecasts, NOAA/Meeus solar twilight timelines, Meeus lunar phases, and NASA JPL naked-eye planetary ephemeris with IAU constellation tracking.
 
+<div align="center">
+
+[![Add to Obtainium](https://raw.githubusercontent.com/ImranR98/apps.obtainium.imranr.dev/main/assets/graphics/badge_obtainium.png)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.lapsedacademics.skytonight%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Faacero%2Fsky-oracle%22%2C%22author%22%3A%22aacero%22%2C%22name%22%3A%22SkyOracle%22%7D)
+[![Download APK](https://img.shields.io/badge/Download-APK-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/aacero/sky-oracle/releases/latest)
+[![Launch Web App](https://img.shields.io/badge/Web_PWA-Launch-blueviolet?style=for-the-badge&logo=pwa&logoColor=white)](https://aacero.github.io/sky-tonight/)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/aacero/sky-oracle)](https://github.com/aacero/sky-oracle/releases)
+[![Komi Store](https://img.shields.io/badge/Komi_Store-Auto--Indexed-blue?logo=github&logoColor=white)](https://github.com/aacero/sky-oracle/releases)
+
+</div>
+
+---
+
+## 📲 Install & Get SkyOracle
+
+### 1. Obtainium (Recommended for FOSS & Auto-Updates)
+If you use [Obtainium](https://github.com/ImranR98/Obtainium) on Android:
+- **1-Tap Add**: Tap the **[Add to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.lapsedacademics.skytonight%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Faacero%2Fsky-oracle%22%2C%22author%22%3A%22aacero%22%2C%22name%22%3A%22SkyOracle%22%7D)** badge above on your Android phone or tablet.
+- **Manual Add**: In Obtainium, tap **Add App**, paste `https://github.com/aacero/sky-oracle`, and tap **Add**. Obtainium will automatically track releases and notify you of updates.
+
+### 2. Komi Store
+Komi Store automatically indexes SkyOracle releases directly from GitHub. Search for **SkyOracle** inside the Komi Store app to install and receive silent/assisted auto-updates.
+
+### 3. Direct APK Sideload
+Download the latest signed APK directly from our **[Releases](https://github.com/aacero/sky-oracle/releases/latest)** page:
+- **Latest Build**: [`SkyOracle-v1.0.0.apk`](https://github.com/aacero/sky-oracle/releases/download/v1.0.0/SkyOracle-v1.0.0.apk) (SHA-256: `b760908a2b1910705bbbb7d9c4185e26ba3f04fc164658fd47ed35c25d8bf8dc`)
+
+### 4. Progressive Web App (PWA)
+Open **[aacero.github.io/sky-tonight/](https://aacero.github.io/sky-tonight/)** in any modern mobile or desktop browser (Chrome, Firefox, Safari, Edge) and tap **"Install"** or **"Add to Home Screen"**.
+
 ---
 
 ## Key Features
 
 - **Dynamic Dark-Hours Observing Window**: Automatically identifies the full post-sunset to pre-sunrise window (typically 10–13 hours). Displays hourly cloud percentage, clarity tracks (color-graded emerald to red), and highlights active astronomical darkness (`isDarkSky`).
+- **Ambient Weather & Optics Dew Warnings**: Start-of-window temperature, expected overnight low, wind speed, and real-time dew point / frost alerts ($\Delta T \le 1.5^\circ\text{C}$) to protect telescope lenses and mirrors.
+- **1-Tap Unit Toggle**: Switch seamlessly between Fahrenheit (°F) and Celsius (°C).
 - **100% Offline Astronomical Ephemeris**:
   - **Solar Twilights**: Exact times for Sunset (-0.8°), Civil Dusk (-6°), Nautical Dusk (-12°), Astronomical Dusk (-18°), Astronomical Dawn (-18°), and Sunrise (-0.8°).
   - **Moon Phase & Illumination**: Exact geocentric lunar age in days, illuminated percentage, synodic phase name, and SVG lunar terminator visualizer.
   - **Naked-Eye Planets**: Local rise and set times, viewing conditions, and host astronomical constellation positions (Pisces, Aries, Taurus, Gemini, Cancer, Leo, Virgo, Libra, Scorpius, Ophiuchus, Sagittarius, Capricornus, Aquarius) for Mercury, Venus, Mars, Jupiter, and Saturn.
-- **Open Cloud Telemetry**: Fetches hourly cloud forecasts from Open-Meteo's open, keyless, CORS-enabled REST API.
+- **Open Cloud Telemetry**: Fetches hourly cloud and temperature forecasts from Open-Meteo's open, keyless, CORS-enabled REST API.
 - **1-Tap Location & Geocoding**:
   - Browser GPS coordinate detection via `navigator.geolocation`.
   - Built-in instant city search via Open-Meteo Geocoding.
   - Persistent local storage remembering your favorite stargazing locations.
-- **Progressive Web App (PWA)**:
+- **Progressive Web App (PWA) & TWA**:
   - Service Worker (`sw.js`) with cache-first and offline fallbacks.
-  - Web App Manifest (`manifest.json`) for 1-tap installation on Android, iOS, Linux, Windows, and macOS.
+  - Web App Manifest (`manifest.json`) and Trusted Web Activity (`.aab` / `.apk`) for Android.
   - Ultra-lightweight footprint: **~11 kB JS + ~5 kB CSS (gzipped)**, zero framework bloat, sub-second boot.
+- **100% Private**: Zero ads, zero tracking, zero proprietary analytics.
 
 ---
 
@@ -103,4 +137,4 @@ This generates a signed Android `.apk` / `.aab` ready for sideloading or publish
 
 ## License
 
-Dual MIT / Apache-2.0.
+MIT License. See [LICENSE](LICENSE) for details.
