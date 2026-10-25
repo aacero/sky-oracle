@@ -312,5 +312,57 @@ describe('Starfield & Ephemeris Projection Engine', () => {
       const sunBody = inField.find(b => b.key === 'sun')!;
       expect(sunBody.radius).toBeGreaterThan(6.5);
     });
+
+    it('differentiates circular eyepiece aperture (5° radius) vs square frame (7.07° corner reach)', () => {
+      // Replicate the real-world geometry of Venus & Sun on 2026-10-25:
+      // Venus at RA 205.074, Dec -17.104
+      // Sun at RA 210.073, Dec -12.255 (~6.84° away)
+      const centerVenus = { ra: 205.074, dec: -17.104 };
+      const bodies: OtherSolarBody[] = [
+        {
+          type: 'sun',
+          key: 'sun',
+          name: 'Sun',
+          symbol: '☀️',
+          ra: 210.073,
+          dec: -12.255
+        }
+      ];
+
+      // True spherical separation should be ~6.84°
+      const sep = angularSeparationDeg(centerVenus.ra, centerVenus.dec, bodies[0].ra, bodies[0].dec);
+      expect(sep).toBeGreaterThan(6.7);
+      expect(sep).toBeLessThan(7.0);
+
+      // In circular aperture (default, 5° radius eyepiece), separation 6.84° > 5.0° so Sun is OUTSIDE the eyepiece
+      const inCircular = getBodiesInField(
+        centerVenus.ra,
+        centerVenus.dec,
+        10.0,
+        360,
+        360,
+        false,
+        bodies,
+        undefined,
+        'circular'
+      );
+      expect(inCircular.length).toBe(0);
+
+      // In square sensor frame (10°x10°, corners reach ~7.07°), dx ~ 4.9° and dy ~ 4.8° so Sun is INSIDE corner
+      const inSquare = getBodiesInField(
+        centerVenus.ra,
+        centerVenus.dec,
+        10.0,
+        360,
+        360,
+        false,
+        bodies,
+        undefined,
+        'square'
+      );
+      expect(inSquare.length).toBe(1);
+      expect(inSquare[0].key).toBe('sun');
+      expect(inSquare[0].separationDeg).toBeCloseTo(6.84, 1);
+    });
   });
 });

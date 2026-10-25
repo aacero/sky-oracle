@@ -81,6 +81,7 @@ export interface StarfieldOptions {
   renderHorizon?: boolean;  // Draw horizon line and ground shading (default: true if lat/lon provided)
   dimBelowHorizon?: boolean;// Dim stars located below the horizon (default: true)
   otherBodies?: OtherSolarBody[]; // Companion planets, Moon, Sun to check for and render in the field
+  aperture?: 'circular' | 'square'; // 'circular' (default, 5° radius eyepiece) or 'square' (10°x10° sensor)
 }
 
 export const PLANET_COLORS: Record<string, { fill: string; stroke: string; glow: string; name: string }> = {
@@ -300,6 +301,7 @@ export function computeGroundPolygonAndHorizon(
 
 /**
  * Checks for other solar system bodies (companion planets, Moon, Sun) located inside the Field of View.
+ * Supports circular aperture (separation <= fovDeg / 2, default) or square frame (x, y <= limit).
  */
 export function getBodiesInField(
   centerRaDeg: number,
@@ -309,7 +311,8 @@ export function getBodiesInField(
   height: number = 360,
   southUp: boolean = false,
   bodies: OtherSolarBody[] = [],
-  horizon?: { lat: number; lon: number; date: Date }
+  horizon?: { lat: number; lon: number; date: Date },
+  aperture: 'circular' | 'square' = 'circular'
 ): InFieldBody[] {
   const d2r = Math.PI / 180;
   const limitX = Math.tan((fovDeg / 2) * d2r);
@@ -335,15 +338,20 @@ export function getBodiesInField(
     const proj = projectCoordinates(b.ra, b.dec, centerRaDeg, centerDecDeg);
     if (!proj) continue;
 
-    if (Math.abs(proj.x) <= limitX && Math.abs(proj.y) <= limitY) {
+    const sep = angularSeparationDeg(centerRaDeg, centerDecDeg, b.ra, b.dec);
+
+    // In circular aperture, radius is strictly fovDeg / 2 (e.g. 5°). In square, corners extend to ~7.07°
+    const inBounds = aperture === 'circular'
+      ? (sep <= fovDeg / 2)
+      : (Math.abs(proj.x) <= limitX && Math.abs(proj.y) <= limitY);
+
+    if (inBounds) {
       const px = southUp
         ? width / 2 + proj.x * scaleX
         : width / 2 - proj.x * scaleX;
       const py = southUp
         ? height / 2 + proj.y * scaleY
         : height / 2 - proj.y * scaleY;
-
-      const sep = angularSeparationDeg(centerRaDeg, centerDecDeg, b.ra, b.dec);
 
       // Apparent visual radius on canvas
       let radius = 5.0; // Standard planet disc
@@ -395,8 +403,8 @@ export function getBodiesInField(
 }
 
 /**
- * Filters and projects stars inside a square Field of View (FOV) centered on (centerRa, centerDec).
- * Supports South-Up inversion and observer horizon altitude computation.
+ * Filters and projects stars inside Field of View (FOV) centered on (centerRa, centerDec).
+ * Supports circular eyepiece aperture (radius <= fovDeg / 2) or square sensor frame.
  */
 export function getStarsInField(
   centerRaDeg: number,
@@ -406,11 +414,13 @@ export function getStarsInField(
   width: number = 360,
   height: number = 360,
   southUp: boolean = false,
-  horizon?: { lat: number; lon: number; date: Date }
+  horizon?: { lat: number; lon: number; date: Date },
+  aperture: 'circular' | 'square' = 'circular'
 ): ProjectedStar[] {
   const d2r = Math.PI / 180;
-  const limitX = Math.tan((fovDeg / 2) * d2r);
-  const limitY = Math.tan((fovDeg / 2) * d2r);
+  const limitR = Math.tan((fovDeg / 2) * d2r);
+  const limitX = limitR;
+  const limitY = limitR;
 
   const scaleX = width / (2 * limitX);
   const scaleY = height / (2 * limitY);
@@ -436,10 +446,11 @@ export function getStarsInField(
     const proj = projectCoordinates(ra, dec, centerRaDeg, centerDecDeg);
     if (!proj) continue;
 
-    if (Math.abs(proj.x) <= limitX && Math.abs(proj.y) <= limitY) {
-      // Coordinate mapping:
-      // North-Up: East is LEFT (px decreases as x increases), North is UP (py decreases as y increases)
-      // South-Up: Inverted 180° - East is RIGHT (px increases as x increases), South is UP (py increases as y increases)
+    const inBounds = aperture === 'circular'
+      ? (proj.x * proj.x + proj.y * proj.y <= limitR * limitR)
+      : (Math.abs(proj.x) <= limitX && Math.abs(proj.y) <= limitY);
+
+    if (inBounds) {
       const px = southUp
         ? width / 2 + proj.x * scaleX
         : width / 2 - proj.x * scaleX;
@@ -447,8 +458,6 @@ export function getStarsInField(
         ? height / 2 + proj.y * scaleY
         : height / 2 - proj.y * scaleY;
 
-      // Realistic magnitude-to-radius curve:
-      // Mag 0: ~5.0px, Mag 1: ~4.2px, Mag 3: ~3.0px, Mag 5: ~1.7px, Mag 6: ~1.1px
       const radius = Math.max(1.0, (6.3 - mag) * 0.85);
       const color = bvToColor(bv);
 
@@ -486,9 +495,9 @@ export function getStarsInField(
 }
 
 /**
- * High-DPI canvas renderer for a 10°x10° centered planet starfield.
- * Fully supports companion planets, Moon, Sun in field, Southern hemisphere South-Up mode,
- * and horizon rendering / below-horizon dimming.
+ * High-DPI canvas renderer for a 10° centered planet starfield.
+ * Fully supports circular telescope/binocular eyepiece aperture, companion planets, Moon, Sun,
+ * Southern hemisphere South-Up mode, and horizon rendering / below-horizon dimming.
  */
 export function renderStarfield(
   canvas: HTMLCanvasElement,
@@ -508,6 +517,7 @@ export function renderStarfield(
   const showCompass = options.showCompass ?? true;
   const southUp = options.southUp ?? false;
   const dimBelow = options.dimBelowHorizon ?? true;
+  const aperture = options.aperture ?? 'circular';
 
   const hasObserver = typeof options.observerLat === 'number' && typeof options.observerLon === 'number';
   const currentDate = options.currentDate ?? new Date();
@@ -549,16 +559,19 @@ export function renderStarfield(
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 
-  // Subtle circular border / vignette clip
-  ctx.strokeStyle = '#30363d';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0, 0, cssWidth, cssHeight);
+  // If circular eyepiece aperture, clip celestial graphics to the round circle
+  if (aperture === 'circular') {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, cx - 1, 0, Math.PI * 2);
+    ctx.clip();
+  }
 
   // 2. Compute Stars
   const horizonOpt = hasObserver
     ? { lat: options.observerLat!, lon: options.observerLon!, date: currentDate }
     : undefined;
-  const stars = getStarsInField(planet.ra, planet.dec, fovDeg, maxMag, cssWidth, cssHeight, southUp, horizonOpt);
+  const stars = getStarsInField(planet.ra, planet.dec, fovDeg, maxMag, cssWidth, cssHeight, southUp, horizonOpt, aperture);
 
   // 3. Draw Stars
   for (const s of stars) {
@@ -687,7 +700,8 @@ export function renderStarfield(
     cssHeight,
     southUp,
     options.otherBodies ?? [],
-    horizonOpt
+    horizonOpt,
+    aperture
   );
 
   for (const b of inFieldBodies) {
@@ -923,6 +937,32 @@ export function renderStarfield(
 
   ctx.restore();
 
+  // End circular aperture clipping if active
+  if (aperture === 'circular') {
+    ctx.restore(); // Restore clip
+
+    // Draw circular eyepiece barrel ring
+    ctx.strokeStyle = '#30363d';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cx - 1, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Darken 4 corner regions outside circular eyepiece
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 4, 8, 0.75)';
+    ctx.beginPath();
+    ctx.rect(0, 0, cssWidth, cssHeight);
+    ctx.arc(cx, cy, cx - 1, 0, Math.PI * 2, true);
+    ctx.fill();
+    ctx.restore();
+  } else {
+    // Square border
+    ctx.strokeStyle = '#30363d';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, cssWidth, cssHeight);
+  }
+
   // 8. Cardinal Directions
   // North-Up: N top, S bottom, E left, W right
   // South-Up: S top, N bottom, W left, E right
@@ -950,11 +990,11 @@ export function renderStarfield(
   ctx.textBaseline = 'top';
   ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#8b949e';
-  ctx.fillText(`${fovDeg.toFixed(0)}° × ${fovDeg.toFixed(0)}° FOV`, 10, 10);
+  ctx.fillText(`${fovDeg.toFixed(0)}° ${aperture === 'circular' ? 'FOV (5° r)' : '× 10° Frame'}`, 10, 10);
 
   ctx.font = '9px monospace';
   ctx.fillStyle = southUp ? '#38bdf8' : '#64748b';
-  ctx.fillText(southUp ? 'SOUTH UP (INVERTED)' : 'NORTH UP', 10, 24);
+  ctx.fillText(southUp ? 'SOUTH UP' : 'NORTH UP', 10, 24);
 
   // Top-right: Planet altitude & Sun separation
   const sunBody = options.otherBodies?.find(b => b.type === 'sun');

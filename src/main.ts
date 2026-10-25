@@ -52,6 +52,7 @@ interface AppState {
   planets: PlanetInfo[];
   selectedPlanet: PlanetInfo | null;
   starfieldSouthUp: boolean;
+  starfieldAperture: 'circular' | 'square';
   loading: boolean;
   error: string | null;
   searchOpen: boolean;
@@ -72,6 +73,7 @@ const state: AppState = {
   planets: [],
   selectedPlanet: null,
   starfieldSouthUp: initialLoc.lat < 0,
+  starfieldAperture: 'circular',
   loading: false,
   error: null,
   searchOpen: false,
@@ -294,7 +296,8 @@ function drawPlanetStarfield() {
     currentDate: state.currentDate,
     renderHorizon: true,
     dimBelowHorizon: true,
-    otherBodies
+    otherBodies,
+    aperture: state.starfieldAperture
   });
 }
 
@@ -875,7 +878,8 @@ function renderPlanetModal(): string {
     360,
     state.starfieldSouthUp,
     otherBodies,
-    { lat: state.location.lat, lon: state.location.lon, date: state.currentDate }
+    { lat: state.location.lat, lon: state.location.lon, date: state.currentDate },
+    state.starfieldAperture
   );
 
   const sunBody = otherBodies.find(b => b.type === 'sun');
@@ -906,11 +910,20 @@ function renderPlanetModal(): string {
                   Alt: ${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° (${isAboveHorizon ? 'Above Horizon' : 'Below Horizon'})
                 </span>
               </div>
-              <p class="text-xs text-[#8b949e] mt-0.5">10° × 10° Geocentric Telescopic / Binocular Starfield</p>
+              <p class="text-xs text-[#8b949e] mt-0.5">${state.starfieldAperture === 'circular' ? '10° Circular Eyepiece Starfield (5° Radius)' : '10° × 10° Sensor Frame Starfield'}</p>
             </div>
           </div>
 
           <div class="flex items-center gap-2">
+            <!-- Aperture Toggle Button (Circular Eyepiece / Square Sensor) -->
+            <button
+              id="btnToggleAperture"
+              class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldAperture === 'circular' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
+              title="Toggle field of view between circular eyepiece (5° radius) and square sensor frame (10°x10°)"
+            >
+              <span>${state.starfieldAperture === 'circular' ? '◯ Eyepiece (5° r)' : '▢ Sensor (10°)'}</span>
+            </button>
+
             <!-- South-Up / North-Up Toggle Button -->
             <button
               id="btnToggleSouthUp"
@@ -998,8 +1011,8 @@ function renderPlanetModal(): string {
           </div>
           <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
             <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Field & Depth</span>
-            <span class="font-bold text-amber-300 text-sm">10° · Mag ≤ 6.0</span>
-            <span class="text-[10px] text-[#8b949e] block">Binocular / Naked-Eye</span>
+            <span class="font-bold text-amber-300 text-sm">${state.starfieldAperture === 'circular' ? '10° ◯ · 5° Radius' : '10° ▢ · 7.1° Diag'}</span>
+            <span class="text-[10px] text-[#8b949e] block">${state.starfieldAperture === 'circular' ? 'Eyepiece (Mag ≤ 6.0)' : 'Sensor (Mag ≤ 6.0)'}</span>
           </div>
         </div>
 
@@ -1016,10 +1029,15 @@ function renderPlanetModal(): string {
           <div class="mt-3 text-center text-xs text-[#8b949e] max-w-sm">
             <p>
               ${state.starfieldSouthUp
-                ? 'Southern sky view (<span class="font-semibold text-sky-300">South up, West left</span> · Inverted). Green line marks the <span class="font-semibold text-emerald-400">local horizon</span>.'
-                : 'Standard sky view (<span class="font-semibold text-[#e6edf3]">North up, East left</span>). Green line marks the <span class="font-semibold text-emerald-400">local horizon</span>.'
+                ? 'Southern sky view (<span class="font-semibold text-sky-300">South up, West left</span> · Inverted). '
+                : 'Standard sky view (<span class="font-semibold text-[#e6edf3]">North up, East left</span>). '
               }
-              Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad-style target</span>.
+              Green line marks the <span class="font-semibold text-emerald-400">local horizon</span>.
+              Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad target</span>.
+              ${state.starfieldAperture === 'circular'
+                ? 'Showing <span class="font-semibold text-indigo-300">5° circular eyepiece</span>.'
+                : 'Showing <span class="font-semibold text-indigo-300">10°×10° sensor frame</span> (7.1° corners).'
+              }
               ${bodiesInField.length > 0
                 ? `<span class="block mt-1 font-semibold text-indigo-300">In field: ${bodiesInField.map(b => `${b.symbol} ${b.name}`).join(', ')}</span>`
                 : ''
@@ -1185,6 +1203,12 @@ function attachEventHandlers() {
         render();
       }
     });
+  });
+
+  // Toggle Aperture (Circular Eyepiece vs Square Sensor Frame)
+  document.getElementById('btnToggleAperture')?.addEventListener('click', () => {
+    state.starfieldAperture = state.starfieldAperture === 'circular' ? 'square' : 'circular';
+    render();
   });
 
   // Toggle South-Up / North-Up
