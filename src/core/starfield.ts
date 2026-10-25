@@ -86,7 +86,7 @@ export interface StarfieldOptions {
 
 export const PLANET_COLORS: Record<string, { fill: string; stroke: string; glow: string; name: string }> = {
   mercury: { fill: '#cbd5e1', stroke: '#94a3b8', glow: 'rgba(203, 213, 225, 0.45)', name: 'Mercury' },
-  venus:   { fill: '#fef08a', stroke: '#facc15', glow: 'rgba(254, 240, 138, 0.65)', name: 'Venus' },
+  venus:   { fill: '#ffffff', stroke: '#cbd5e1', glow: 'rgba(255, 255, 255, 0.85)', name: 'Venus' },
   mars:    { fill: '#f87171', stroke: '#ef4444', glow: 'rgba(248, 113, 113, 0.55)', name: 'Mars' },
   jupiter: { fill: '#fed7aa', stroke: '#fb923c', glow: 'rgba(254, 215, 170, 0.55)', name: 'Jupiter' },
   saturn:  { fill: '#fde68a', stroke: '#eab308', glow: 'rgba(253, 230, 138, 0.50)', name: 'Saturn' }
