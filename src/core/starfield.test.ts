@@ -7,7 +7,10 @@ import {
   formatDec,
   calculateLmst,
   computeHorizonParams,
-  computeGroundPolygonAndHorizon
+  computeGroundPolygonAndHorizon,
+  angularSeparationDeg,
+  getBodiesInField,
+  OtherSolarBody
 } from './starfield.ts';
 
 describe('Starfield & Ephemeris Projection Engine', () => {
@@ -223,6 +226,91 @@ describe('Starfield & Ephemeris Projection Engine', () => {
         expect(typeof s.alt).toBe('number');
         expect(s.isBelowHorizon).toBe(s.alt! < 0);
       }
+    });
+  });
+
+  describe('Angular Separation & In-Field Multi-Body Detection', () => {
+    it('computes spherical angular separation correctly', () => {
+      // Coincident points
+      expect(angularSeparationDeg(100, 20, 100, 20)).toBeCloseTo(0.0, 4);
+
+      // Points separated along declination
+      expect(angularSeparationDeg(0, 0, 0, 10)).toBeCloseTo(10.0, 4);
+
+      // Points on opposite sides of celestial sphere
+      expect(angularSeparationDeg(0, 0, 180, 0)).toBeCloseTo(180.0, 4);
+    });
+
+    it('detects companion planets, Moon, and Sun located within the 10° field of view', () => {
+      const centerPlanet = { ra: 100.0, dec: 20.0 }; // e.g. Jupiter
+
+      const testBodies: OtherSolarBody[] = [
+        {
+          type: 'planet',
+          key: 'venus',
+          name: 'Venus',
+          symbol: '♀',
+          ra: 102.5, // ~2.4° away, inside 10° FOV
+          dec: 21.0
+        },
+        {
+          type: 'moon',
+          key: 'moon',
+          name: 'Moon',
+          symbol: '🌙',
+          ra: 101.0, // ~1.5° away, inside 10° FOV
+          dec: 19.0,
+          phaseFraction: 0.45
+        },
+        {
+          type: 'sun',
+          key: 'sun',
+          name: 'Sun',
+          symbol: '☀️',
+          ra: 103.0, // ~3.5° away, inside 10° FOV
+          dec: 22.5
+        },
+        {
+          type: 'planet',
+          key: 'saturn',
+          name: 'Saturn',
+          symbol: '♄',
+          ra: 140.0, // ~38° away, far outside FOV
+          dec: 5.0
+        }
+      ];
+
+      const inField = getBodiesInField(
+        centerPlanet.ra,
+        centerPlanet.dec,
+        10.0,
+        360,
+        360,
+        false,
+        testBodies
+      );
+
+      // Exactly 3 bodies should be detected inside the FOV (Moon, Venus, Sun)
+      expect(inField.length).toBe(3);
+
+      const keys = inField.map(b => b.key);
+      expect(keys).toContain('venus');
+      expect(keys).toContain('moon');
+      expect(keys).toContain('sun');
+      expect(keys).not.toContain('saturn');
+
+      // Verify sorted closest first
+      expect(inField[0].separationDeg).toBeLessThanOrEqual(inField[1].separationDeg);
+      expect(inField[1].separationDeg).toBeLessThanOrEqual(inField[2].separationDeg);
+
+      // Verify Moon gets special apparent lunar radius
+      const moonBody = inField.find(b => b.key === 'moon')!;
+      expect(moonBody.radius).toBeGreaterThan(6.0);
+      expect(moonBody.phaseFraction).toBe(0.45);
+
+      // Verify Sun gets solar corona radius
+      const sunBody = inField.find(b => b.key === 'sun')!;
+      expect(sunBody.radius).toBeGreaterThan(6.5);
     });
   });
 });

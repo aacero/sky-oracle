@@ -2,6 +2,8 @@ import {
   calculateSunEvents,
   calculateMoonInfo,
   calculateAllPlanets,
+  sunPosition,
+  getMoonCoordinates,
   formatTime,
   formatShortDate,
   SunEvents,
@@ -30,6 +32,9 @@ import {
   formatRa,
   formatDec,
   computeHorizonParams,
+  angularSeparationDeg,
+  getBodiesInField,
+  OtherSolarBody,
   PLANET_COLORS
 } from './core/starfield.ts';
 
@@ -233,10 +238,49 @@ function drawMoonCanvas() {
   ctx.restore(); // Restore initial canvas state
 }
 
+function getOtherSolarBodies(excludePlanetKey: string): OtherSolarBody[] {
+  const otherPlanets: OtherSolarBody[] = state.planets
+    .filter(p => p.key !== excludePlanetKey)
+    .map(p => ({
+      type: 'planet',
+      key: p.key,
+      name: p.name,
+      symbol: p.symbol,
+      ra: p.ra,
+      dec: p.dec
+    }));
+
+  const moonCoords = getMoonCoordinates(state.currentDate);
+  const moonBody: OtherSolarBody = {
+    type: 'moon',
+    key: 'moon',
+    name: 'Moon',
+    symbol: '🌙',
+    ra: moonCoords.ra,
+    dec: moonCoords.dec,
+    phaseFraction: state.moon ? state.moon.illum / 100 : 0.5,
+    phaseName: state.moon ? state.moon.name : 'Moon'
+  };
+
+  const sunCoords = sunPosition(state.currentDate);
+  const sunBody: OtherSolarBody = {
+    type: 'sun',
+    key: 'sun',
+    name: 'Sun',
+    symbol: '☀️',
+    ra: sunCoords.ra,
+    dec: sunCoords.dec
+  };
+
+  return [...otherPlanets, moonBody, sunBody];
+}
+
 function drawPlanetStarfield() {
   if (!state.selectedPlanet) return;
   const canvas = document.getElementById('planetStarfieldCanvas') as HTMLCanvasElement | null;
   if (!canvas) return;
+
+  const otherBodies = getOtherSolarBodies(state.selectedPlanet.key);
 
   renderStarfield(canvas, state.selectedPlanet, {
     fovDeg: 10.0,
@@ -249,7 +293,8 @@ function drawPlanetStarfield() {
     observerLon: state.location.lon,
     currentDate: state.currentDate,
     renderHorizon: true,
-    dimBelowHorizon: true
+    dimBelowHorizon: true,
+    otherBodies
   });
 }
 
@@ -821,6 +866,25 @@ function renderPlanetModal(): string {
   const planetAlt = hp.planetAltDeg;
   const isAboveHorizon = planetAlt >= 0;
 
+  const otherBodies = getOtherSolarBodies(p.key);
+  const bodiesInField = getBodiesInField(
+    p.ra,
+    p.dec,
+    10.0,
+    360,
+    360,
+    state.starfieldSouthUp,
+    otherBodies,
+    { lat: state.location.lat, lon: state.location.lon, date: state.currentDate }
+  );
+
+  const sunBody = otherBodies.find(b => b.type === 'sun');
+  const sunSep = sunBody ? angularSeparationDeg(p.ra, p.dec, sunBody.ra, sunBody.dec) : 999;
+  const sunInField = bodiesInField.some(b => b.type === 'sun');
+  const sunNearField = !sunInField && sunSep < 15.0;
+
+  const companionPlanets = bodiesInField.filter(b => b.type === 'planet');
+
   return `
     <div id="planetModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
       <div class="bg-[#161b22] border border-[#30363d] rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[94vh] overflow-hidden animate-scale-up">
@@ -865,6 +929,56 @@ function renderPlanetModal(): string {
           </div>
         </div>
 
+        <!-- Conjunction & In-Field Celestial Bodies Ribbon -->
+        ${bodiesInField.length > 0 ? `
+          <div class="px-4 py-2.5 bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 border-b border-indigo-500/30 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-sm">✨</span>
+              <span class="font-bold text-indigo-200">In Field:</span>
+              ${bodiesInField.map(b => `
+                <span class="px-2 py-0.5 rounded-lg bg-indigo-500/25 text-indigo-100 border border-indigo-500/40 flex items-center gap-1 font-semibold">
+                  <span>${b.symbol}</span>
+                  <span>${b.name}</span>
+                  <span class="text-sky-300 font-mono text-[11px] font-normal">(${b.separationDeg.toFixed(1)}° away)</span>
+                </span>
+              `).join('')}
+            </div>
+
+            <!-- Quick switch button if another planet is in the field -->
+            ${companionPlanets.length > 0 ? `
+              <div class="flex items-center gap-1.5 flex-wrap">
+                ${companionPlanets.map(b => `
+                  <button
+                    type="button"
+                    class="btnCenterOtherPlanet px-2.5 py-1 rounded-lg bg-indigo-500/30 hover:bg-indigo-500/50 border border-indigo-400/50 text-xs font-semibold text-white transition cursor-pointer flex items-center gap-1"
+                    data-planet="${b.key}"
+                    title="Center starfield on ${b.name}"
+                  >
+                    <span>Center on ${b.name}</span>
+                    <span>➔</span>
+                  </button>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Solar Proximity / Hazard Warning Banner -->
+        ${sunInField ? `
+          <div class="px-4 py-2 bg-rose-950/90 border-b border-rose-500/50 flex items-center gap-2.5 text-xs text-rose-200">
+            <span class="text-lg">⚠️</span>
+            <div>
+              <span class="font-bold text-rose-300 uppercase tracking-wide">Solar Hazard Warning:</span>
+              <span>The Sun is only <strong class="text-white">${sunSep.toFixed(1)}°</strong> from ${p.name}! NEVER view through binoculars or telescopes without certified solar filters.</span>
+            </div>
+          </div>
+        ` : sunNearField ? `
+          <div class="px-4 py-1.5 bg-amber-950/70 border-b border-amber-500/40 flex items-center gap-2 text-xs text-amber-200">
+            <span>☀️</span>
+            <span>Sun is <strong>${sunSep.toFixed(1)}°</strong> away (near field edge). Exercise caution observing near sunrise or sunset.</span>
+          </div>
+        ` : ''}
+
         <!-- Coordinates & Telemetry Chip Bar -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-black/30 border-b border-[#30363d]/60 text-xs">
           <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
@@ -906,6 +1020,10 @@ function renderPlanetModal(): string {
                 : 'Standard sky view (<span class="font-semibold text-[#e6edf3]">North up, East left</span>). Green line marks the <span class="font-semibold text-emerald-400">local horizon</span>.'
               }
               Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad-style target</span>.
+              ${bodiesInField.length > 0
+                ? `<span class="block mt-1 font-semibold text-indigo-300">In field: ${bodiesInField.map(b => `${b.symbol} ${b.name}`).join(', ')}</span>`
+                : ''
+              }
             </p>
           </div>
         </div>
@@ -1053,6 +1171,18 @@ function attachEventHandlers() {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         btn.click();
+      }
+    });
+  });
+
+  // Quick re-center on companion planet in conjunction
+  document.querySelectorAll<HTMLElement>('.btnCenterOtherPlanet').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-planet');
+      const target = state.planets.find(item => item.key === key);
+      if (target) {
+        state.selectedPlanet = target;
+        render();
       }
     });
   });

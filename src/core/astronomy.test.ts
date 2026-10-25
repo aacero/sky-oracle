@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   solarAltitude,
+  sunPosition,
+  getMoonCoordinates,
   calculateSunEvents,
   calculateMoonInfo,
   calculateMoonRiseSet,
@@ -149,6 +151,30 @@ describe('Astronomy Engine', () => {
       expect(getConstellation(280).name).toBe('Sagittarius');
       expect(getConstellation(310).name).toBe('Capricornus');
       expect(getConstellation(340).name).toBe('Aquarius');
+    });
+  });
+
+  describe('Solar & Lunar Coordinate Ephemeris', () => {
+    it('computes sun position within physical solar bounds', () => {
+      const equinox = new Date('2026-09-22T18:00:00Z');
+      const sunEq = sunPosition(equinox);
+      expect(sunEq.ra).toBeGreaterThanOrEqual(175);
+      expect(sunEq.ra).toBeLessThanOrEqual(185);
+      expect(Math.abs(sunEq.dec)).toBeLessThan(1.5); // Near celestial equator at equinox
+
+      const solsticeSummer = new Date('2026-06-21T12:00:00Z');
+      const sunSol = sunPosition(solsticeSummer);
+      expect(sunSol.dec).toBeGreaterThan(23.0);
+      expect(sunSol.dec).toBeLessThan(23.6);
+    });
+
+    it('computes moon coordinates in degrees within lunar inclination bounds', () => {
+      const now = new Date('2026-10-25T12:00:00Z');
+      const moon = getMoonCoordinates(now);
+      expect(moon.ra).toBeGreaterThanOrEqual(0);
+      expect(moon.ra).toBeLessThan(360);
+      expect(moon.dec).toBeGreaterThanOrEqual(-29.0);
+      expect(moon.dec).toBeLessThanOrEqual(29.0);
     });
   });
 

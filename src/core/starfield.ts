@@ -38,6 +38,36 @@ export interface HorizonIntersection {
   py: number;
 }
 
+export interface OtherSolarBody {
+  type: 'planet' | 'moon' | 'sun';
+  key: string;            // 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'moon', 'sun'
+  name: string;           // 'Venus', 'Moon', 'Sun', etc.
+  symbol: string;         // '♀', '🌙', '☀️', etc.
+  ra: number;             // Right Ascension in degrees
+  dec: number;            // Declination in degrees
+  phaseFraction?: number; // 0..1 illuminated fraction (for Moon)
+  phaseName?: string;     // e.g. 'Waxing Crescent'
+}
+
+export interface InFieldBody {
+  type: 'planet' | 'moon' | 'sun';
+  key: string;
+  name: string;
+  symbol: string;
+  ra: number;
+  dec: number;
+  x: number;              // Tangent plane X (normalized)
+  y: number;              // Tangent plane Y (normalized)
+  px: number;             // Canvas pixel X
+  py: number;             // Canvas pixel Y
+  radius: number;         // Canvas pixel radius
+  separationDeg: number;  // Angular separation from centered target planet
+  alt?: number;           // Astronomical altitude in degrees
+  isBelowHorizon?: boolean;
+  phaseFraction?: number;
+  phaseName?: string;
+}
+
 export interface StarfieldOptions {
   fovDeg?: number;          // Field of view in degrees (default: 10.0)
   maxMag?: number;          // Magnitude cutoff (default: 6.0)
@@ -50,6 +80,7 @@ export interface StarfieldOptions {
   currentDate?: Date;       // Observation time (default: current Date if lat/lon provided)
   renderHorizon?: boolean;  // Draw horizon line and ground shading (default: true if lat/lon provided)
   dimBelowHorizon?: boolean;// Dim stars located below the horizon (default: true)
+  otherBodies?: OtherSolarBody[]; // Companion planets, Moon, Sun to check for and render in the field
 }
 
 export const PLANET_COLORS: Record<string, { fill: string; stroke: string; glow: string; name: string }> = {
@@ -59,6 +90,26 @@ export const PLANET_COLORS: Record<string, { fill: string; stroke: string; glow:
   jupiter: { fill: '#fed7aa', stroke: '#fb923c', glow: 'rgba(254, 215, 170, 0.55)', name: 'Jupiter' },
   saturn:  { fill: '#fde68a', stroke: '#eab308', glow: 'rgba(253, 230, 138, 0.50)', name: 'Saturn' }
 };
+
+/**
+ * Computes angular separation in degrees between two celestial coordinates (ra1, dec1) and (ra2, dec2).
+ */
+export function angularSeparationDeg(
+  ra1Deg: number,
+  dec1Deg: number,
+  ra2Deg: number,
+  dec2Deg: number
+): number {
+  const d2r = Math.PI / 180;
+  const a1 = ra1Deg * d2r;
+  const d1 = dec1Deg * d2r;
+  const a2 = ra2Deg * d2r;
+  const d2 = dec2Deg * d2r;
+
+  const cosSep = Math.sin(d1) * Math.sin(d2) + Math.cos(d1) * Math.cos(d2) * Math.cos(a1 - a2);
+  const clamped = Math.max(-1, Math.min(1, cosSep));
+  return Math.acos(clamped) / d2r;
+}
 
 /**
  * Converts Right Ascension in degrees to standard astronomical hours and minutes (e.g. 09h 42m).
@@ -248,6 +299,102 @@ export function computeGroundPolygonAndHorizon(
 }
 
 /**
+ * Checks for other solar system bodies (companion planets, Moon, Sun) located inside the Field of View.
+ */
+export function getBodiesInField(
+  centerRaDeg: number,
+  centerDecDeg: number,
+  fovDeg: number = 10.0,
+  width: number = 360,
+  height: number = 360,
+  southUp: boolean = false,
+  bodies: OtherSolarBody[] = [],
+  horizon?: { lat: number; lon: number; date: Date }
+): InFieldBody[] {
+  const d2r = Math.PI / 180;
+  const limitX = Math.tan((fovDeg / 2) * d2r);
+  const limitY = Math.tan((fovDeg / 2) * d2r);
+  const scaleX = width / (2 * limitX);
+  const scaleY = height / (2 * limitY);
+
+  let latR = 0;
+  let sinLat = 0;
+  let cosLat = 0;
+  let lmst = 0;
+
+  if (horizon) {
+    latR = horizon.lat * d2r;
+    sinLat = Math.sin(latR);
+    cosLat = Math.cos(latR);
+    lmst = calculateLmst(horizon.date, horizon.lon);
+  }
+
+  const results: InFieldBody[] = [];
+
+  for (const b of bodies) {
+    const proj = projectCoordinates(b.ra, b.dec, centerRaDeg, centerDecDeg);
+    if (!proj) continue;
+
+    if (Math.abs(proj.x) <= limitX && Math.abs(proj.y) <= limitY) {
+      const px = southUp
+        ? width / 2 + proj.x * scaleX
+        : width / 2 - proj.x * scaleX;
+      const py = southUp
+        ? height / 2 + proj.y * scaleY
+        : height / 2 - proj.y * scaleY;
+
+      const sep = angularSeparationDeg(centerRaDeg, centerDecDeg, b.ra, b.dec);
+
+      // Apparent visual radius on canvas
+      let radius = 5.0; // Standard planet disc
+      if (b.type === 'moon') {
+        // Apparent Moon diameter is ~0.5° (30 arcminutes)
+        radius = Math.max(7.0, Math.tan((0.5 / 2) * d2r) * scaleX);
+      } else if (b.type === 'sun') {
+        // Apparent Sun diameter is ~0.53° (32 arcminutes)
+        radius = Math.max(7.5, Math.tan((0.53 / 2) * d2r) * scaleX);
+      }
+
+      let alt: number | undefined;
+      let isBelowHorizon: boolean | undefined;
+
+      if (horizon) {
+        const decR = b.dec * d2r;
+        const haDeg = ((lmst - b.ra) % 360 + 360) % 360;
+        const haR = haDeg * d2r;
+        const sinAlt = sinLat * Math.sin(decR) + cosLat * Math.cos(decR) * Math.cos(haR);
+        alt = Math.asin(Math.max(-1, Math.min(1, sinAlt))) / d2r;
+        isBelowHorizon = alt < 0;
+      }
+
+      results.push({
+        type: b.type,
+        key: b.key,
+        name: b.name,
+        symbol: b.symbol,
+        ra: b.ra,
+        dec: b.dec,
+        x: proj.x,
+        y: proj.y,
+        px,
+        py,
+        radius,
+        separationDeg: sep,
+        alt,
+        isBelowHorizon,
+        phaseFraction: b.phaseFraction,
+        phaseName: b.phaseName
+      });
+    }
+  }
+
+  // Sort by angular separation (closest to center first)
+  results.sort((a, b) => a.separationDeg - b.separationDeg);
+
+  return results;
+}
+
+/**
  * Filters and projects stars inside a square Field of View (FOV) centered on (centerRa, centerDec).
  * Supports South-Up inversion and observer horizon altitude computation.
  */
@@ -340,13 +487,20 @@ export function getStarsInField(
 
 /**
  * High-DPI canvas renderer for a 10°x10° centered planet starfield.
- * Fully supports Southern hemisphere South-Up mode and horizon rendering / below-horizon dimming.
+ * Fully supports companion planets, Moon, Sun in field, Southern hemisphere South-Up mode,
+ * and horizon rendering / below-horizon dimming.
  */
 export function renderStarfield(
   canvas: HTMLCanvasElement,
   planet: PlanetFieldData,
   options: StarfieldOptions = {}
-): { starCount: number; stars: ProjectedStar[]; horizonParams: HorizonParams | null } {
+): {
+  starCount: number;
+  stars: ProjectedStar[];
+  horizonParams: HorizonParams | null;
+  inFieldBodies: InFieldBody[];
+  sunSeparationDeg?: number;
+} {
   const fovDeg = options.fovDeg ?? 10.0;
   const maxMag = options.maxMag ?? 6.0;
   const showLabels = options.showLabels ?? true;
@@ -379,7 +533,7 @@ export function renderStarfield(
   canvas.height = cssHeight * dpr;
 
   const ctx = canvas.getContext('2d');
-  if (!ctx) return { starCount: 0, stars: [], horizonParams: null };
+  if (!ctx) return { starCount: 0, stars: [], horizonParams: null, inFieldBodies: [] };
 
   ctx.save();
   ctx.scale(dpr, dpr);
@@ -444,7 +598,7 @@ export function renderStarfield(
       ctx.moveTo(s.px - spikeLen, s.py);
       ctx.lineTo(s.px + spikeLen, s.py);
       ctx.moveTo(s.px, s.py - spikeLen);
-      ctx.lineTo(s.px, s.py + spikeLen);
+      ctx.lineTo(s.px + spikeLen, s.py);
       ctx.stroke();
     }
 
@@ -524,7 +678,176 @@ export function renderStarfield(
     }
   }
 
-  // 5. Center Telrad / Reticle (1° diameter circle = 0.5° radius)
+  // 5. In-Field Solar System Bodies (Companion Planets, Moon, Sun)
+  const inFieldBodies = getBodiesInField(
+    planet.ra,
+    planet.dec,
+    fovDeg,
+    cssWidth,
+    cssHeight,
+    southUp,
+    options.otherBodies ?? [],
+    horizonOpt
+  );
+
+  for (const b of inFieldBodies) {
+    const isBelow = Boolean(b.isBelowHorizon && dimBelow);
+
+    if (b.type === 'planet') {
+      const pColors = PLANET_COLORS[b.key] || {
+        fill: '#cbd5e1',
+        stroke: '#94a3b8',
+        glow: 'rgba(203, 213, 225, 0.4)',
+        name: b.name
+      };
+
+      ctx.save();
+      if (isBelow) ctx.globalAlpha = 0.45;
+
+      // Planet atmospheric glow
+      const pGlow = ctx.createRadialGradient(b.px, b.py, 2, b.px, b.py, 16);
+      pGlow.addColorStop(0, isBelow ? 'rgba(148, 163, 184, 0.25)' : pColors.glow);
+      pGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = pGlow;
+      ctx.beginPath();
+      ctx.arc(b.px, b.py, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Planet disc
+      ctx.fillStyle = pColors.fill;
+      ctx.beginPath();
+      ctx.arc(b.px, b.py, 5.0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = pColors.stroke;
+      ctx.lineWidth = 1.5;
+      if (isBelow) ctx.setLineDash([3, 2]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Label
+      ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = isBelow ? '#94a3b8' : '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${b.symbol} ${b.name}`, b.px + 9, b.py - 4);
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText(`${b.separationDeg.toFixed(1)}° sep`, b.px + 9, b.py + 7);
+      ctx.restore();
+
+    } else if (b.type === 'moon') {
+      ctx.save();
+      if (isBelow) ctx.globalAlpha = 0.45;
+
+      // Outer lunar soft glow
+      const mGlow = ctx.createRadialGradient(b.px, b.py, b.radius * 0.5, b.px, b.py, b.radius * 2.4);
+      mGlow.addColorStop(0, 'rgba(226, 232, 240, 0.50)');
+      mGlow.addColorStop(0.5, 'rgba(203, 213, 225, 0.18)');
+      mGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = mGlow;
+      ctx.beginPath();
+      ctx.arc(b.px, b.py, b.radius * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Dark earthshine base disc
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(b.px, b.py, b.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(203, 213, 225, 0.5)';
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+
+      // Real-time illuminated phase disc
+      const ill = Math.max(0, Math.min(1, b.phaseFraction ?? 0.5));
+      if (ill > 0.03) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(b.px, b.py, b.radius, 0, Math.PI * 2);
+        ctx.clip();
+
+        // Rotate Moon 180° if southUp so phase matches southern sky view
+        ctx.translate(b.px, b.py);
+        if (southUp) ctx.rotate(Math.PI);
+
+        ctx.fillStyle = '#f8fafc';
+        if (ill >= 0.96) {
+          ctx.beginPath();
+          ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, b.radius, -Math.PI / 2, Math.PI / 2, false);
+          const k = 2 * ill - 1;
+          ctx.ellipse(0, 0, Math.abs(k) * b.radius, b.radius, 0, Math.PI / 2, -Math.PI / 2, k < 0);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Moon Label
+      ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = '#e2e8f0';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const pct = Math.round(ill * 100);
+      ctx.fillText(`🌙 Moon (${pct}%)`, b.px + b.radius + 6, b.py - 4);
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText(`${b.separationDeg.toFixed(1)}° sep`, b.px + b.radius + 6, b.py + 7);
+      ctx.restore();
+
+    } else if (b.type === 'sun') {
+      ctx.save();
+      if (isBelow) ctx.globalAlpha = 0.50;
+
+      // Intense solar corona glow
+      const sGlow = ctx.createRadialGradient(b.px, b.py, b.radius * 0.8, b.px, b.py, b.radius * 3.8);
+      sGlow.addColorStop(0, 'rgba(254, 240, 138, 0.90)');
+      sGlow.addColorStop(0.35, 'rgba(245, 158, 11, 0.55)');
+      sGlow.addColorStop(0.7, 'rgba(239, 68, 68, 0.20)');
+      sGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = sGlow;
+      ctx.beginPath();
+      ctx.arc(b.px, b.py, b.radius * 3.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Solar core disc
+      ctx.fillStyle = '#fffbeb';
+      ctx.beginPath();
+      ctx.arc(b.px, b.py, b.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.0;
+      ctx.stroke();
+
+      // 8 radiating sun rays
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+      ctx.lineWidth = 1.25;
+      for (let a = 0; a < 8; a++) {
+        const rayAngle = (a * Math.PI) / 4;
+        const r1 = b.radius + 2;
+        const r2 = b.radius + 7;
+        ctx.beginPath();
+        ctx.moveTo(b.px + Math.cos(rayAngle) * r1, b.py + Math.sin(rayAngle) * r1);
+        ctx.lineTo(b.px + Math.cos(rayAngle) * r2, b.py + Math.sin(rayAngle) * r2);
+        ctx.stroke();
+      }
+
+      // Sun Label
+      ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = '#fbbf24';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`☀️ Sun (${b.separationDeg.toFixed(1)}°)`, b.px + b.radius + 8, b.py - 4);
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('⚠️ SOLAR HAZARD', b.px + b.radius + 8, b.py + 7);
+      ctx.restore();
+    }
+  }
+
+  // 6. Center Telrad / Reticle (1° diameter circle = 0.5° radius)
   const oneDegreePx = Math.tan(0.5 * d2r) * scaleX;
 
   if (showReticle) {
@@ -556,7 +879,7 @@ export function renderStarfield(
     ctx.stroke();
   }
 
-  // 6. Draw Planet at Exact Center
+  // 7. Draw Target Planet at Exact Center
   const pStyle = PLANET_COLORS[planet.key] || {
     fill: '#fde68a',
     stroke: '#eab308',
@@ -600,7 +923,7 @@ export function renderStarfield(
 
   ctx.restore();
 
-  // 7. Cardinal Directions
+  // 8. Cardinal Directions
   // North-Up: N top, S bottom, E left, W right
   // South-Up: S top, N bottom, W left, E right
   if (showCompass) {
@@ -621,7 +944,7 @@ export function renderStarfield(
     ctx.fillText(southUp ? 'E' : 'W', cssWidth - 8, cy);
   }
 
-  // 8. Corner Scale & HUD Overlays
+  // 9. Corner Scale & HUD Overlays
   // Top-left: FOV & Orientation badge
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
@@ -633,7 +956,12 @@ export function renderStarfield(
   ctx.fillStyle = southUp ? '#38bdf8' : '#64748b';
   ctx.fillText(southUp ? 'SOUTH UP (INVERTED)' : 'NORTH UP', 10, 24);
 
-  // Top-right: Planet altitude
+  // Top-right: Planet altitude & Sun separation
+  const sunBody = options.otherBodies?.find(b => b.type === 'sun');
+  const sunSeparationDeg = sunBody
+    ? angularSeparationDeg(planet.ra, planet.dec, sunBody.ra, sunBody.dec)
+    : undefined;
+
   if (horizonParams) {
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
@@ -642,6 +970,12 @@ export function renderStarfield(
     ctx.fillStyle = altDeg >= 0 ? '#34d399' : '#f87171';
     const sign = altDeg >= 0 ? '+' : '';
     ctx.fillText(`Alt: ${sign}${altDeg.toFixed(1)}°${altDeg < 0 ? ' (Below)' : ''}`, cssWidth - 10, 10);
+
+    if (sunSeparationDeg !== undefined && sunSeparationDeg < 15.0 && !inFieldBodies.some(b => b.type === 'sun')) {
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText(`☀️ Sun: ${sunSeparationDeg.toFixed(1)}° away`, cssWidth - 10, 24);
+    }
   }
 
   // Bottom-left: 1° scale bar
@@ -671,7 +1005,25 @@ export function renderStarfield(
   ctx.fillStyle = '#64748b';
   ctx.fillText(`${stars.length} stars (mag ≤ ${maxMag.toFixed(1)})`, cssWidth - 10, cssHeight - 8);
 
+  // High-visibility Solar Proximity warning ribbon if the Sun is in the field
+  if (inFieldBodies.some(b => b.type === 'sun')) {
+    const bannerH = 18;
+    const bannerW = Math.min(260, cssWidth - 40);
+    const bannerY = cssHeight - 38;
+    ctx.fillStyle = 'rgba(220, 38, 38, 0.88)';
+    ctx.fillRect(cx - bannerW / 2, bannerY, bannerW, bannerH);
+    ctx.strokeStyle = '#fca5a5';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cx - bannerW / 2, bannerY, bannerW, bannerH);
+
+    ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚠️ SOLAR PROXIMITY HAZARD — NO OPTICS', cx, bannerY + bannerH / 2);
+  }
+
   ctx.restore();
 
-  return { starCount: stars.length, stars, horizonParams };
+  return { starCount: stars.length, stars, horizonParams, inFieldBodies, sunSeparationDeg };
 }

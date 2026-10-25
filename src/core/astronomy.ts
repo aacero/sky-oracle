@@ -56,7 +56,7 @@ export interface ConstellationInfo {
 
 // ── 1. Solar Altitude & Twilights ──────────────────────────────────────────
 
-export function solarAltitude(date: Date, latitude: number, longitude: number): number {
+export function sunPosition(date: Date): { ra: number; dec: number } {
   const jd = date.getTime() / 86400000 + 2440587.5;
   const n = jd - 2451545.0;
   const L = (280.460 + 0.9856474 * n) % 360;
@@ -66,12 +66,22 @@ export function solarAltitude(date: Date, latitude: number, longitude: number): 
   const eps = (23.439 - 0.0000004 * n) * Math.PI / 180;
   const alpha = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda));
   const delta = Math.asin(Math.sin(eps) * Math.sin(lambda));
+  const ra = ((alpha * 180 / Math.PI) % 360 + 360) % 360;
+  const dec = delta * 180 / Math.PI;
+  return { ra, dec };
+}
+
+export function solarAltitude(date: Date, latitude: number, longitude: number): number {
+  const pos = sunPosition(date);
+  const jd = date.getTime() / 86400000 + 2440587.5;
+  const n = jd - 2451545.0;
   const gmst = (280.46061837 + 360.98564736629 * n) % 360;
   const lmst = (gmst + longitude + 360) % 360;
-  const ha = (lmst * Math.PI / 180) - alpha;
+  const ha = (lmst - pos.ra) * Math.PI / 180;
   const latR = latitude * Math.PI / 180;
-  const sinAlt = Math.sin(latR) * Math.sin(delta) + Math.cos(latR) * Math.cos(delta) * Math.cos(ha);
-  return Math.asin(sinAlt) * 180 / Math.PI;
+  const decR = pos.dec * Math.PI / 180;
+  const sinAlt = Math.sin(latR) * Math.sin(decR) + Math.cos(latR) * Math.cos(decR) * Math.cos(ha);
+  return Math.asin(Math.max(-1, Math.min(1, sinAlt))) * 180 / Math.PI;
 }
 
 function interpTime(t1: number, t2: number, a1: number, a2: number, target: number): Date {
@@ -254,6 +264,17 @@ export function moonPosition(date: Date): { ra: number; dec: number } {
   const ra = ((Math.atan2(y, x) * DEG) % 360 + 360) % 360;
 
   return { ra, dec };
+}
+
+/**
+ * Returns lunar coordinates with declination converted to standard degrees.
+ */
+export function getMoonCoordinates(date: Date): { ra: number; dec: number } {
+  const pos = moonPosition(date);
+  return {
+    ra: pos.ra,
+    dec: pos.dec * 180 / Math.PI
+  };
 }
 
 export function lunarAltitude(date: Date, lat: number, lon: number): number {
