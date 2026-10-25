@@ -38,7 +38,7 @@ import {
   PLANET_COLORS
 } from './core/starfield.ts';
 
-export const APP_VERSION = '1.0.9';
+export const APP_VERSION = '1.0.10';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -890,7 +890,7 @@ function renderPlanetModal(): string {
   const sunBody = otherBodies.find(b => b.type === 'sun');
   const sunSep = sunBody ? angularSeparationDeg(p.ra, p.dec, sunBody.ra, sunBody.dec) : 999;
   const sunInField = bodiesInField.some(b => b.type === 'sun');
-  const sunNearField = !sunInField && sunSep < 15.0;
+  const sunNearField = !sunInField && sunSep < 30.0;
 
   const companionPlanets = bodiesInField.filter(b => b.type === 'planet');
 
@@ -1002,7 +1002,7 @@ function renderPlanetModal(): string {
         ` : sunNearField ? `
           <div class="px-4 py-1.5 bg-amber-950/70 border-b border-amber-500/40 flex items-center gap-2 text-xs text-amber-200">
             <span>☀️</span>
-            <span>Sun is <strong>${sunSep.toFixed(1)}°</strong> away (near field edge). Exercise caution observing near sunrise or sunset.</span>
+            <span>Sun is <strong>${sunSep.toFixed(1)}°</strong> away (${sunSep > fovDeg / 2 ? `outside ${(fovDeg / 2).toFixed(0)}° radius · zoom out to 45° to view` : 'near field edge'}). Exercise caution observing near sunrise or sunset.</span>
           </div>
         ` : ''}
 

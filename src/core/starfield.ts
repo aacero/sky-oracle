@@ -1107,7 +1107,7 @@ export function renderStarfield(
     const sign = altDeg >= 0 ? '+' : '';
     ctx.fillText(`Alt: ${sign}${altDeg.toFixed(1)}°${altDeg < 0 ? ' (Below)' : ''}`, cssWidth - 10, 10);
 
-    if (sunSeparationDeg !== undefined && sunSeparationDeg < 15.0 && !inFieldBodies.some(b => b.type === 'sun')) {
+    if (sunSeparationDeg !== undefined && sunSeparationDeg < 30.0 && !inFieldBodies.some(b => b.type === 'sun')) {
       ctx.font = '9px monospace';
       ctx.fillStyle = '#f59e0b';
       ctx.fillText(`☀️ Sun: ${sunSeparationDeg.toFixed(1)}° away`, cssWidth - 10, 24);
