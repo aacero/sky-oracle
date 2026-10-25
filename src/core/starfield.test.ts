@@ -365,4 +365,20 @@ describe('Starfield & Ephemeris Projection Engine', () => {
       expect(inSquare[0].separationDeg).toBeCloseTo(6.84, 1);
     });
   });
+
+  describe('Star Field Names & Anti-Clutter Density Control', () => {
+    it('populates authentic Bayer and Flamsteed designations for zodiac stars', () => {
+      // Test stars in Venus field (RA ~205°, Dec ~-17°)
+      const stars = getStarsInField(205.074, -17.104, 10.0, 6.0, 360, 360, false, undefined, 'circular');
+      expect(stars.length).toBeGreaterThan(0);
+
+      const namedStars = stars.filter(s => Boolean(s.name));
+      expect(namedStars.length).toBeGreaterThanOrEqual(5);
+
+      const names = namedStars.map(s => s.name);
+      expect(names).toContain('69 Vir');
+      expect(names).toContain('89 Vir');
+      expect(names).toContain('83 Vir'); // The star 1.36° from Venus
+    });
+  });
 });

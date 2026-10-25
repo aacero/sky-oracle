@@ -615,11 +615,88 @@ export function renderStarfield(
       ctx.stroke();
     }
 
-    // Star Name / Bayer designation label
-    if (showLabels && s.name && s.mag <= 5.2) {
-      ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.fillStyle = isDimmed ? 'rgba(100, 116, 139, 0.4)' : (s.mag <= 3.0 ? '#e6edf3' : '#8b949e');
-      ctx.fillText(s.name, s.px + drawRadius + 4, s.py + 3);
+    ctx.restore();
+  }
+
+  // 3b. Smart, De-Cluttered Star Labels (with density budgeting & collision avoidance)
+  if (showLabels) {
+    ctx.save();
+    ctx.font = '9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textBaseline = 'middle';
+
+    // Bounding boxes for collision avoidance (initialize with center planet exclusion zone)
+    const labelBoxes: { x1: number; y1: number; x2: number; y2: number }[] = [
+      { x1: cx - 44, y1: cy - 24, x2: cx + 60, y2: cy + 20 }
+    ];
+
+    // Sort candidate stars by magnitude (brightest first)
+    const candidateStars = [...stars]
+      .filter(s => Boolean(s.name))
+      .sort((a, b) => a.mag - b.mag);
+
+    let labelsDrawn = 0;
+    const maxLabels = 8; // De-clutter density limit
+
+    for (const s of candidateStars) {
+      if (labelsDrawn >= maxLabels && s.mag > 4.5) break;
+
+      const name = s.name!;
+      const textWidth = ctx.measureText(name).width;
+      const drawRadius = s.isBelowHorizon && dimBelow ? Math.max(0.85, s.radius * 0.75) : s.radius;
+
+      // Try Right position first
+      let lx = s.px + drawRadius + 4;
+      let ly = s.py - 1;
+      let box = { x1: lx - 2, y1: ly - 6, x2: lx + textWidth + 2, y2: ly + 6 };
+
+      const overlaps = (b: { x1: number; y1: number; x2: number; y2: number }) => {
+        return !(box.x2 < b.x1 || box.x1 > b.x2 || box.y2 < b.y1 || box.y1 > b.y2);
+      };
+
+      let collides = labelBoxes.some(overlaps);
+
+      // If collides, try Left position
+      if (collides) {
+        lx = s.px - drawRadius - textWidth - 4;
+        box = { x1: lx - 2, y1: ly - 6, x2: lx + textWidth + 2, y2: ly + 6 };
+        collides = labelBoxes.some(overlaps);
+      }
+
+      // If collides, try Below position
+      if (collides) {
+        lx = s.px - textWidth / 2;
+        ly = s.py + drawRadius + 7;
+        box = { x1: lx - 2, y1: ly - 6, x2: lx + textWidth + 2, y2: ly + 6 };
+        collides = labelBoxes.some(overlaps);
+      }
+
+      // If collides or outside frame, skip label to prevent clutter
+      if (collides) continue;
+      if (box.x1 < 6 || box.x2 > cssWidth - 6 || box.y1 < 6 || box.y2 > cssHeight - 6) continue;
+
+      // Draw label with subtle contrast halo
+      ctx.save();
+      const isDimmed = Boolean(s.isBelowHorizon && dimBelow);
+      if (isDimmed) {
+        ctx.globalAlpha = 0.35;
+      }
+
+      ctx.strokeStyle = 'rgba(2, 4, 8, 0.85)';
+      ctx.lineWidth = 2.5;
+      ctx.strokeText(name, lx, ly);
+
+      if (s.mag <= 3.0) {
+        ctx.fillStyle = '#f8fafc';
+      } else if (s.mag <= 4.5) {
+        ctx.fillStyle = '#cbd5e1';
+      } else {
+        ctx.fillStyle = '#94a3b8';
+      }
+      ctx.fillText(name, lx, ly);
+      ctx.restore();
+
+      labelBoxes.push(box);
+      labelsDrawn++;
     }
 
     ctx.restore();

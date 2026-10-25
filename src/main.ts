@@ -53,6 +53,7 @@ interface AppState {
   selectedPlanet: PlanetInfo | null;
   starfieldSouthUp: boolean;
   starfieldAperture: 'circular' | 'square';
+  starfieldShowLabels: boolean;
   loading: boolean;
   error: string | null;
   searchOpen: boolean;
@@ -74,6 +75,7 @@ const state: AppState = {
   selectedPlanet: null,
   starfieldSouthUp: initialLoc.lat < 0,
   starfieldAperture: 'circular',
+  starfieldShowLabels: true,
   loading: false,
   error: null,
   searchOpen: false,
@@ -287,7 +289,7 @@ function drawPlanetStarfield() {
   renderStarfield(canvas, state.selectedPlanet, {
     fovDeg: 10.0,
     maxMag: 6.0,
-    showLabels: true,
+    showLabels: state.starfieldShowLabels,
     showReticle: true,
     showCompass: true,
     southUp: state.starfieldSouthUp,
@@ -915,6 +917,15 @@ function renderPlanetModal(): string {
           </div>
 
           <div class="flex items-center gap-2">
+            <!-- Star Names Toggle Button -->
+            <button
+              id="btnToggleStarLabels"
+              class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldShowLabels ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
+              title="Toggle star names and Bayer/Flamsteed designations in field of view"
+            >
+              <span>${state.starfieldShowLabels ? '🏷️ Names' : '🏷️ Off'}</span>
+            </button>
+
             <!-- Aperture Toggle Button (Circular Eyepiece / Square Sensor) -->
             <button
               id="btnToggleAperture"
@@ -1203,6 +1214,12 @@ function attachEventHandlers() {
         render();
       }
     });
+  });
+
+  // Toggle Star Names / Labels
+  document.getElementById('btnToggleStarLabels')?.addEventListener('click', () => {
+    state.starfieldShowLabels = !state.starfieldShowLabels;
+    render();
   });
 
   // Toggle Aperture (Circular Eyepiece vs Square Sensor Frame)
