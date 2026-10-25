@@ -38,7 +38,7 @@ import {
   PLANET_COLORS
 } from './core/starfield.ts';
 
-export const APP_VERSION = '1.0.6';
+export const APP_VERSION = '1.0.7';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -1051,6 +1051,10 @@ function renderPlanetModal(): string {
               }
               ${bodiesInField.length > 0
                 ? `<span class="block mt-1 font-semibold text-indigo-300">In field: ${bodiesInField.map(b => `${b.symbol} ${b.name}`).join(', ')}</span>`
+                : ''
+              }
+              ${!isAboveHorizon
+                ? `<span class="block mt-1.5 text-amber-300/90 font-medium">🌍 Target is currently ${Math.abs(planetAlt).toFixed(0)}° below the local horizon (${p.status}). Previewing night sky through the Earth.</span>`
                 : ''
               }
             </p>

@@ -567,19 +567,86 @@ export function renderStarfield(
     ctx.clip();
   }
 
-  // 2. Compute Stars
+  // 2. Ground Shading & Horizon Boundary (rendered under stars so below-horizon stars remain visible)
+  const d2r = Math.PI / 180;
+  const limitX = Math.tan((fovDeg / 2) * d2r);
+  const limitY = Math.tan((fovDeg / 2) * d2r);
+  const scaleX = cssWidth / (2 * limitX);
+  const scaleY = cssHeight / (2 * limitY);
+
+  let horizonGeom: ReturnType<typeof computeGroundPolygonAndHorizon> | null = null;
+
+  if (horizonParams && options.renderHorizon !== false) {
+    horizonGeom = computeGroundPolygonAndHorizon(
+      horizonParams.c0,
+      horizonParams.cx,
+      horizonParams.cy,
+      cssWidth,
+      cssHeight,
+      scaleX,
+      scaleY,
+      southUp
+    );
+
+    // Fill ground overlay (soft dusk slate that tints below-horizon region without burying stars)
+    if (horizonGeom.groundVertices.length >= 3) {
+      ctx.save();
+      ctx.fillStyle = horizonGeom.allGround ? 'rgba(8, 14, 26, 0.65)' : 'rgba(8, 14, 26, 0.50)';
+      ctx.beginPath();
+      ctx.moveTo(horizonGeom.groundVertices[0].px, horizonGeom.groundVertices[0].py);
+      for (let i = 1; i < horizonGeom.groundVertices.length; i++) {
+        ctx.lineTo(horizonGeom.groundVertices[i].px, horizonGeom.groundVertices[i].py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw straight horizon line & text label if it crosses the viewport
+    if (horizonGeom.horizonLine) {
+      const [I1, I2] = horizonGeom.horizonLine;
+
+      ctx.save();
+      ctx.strokeStyle = '#34d399'; // Emerald green
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(I1.px, I1.py);
+      ctx.lineTo(I2.px, I2.py);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Horizon line label at midpoint
+      const midPx = (I1.px + I2.px) / 2;
+      const midPy = (I1.py + I2.py) / 2;
+      let angle = Math.atan2(I2.py - I1.py, I2.px - I1.px);
+      if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
+        angle += Math.PI;
+      }
+
+      ctx.translate(midPx, midPy);
+      ctx.rotate(angle);
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#34d399';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('━━━ HORIZON ━━━', 0, -3);
+      ctx.restore();
+    }
+  }
+
+  // 3. Compute & Draw Stars
   const horizonOpt = hasObserver
     ? { lat: options.observerLat!, lon: options.observerLon!, date: currentDate }
     : undefined;
   const stars = getStarsInField(planet.ra, planet.dec, fovDeg, maxMag, cssWidth, cssHeight, southUp, horizonOpt, aperture);
 
-  // 3. Draw Stars
   for (const s of stars) {
     const isDimmed = Boolean(s.isBelowHorizon && dimBelow);
 
     ctx.save();
     if (isDimmed) {
-      ctx.globalAlpha = 0.28;
+      ctx.globalAlpha = 0.50; // Visible ghost star below horizon
     }
 
     // Soft outer glow for prominent stars (mag <= 3.5), only if above horizon
@@ -596,7 +663,7 @@ export function renderStarfield(
     }
 
     // Star core disc
-    const drawRadius = isDimmed ? Math.max(0.85, s.radius * 0.75) : s.radius;
+    const drawRadius = isDimmed ? Math.max(1.0, s.radius * 0.90) : s.radius;
     ctx.fillStyle = s.color;
     ctx.beginPath();
     ctx.arc(s.px, s.py, drawRadius, 0, Math.PI * 2);
@@ -642,7 +709,7 @@ export function renderStarfield(
 
       const name = s.name!;
       const textWidth = ctx.measureText(name).width;
-      const drawRadius = s.isBelowHorizon && dimBelow ? Math.max(0.85, s.radius * 0.75) : s.radius;
+      const drawRadius = s.isBelowHorizon && dimBelow ? Math.max(1.0, s.radius * 0.90) : s.radius;
 
       // Try Right position first
       let lx = s.px + drawRadius + 4;
@@ -678,7 +745,7 @@ export function renderStarfield(
       ctx.save();
       const isDimmed = Boolean(s.isBelowHorizon && dimBelow);
       if (isDimmed) {
-        ctx.globalAlpha = 0.35;
+        ctx.globalAlpha = 0.50;
       }
 
       ctx.strokeStyle = 'rgba(2, 4, 8, 0.85)';
@@ -702,70 +769,15 @@ export function renderStarfield(
     ctx.restore();
   }
 
-  // 4. Ground Shading & Horizon Boundary
-  const d2r = Math.PI / 180;
-  const limitX = Math.tan((fovDeg / 2) * d2r);
-  const limitY = Math.tan((fovDeg / 2) * d2r);
-  const scaleX = cssWidth / (2 * limitX);
-  const scaleY = cssHeight / (2 * limitY);
-
-  if (horizonParams && options.renderHorizon !== false) {
-    const horizonGeom = computeGroundPolygonAndHorizon(
-      horizonParams.c0,
-      horizonParams.cx,
-      horizonParams.cy,
-      cssWidth,
-      cssHeight,
-      scaleX,
-      scaleY,
-      southUp
-    );
-
-    // Fill ground overlay
-    if (horizonGeom.groundVertices.length >= 3) {
-      ctx.save();
-      ctx.fillStyle = 'rgba(8, 14, 20, 0.72)';
-      ctx.beginPath();
-      ctx.moveTo(horizonGeom.groundVertices[0].px, horizonGeom.groundVertices[0].py);
-      for (let i = 1; i < horizonGeom.groundVertices.length; i++) {
-        ctx.lineTo(horizonGeom.groundVertices[i].px, horizonGeom.groundVertices[i].py);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // Draw straight horizon line & text label if it crosses the viewport
-    if (horizonGeom.horizonLine) {
-      const [I1, I2] = horizonGeom.horizonLine;
-
-      ctx.save();
-      ctx.strokeStyle = '#34d399'; // Emerald green
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([6, 4]);
-      ctx.beginPath();
-      ctx.moveTo(I1.px, I1.py);
-      ctx.lineTo(I2.px, I2.py);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Horizon line label at midpoint
-      const midPx = (I1.px + I2.px) / 2;
-      const midPy = (I1.py + I2.py) / 2;
-      let angle = Math.atan2(I2.py - I1.py, I2.px - I1.px);
-      if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
-        angle += Math.PI;
-      }
-
-      ctx.translate(midPx, midPy);
-      ctx.rotate(angle);
-      ctx.font = 'bold 9px monospace';
-      ctx.fillStyle = '#34d399';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('━━━ HORIZON ━━━', 0, -3);
-      ctx.restore();
-    }
+  // 3c. If entire field is below horizon, show subtle earth watermark
+  if (horizonGeom && horizonGeom.allGround && horizonParams) {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.font = '10px monospace';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.55)';
+    ctx.fillText(`🌍 Earth Surface · Target Alt ${horizonParams.planetAltDeg.toFixed(0)}°`, cx, cssHeight - 28);
+    ctx.restore();
   }
 
   // 5. In-Field Solar System Bodies (Companion Planets, Moon, Sun)
@@ -982,7 +994,7 @@ export function renderStarfield(
 
   ctx.save();
   if (isPlanetBelow) {
-    ctx.globalAlpha = 0.70;
+    ctx.globalAlpha = 0.85;
   }
 
   // Planet outer atmospheric glow
