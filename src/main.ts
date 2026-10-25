@@ -801,9 +801,9 @@ function render() {
     ${state.selectedPlanet ? renderPlanetModal() : ''}
   `;
 
-  attachEventHandlers();
   drawMoonCanvas();
   drawPlanetStarfield();
+  attachEventHandlers();
 }
 
 function renderSearchResultsList(results: GeocodingResult[]): string {
@@ -1445,8 +1445,9 @@ function attachEventHandlers() {
 
   // Canvas Tap / Click -> Tap-to-Inspect & Celestial Ruler
   const starfieldCanvas = document.getElementById('planetStarfieldCanvas') as HTMLCanvasElement | null;
-  if (starfieldCanvas && currentStarfieldResult && state.selectedPlanet) {
+  if (starfieldCanvas && state.selectedPlanet) {
     starfieldCanvas.addEventListener('click', (e) => {
+      if (!currentStarfieldResult || !state.selectedPlanet) return;
       const rect = starfieldCanvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
@@ -1454,9 +1455,9 @@ function attachEventHandlers() {
       const hit = hitTestStarfield(
         clickX,
         clickY,
-        currentStarfieldResult!.stars,
-        currentStarfieldResult!.inFieldBodies,
-        state.selectedPlanet!
+        currentStarfieldResult.stars,
+        currentStarfieldResult.inFieldBodies,
+        state.selectedPlanet
       );
 
       if (hit) {
