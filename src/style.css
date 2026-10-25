@@ -36,3 +36,67 @@
 .animate-pulse-subtle {
   animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Starfield Planet Modal Responsive 3-Area Grid */
+.planet-modal-content {
+  max-width: 32rem; /* 512px (max-w-lg) */
+  max-height: 94vh;
+}
+
+.planet-modal-body {
+  flex: 1 1 0%;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.planet-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "info"
+    "canvas"
+    "details";
+  gap: 0.75rem;
+}
+
+.planet-area-info {
+  grid-area: info;
+}
+
+.planet-area-canvas {
+  grid-area: canvas;
+}
+
+.planet-area-canvas-box {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1 / 1;
+}
+
+.planet-area-details {
+  grid-area: details;
+}
+
+/* Landscape Mode (Width >= 600px): Dual-Column Workstation Layout */
+@media (orientation: landscape) and (min-width: 600px) {
+  .planet-modal-content {
+    max-width: 58rem !important; /* 928px */
+    max-height: 96vh !important;
+  }
+
+  .planet-modal-grid {
+    grid-template-columns: minmax(260px, 340px) 1fr !important;
+    grid-template-rows: auto 1fr !important;
+    grid-template-areas:
+      "canvas info"
+      "canvas details" !important;
+    column-gap: 1.25rem !important;
+    row-gap: 0.75rem !important;
+    align-items: start !important;
+  }
+
+  .planet-area-canvas-box {
+    max-width: min(320px, 54vh) !important;
+    max-height: min(320px, 54vh) !important;
+  }
+}
