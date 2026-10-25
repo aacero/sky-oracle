@@ -38,7 +38,7 @@ import {
   PLANET_COLORS
 } from './core/starfield.ts';
 
-export const APP_VERSION = '1.0.8';
+export const APP_VERSION = '1.0.9';
 
 // ── Application State ───────────────────────────────────────────────────────
 

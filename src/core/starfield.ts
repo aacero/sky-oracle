@@ -314,9 +314,11 @@ export function getBodiesInField(
   horizon?: { lat: number; lon: number; date: Date },
   aperture: 'circular' | 'square' = 'circular'
 ): InFieldBody[] {
+  // Clamp FOV between 3° (maximum zoom-in) and 45° (maximum zoom-out)
+  const clampedFov = Math.max(3.0, Math.min(45.0, fovDeg));
   const d2r = Math.PI / 180;
-  const limitX = Math.tan((fovDeg / 2) * d2r);
-  const limitY = Math.tan((fovDeg / 2) * d2r);
+  const limitX = Math.tan((clampedFov / 2) * d2r);
+  const limitY = Math.tan((clampedFov / 2) * d2r);
   const scaleX = width / (2 * limitX);
   const scaleY = height / (2 * limitY);
 
@@ -342,7 +344,7 @@ export function getBodiesInField(
 
     // In circular aperture, radius is strictly fovDeg / 2 (e.g. 5°). In square, corners extend to ~7.07°
     const inBounds = aperture === 'circular'
-      ? (sep <= fovDeg / 2)
+      ? (sep <= clampedFov / 2)
       : (Math.abs(proj.x) <= limitX && Math.abs(proj.y) <= limitY);
 
     if (inBounds) {
@@ -417,8 +419,10 @@ export function getStarsInField(
   horizon?: { lat: number; lon: number; date: Date },
   aperture: 'circular' | 'square' = 'circular'
 ): ProjectedStar[] {
+  // Clamp FOV between 3° (maximum zoom-in) and 45° (maximum zoom-out)
+  const clampedFov = Math.max(3.0, Math.min(45.0, fovDeg));
   const d2r = Math.PI / 180;
-  const limitR = Math.tan((fovDeg / 2) * d2r);
+  const limitR = Math.tan((clampedFov / 2) * d2r);
   const limitX = limitR;
   const limitY = limitR;
 
@@ -510,7 +514,8 @@ export function renderStarfield(
   inFieldBodies: InFieldBody[];
   sunSeparationDeg?: number;
 } {
-  const fovDeg = options.fovDeg ?? 10.0;
+  // Clamp FOV between 3° (max zoom-in) and 45° (max zoom-out)
+  const fovDeg = Math.max(3.0, Math.min(45.0, options.fovDeg ?? 10.0));
   const maxMag = options.maxMag ?? 6.0;
   const showLabels = options.showLabels ?? true;
   const showReticle = options.showReticle ?? true;
