@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sky-oracle-v1.0.11';
+const CACHE_NAME = 'sky-oracle-v1.0.12';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

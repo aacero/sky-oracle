@@ -40,10 +40,11 @@ import {
   InFieldBody,
   SelectedStarfieldTarget,
   hitTestStarfield,
-  bvToSpectralClass
+  bvToSpectralClass,
+  StarfieldOrientation
 } from './core/starfield.ts';
 
-export const APP_VERSION = '1.0.11';
+export const APP_VERSION = '1.0.12';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ interface AppState {
   moon: MoonInfo | null;
   planets: PlanetInfo[];
   selectedPlanet: PlanetInfo | null;
-  starfieldSouthUp: boolean;
+  starfieldOrientation: StarfieldOrientation;
   starfieldAperture: 'circular' | 'square';
   starfieldShowLabels: boolean;
   starfieldShowLines: boolean;
@@ -82,7 +83,7 @@ const state: AppState = {
   moon: null,
   planets: [],
   selectedPlanet: null,
-  starfieldSouthUp: initialLoc.lat < 0,
+  starfieldOrientation: 'natural',
   starfieldAperture: 'circular',
   starfieldShowLabels: true,
   starfieldShowLines: false,
@@ -320,7 +321,7 @@ function drawPlanetStarfield() {
     showConstellationLines: state.starfieldShowLines,
     showReticle: true,
     showCompass: true,
-    southUp: state.starfieldSouthUp,
+    orientation: state.starfieldOrientation,
     observerLat: state.location.lat,
     observerLon: state.location.lon,
     currentDate: effectiveDate,
@@ -368,7 +369,6 @@ async function handleGeolocate() {
     const ipLoc = await fetchIpLocation();
     if (ipLoc) {
       state.location = ipLoc;
-      state.starfieldSouthUp = ipLoc.lat < 0;
       saveLocation(ipLoc);
       await refreshAll();
       return true;
@@ -396,7 +396,6 @@ async function handleGeolocate() {
         lon
       };
       state.location = newLoc;
-      state.starfieldSouthUp = newLoc.lat < 0;
       saveLocation(newLoc);
       await refreshAll();
     },
@@ -914,7 +913,7 @@ function renderPlanetModal(): string {
     fovDeg,
     360,
     360,
-    state.starfieldSouthUp,
+    state.starfieldOrientation,
     otherBodies,
     { lat: state.location.lat, lon: state.location.lon, date: effectiveDate },
     state.starfieldAperture
@@ -980,16 +979,29 @@ function renderPlanetModal(): string {
               <span>${state.starfieldAperture === 'circular' ? `◯ Eyepiece (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `▢ Sensor (${fovDeg}°)`}</span>
             </button>
 
-            <!-- South-Up / North-Up Toggle Button -->
+            <!-- Orientation Toggle Button (Natural / North-Up / South-Up) -->
             <button
-              id="btnToggleSouthUp"
-              class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldSouthUp ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 hover:bg-sky-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
-              title="Toggle sky view orientation (North-up / South-up)"
+              id="btnToggleOrientation"
+              class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${
+                state.starfieldOrientation === 'natural'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                  : state.starfieldOrientation === 'southUp'
+                  ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 hover:bg-sky-500/30'
+                  : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'
+              }"
+              title="Click to cycle orientation: Natural (Zenith Up / Level Horizon) → North Up → South Up"
             >
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/>
+                <circle cx="12" cy="12" r="9"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v4m0 10v4m-9-9h4m10 0h4"/>
               </svg>
-              <span>${state.starfieldSouthUp ? 'South Up' : 'North Up'}</span>
+              <span>${
+                state.starfieldOrientation === 'natural'
+                  ? '👁️ Natural'
+                  : state.starfieldOrientation === 'southUp'
+                  ? '🧭 South Up'
+                  : '🧭 North Up'
+              }</span>
             </button>
 
             <button id="btnClosePlanetModal" class="p-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" aria-label="Close starfield modal">
@@ -1247,7 +1259,9 @@ function renderPlanetModal(): string {
           <!-- Guide / Caption -->
           <div class="mt-2.5 text-center text-xs text-[#8b949e] max-w-sm">
             <p>
-              ${state.starfieldSouthUp
+              ${state.starfieldOrientation === 'natural'
+                ? 'Natural eye view (<span class="font-semibold text-emerald-300">Zenith is UP</span> · Horizon is horizontal). '
+                : state.starfieldOrientation === 'southUp'
                 ? 'Southern sky view (<span class="font-semibold text-sky-300">South up, West left</span> · Inverted). '
                 : 'Standard sky view (<span class="font-semibold text-[#e6edf3]">North up, East left</span>). '
               }
@@ -1282,7 +1296,6 @@ function attachEventHandlers() {
 
     const loc: SavedLocation = { place, lat, lon };
     state.location = loc;
-    state.starfieldSouthUp = loc.lat < 0;
     saveLocation(loc);
     state.searchOpen = false;
     refreshAll();
@@ -1591,9 +1604,15 @@ function attachEventHandlers() {
     render();
   });
 
-  // Toggle South-Up / North-Up
-  document.getElementById('btnToggleSouthUp')?.addEventListener('click', () => {
-    state.starfieldSouthUp = !state.starfieldSouthUp;
+  // Toggle Starfield Orientation (Natural -> North-Up -> South-Up)
+  document.getElementById('btnToggleOrientation')?.addEventListener('click', () => {
+    if (state.starfieldOrientation === 'natural') {
+      state.starfieldOrientation = 'northUp';
+    } else if (state.starfieldOrientation === 'northUp') {
+      state.starfieldOrientation = 'southUp';
+    } else {
+      state.starfieldOrientation = 'natural';
+    }
     render();
   });
 

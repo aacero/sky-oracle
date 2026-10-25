@@ -85,6 +85,15 @@ export interface SelectedStarfieldTarget {
   isBelowHorizon?: boolean;
 }
 
+export type StarfieldOrientation = 'natural' | 'northUp' | 'southUp';
+
+export interface FieldRotation {
+  ux: number;           // East component of Up
+  uy: number;           // North component of Up
+  angleDeg: number;     // Clockwise rotation angle from North-Up in degrees
+  isOverhead: boolean;  // True when target is near zenith (|alt| > 85°), triggering degeneracy protection
+}
+
 export interface StarfieldOptions {
   fovDeg?: number;          // Field of view in degrees (default: 10.0)
   maxMag?: number;          // Magnitude cutoff (default: 6.0)
@@ -92,7 +101,8 @@ export interface StarfieldOptions {
   showConstellationLines?: boolean; // Show stick figure lines (default: false)
   showReticle?: boolean;    // Show 1° Telrad-style reticle (default: true)
   showCompass?: boolean;    // Show N/E/S/W indicators (default: true)
-  southUp?: boolean;        // Invert view for Southern hemisphere (default: false)
+  orientation?: StarfieldOrientation; // 'natural' (default if observer known: Zenith Up / level horizon), 'northUp', 'southUp'
+  southUp?: boolean;        // Invert view for Southern hemisphere (fallback if orientation omitted)
   observerLat?: number;     // Observer latitude in degrees (for horizon calculation)
   observerLon?: number;     // Observer longitude in degrees (for horizon calculation)
   currentDate?: Date;       // Observation time (default: current Date if lat/lon provided)
@@ -263,6 +273,72 @@ export function computeHorizonParams(
 }
 
 /**
+ * Computes 2D tangent plane rotation to align the field of view with the requested orientation.
+ *
+ * - 'natural': Orients the Zenith directly UP and renders the horizon strictly horizontal (level),
+ *   matching what a human observer sees looking up at the sky.
+ *   Gracefully resolves overhead degeneracy (Zenith gimbal lock) by smoothly transitioning
+ *   to North-Up as altitude approaches 90° (|alt| > 85°).
+ * - 'northUp': Standard celestial equatorial orientation (North is UP, East is LEFT).
+ * - 'southUp': Southern hemisphere inverted equatorial orientation (South is UP, West is LEFT).
+ */
+export function computeFieldRotation(
+  orientation: StarfieldOrientation | boolean = 'natural',
+  horizonParams?: HorizonParams | null
+): FieldRotation {
+  const normOrientation: StarfieldOrientation =
+    typeof orientation === 'boolean'
+      ? (orientation ? 'southUp' : 'northUp')
+      : orientation;
+
+  if (normOrientation === 'northUp') {
+    return { ux: 0, uy: 1, angleDeg: 0, isOverhead: false };
+  }
+  if (normOrientation === 'southUp') {
+    return { ux: 0, uy: -1, angleDeg: 180, isOverhead: false };
+  }
+
+  // Natural perspective (Zenith Up / Horizontal Horizon)
+  if (!horizonParams) {
+    return { ux: 0, uy: 1, angleDeg: 0, isOverhead: false };
+  }
+
+  const { cx, cy, planetAltDeg } = horizonParams;
+  const gradLen = Math.sqrt(cx * cx + cy * cy);
+  const absAlt = Math.abs(planetAltDeg);
+
+  // Handle zenith/nadir degeneracy: when target is nearly overhead (|alt| > 85°),
+  // the gradient length cos(alt) -> 0 and azimuth spins rapidly.
+  // Smoothly blend toward North-Up when altitude is between 85° and 88°,
+  // and lock to North-Up when altitude >= 88°.
+  if (absAlt >= 88.0 || gradLen < 0.035) {
+    return { ux: 0, uy: 1, angleDeg: 0, isOverhead: true };
+  }
+
+  const rawAngle = Math.atan2(cx, cy); // Angle in radians from North through East toward Zenith
+
+  if (absAlt > 85.0) {
+    // Smooth cubic hermite blend between 85° and 88°
+    const t = (88.0 - absAlt) / 3.0; // 1 at 85°, 0 at 88°
+    const smoothT = t * t * (3 - 2 * t);
+    const blendedAngle = rawAngle * smoothT;
+    return {
+      ux: Math.sin(blendedAngle),
+      uy: Math.cos(blendedAngle),
+      angleDeg: blendedAngle * (180 / Math.PI),
+      isOverhead: true
+    };
+  }
+
+  return {
+    ux: cx / gradLen,
+    uy: cy / gradLen,
+    angleDeg: rawAngle * (180 / Math.PI),
+    isOverhead: false
+  };
+}
+
+/**
  * Standard Gnomonic (tangent plane) projection.
  * Projects (ra, dec) onto a tangent plane centered at (centerRaDeg, centerDecDeg).
  */
@@ -291,6 +367,7 @@ export function projectCoordinates(
 /**
  * Computes polygon covering the ground (below horizon) and the straight horizon line segment
  * across the canvas viewport [0, width] x [0, height].
+ * Supports field rotation for Natural (Zenith-Up / horizontal horizon), North-Up, and South-Up orientations.
  */
 export function computeGroundPolygonAndHorizon(
   c0: number,
@@ -300,18 +377,24 @@ export function computeGroundPolygonAndHorizon(
   height: number,
   scaleX: number,
   scaleY: number,
-  southUp: boolean
+  rotOrSouthUp: FieldRotation | boolean = false
 ): {
   groundVertices: { px: number; py: number }[];
   horizonLine: [HorizonIntersection, HorizonIntersection] | null;
   allGround: boolean;
   allSky: boolean;
 } {
+  const rot: FieldRotation = typeof rotOrSouthUp === 'boolean'
+    ? (rotOrSouthUp ? { ux: 0, uy: -1, angleDeg: 180, isOverhead: false } : { ux: 0, uy: 1, angleDeg: 0, isOverhead: false })
+    : rotOrSouthUp;
+
   // Evaluates altitude function V at pixel (px, py).
   // V > 0 => Sky (above horizon), V <= 0 => Ground (below horizon)
   const evalAlt = (px: number, py: number): number => {
-    const x = southUp ? (px - width / 2) / scaleX : (width / 2 - px) / scaleX;
-    const y = southUp ? (py - height / 2) / scaleY : (height / 2 - py) / scaleY;
+    const X_rot = (width / 2 - px) / scaleX;
+    const Y_rot = (height / 2 - py) / scaleY;
+    const x = rot.uy * X_rot + rot.ux * Y_rot;
+    const y = -rot.ux * X_rot + rot.uy * Y_rot;
     return c0 + cx * x + cy * y;
   };
 
@@ -370,6 +453,7 @@ export function computeGroundPolygonAndHorizon(
 /**
  * Checks for other solar system bodies (companion planets, Moon, Sun) located inside the Field of View.
  * Supports circular aperture (separation <= fovDeg / 2, default) or square frame (x, y <= limit).
+ * Supports Natural (Zenith-Up / horizontal horizon), North-Up, and South-Up orientations.
  */
 export function getBodiesInField(
   centerRaDeg: number,
@@ -377,7 +461,7 @@ export function getBodiesInField(
   fovDeg: number = 10.0,
   width: number = 360,
   height: number = 360,
-  southUp: boolean = false,
+  orientationOrSouthUp: StarfieldOrientation | boolean = 'natural',
   bodies: OtherSolarBody[] = [],
   horizon?: { lat: number; lon: number; date: Date },
   aperture: 'circular' | 'square' = 'circular'
@@ -394,14 +478,17 @@ export function getBodiesInField(
   let sinLat = 0;
   let cosLat = 0;
   let lmst = 0;
+  let hp: HorizonParams | null = null;
 
   if (horizon) {
     latR = horizon.lat * d2r;
     sinLat = Math.sin(latR);
     cosLat = Math.cos(latR);
     lmst = calculateLmst(horizon.date, horizon.lon);
+    hp = computeHorizonParams(horizon.lat, horizon.lon, horizon.date, centerRaDeg, centerDecDeg);
   }
 
+  const fieldRot = computeFieldRotation(orientationOrSouthUp, hp);
   const results: InFieldBody[] = [];
 
   for (const b of bodies) {
@@ -410,18 +497,17 @@ export function getBodiesInField(
 
     const sep = angularSeparationDeg(centerRaDeg, centerDecDeg, b.ra, b.dec);
 
+    const xRot = fieldRot.uy * proj.x - fieldRot.ux * proj.y;
+    const yRot = fieldRot.ux * proj.x + fieldRot.uy * proj.y;
+
     // In circular aperture, radius is strictly fovDeg / 2 (e.g. 5°). In square, corners extend to ~7.07°
     const inBounds = aperture === 'circular'
       ? (sep <= clampedFov / 2)
-      : (Math.abs(proj.x) <= limitX && Math.abs(proj.y) <= limitY);
+      : (Math.abs(xRot) <= limitX && Math.abs(yRot) <= limitY);
 
     if (inBounds) {
-      const px = southUp
-        ? width / 2 + proj.x * scaleX
-        : width / 2 - proj.x * scaleX;
-      const py = southUp
-        ? height / 2 + proj.y * scaleY
-        : height / 2 - proj.y * scaleY;
+      const px = width / 2 - xRot * scaleX;
+      const py = height / 2 - yRot * scaleY;
 
       // Apparent visual radius on canvas
       let radius = 5.0; // Standard planet disc
@@ -475,6 +561,7 @@ export function getBodiesInField(
 /**
  * Filters and projects stars inside Field of View (FOV) centered on (centerRa, centerDec).
  * Supports circular eyepiece aperture (radius <= fovDeg / 2) or square sensor frame.
+ * Supports Natural (Zenith-Up / horizontal horizon), North-Up, and South-Up orientations.
  */
 export function getStarsInField(
   centerRaDeg: number,
@@ -483,7 +570,7 @@ export function getStarsInField(
   maxMag: number = 6.0,
   width: number = 360,
   height: number = 360,
-  southUp: boolean = false,
+  orientationOrSouthUp: StarfieldOrientation | boolean = 'natural',
   horizon?: { lat: number; lon: number; date: Date },
   aperture: 'circular' | 'square' = 'circular'
 ): ProjectedStar[] {
@@ -501,14 +588,17 @@ export function getStarsInField(
   let sinLat = 0;
   let cosLat = 0;
   let lmst = 0;
+  let hp: HorizonParams | null = null;
 
   if (horizon) {
     latR = horizon.lat * d2r;
     sinLat = Math.sin(latR);
     cosLat = Math.cos(latR);
     lmst = calculateLmst(horizon.date, horizon.lon);
+    hp = computeHorizonParams(horizon.lat, horizon.lon, horizon.date, centerRaDeg, centerDecDeg);
   }
 
+  const fieldRot = computeFieldRotation(orientationOrSouthUp, hp);
   const results: ProjectedStar[] = [];
 
   for (let i = 0; i < ZODIAC_STARS.length; i++) {
@@ -518,17 +608,16 @@ export function getStarsInField(
     const proj = projectCoordinates(ra, dec, centerRaDeg, centerDecDeg);
     if (!proj) continue;
 
+    const xRot = fieldRot.uy * proj.x - fieldRot.ux * proj.y;
+    const yRot = fieldRot.ux * proj.x + fieldRot.uy * proj.y;
+
     const inBounds = aperture === 'circular'
       ? (proj.x * proj.x + proj.y * proj.y <= limitR * limitR)
-      : (Math.abs(proj.x) <= limitX && Math.abs(proj.y) <= limitY);
+      : (Math.abs(xRot) <= limitX && Math.abs(yRot) <= limitY);
 
     if (inBounds) {
-      const px = southUp
-        ? width / 2 + proj.x * scaleX
-        : width / 2 - proj.x * scaleX;
-      const py = southUp
-        ? height / 2 + proj.y * scaleY
-        : height / 2 - proj.y * scaleY;
+      const px = width / 2 - xRot * scaleX;
+      const py = height / 2 - yRot * scaleY;
 
       const radius = Math.max(1.0, (6.3 - mag) * 0.85);
       const color = bvToColor(bv);
@@ -671,7 +760,6 @@ export function renderStarfield(
   const showLabels = options.showLabels ?? true;
   const showReticle = options.showReticle ?? true;
   const showCompass = options.showCompass ?? true;
-  const southUp = options.southUp ?? false;
   const dimBelow = options.dimBelowHorizon ?? true;
   const aperture = options.aperture ?? 'circular';
 
@@ -688,6 +776,14 @@ export function renderStarfield(
       planet.dec
     );
   }
+
+  const orientation: StarfieldOrientation = options.orientation ?? (
+    typeof options.southUp === 'boolean'
+      ? (options.southUp ? 'southUp' : 'northUp')
+      : (hasObserver ? 'natural' : 'northUp')
+  );
+  const southUp = orientation === 'southUp';
+  const fieldRot = computeFieldRotation(orientation, horizonParams);
 
   const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
   const rect = canvas.getBoundingClientRect();
@@ -741,7 +837,7 @@ export function renderStarfield(
       cssHeight,
       scaleX,
       scaleY,
-      southUp
+      fieldRot
     );
 
     // Fill ground overlay (soft dusk slate that tints below-horizon region without burying stars)
@@ -803,10 +899,10 @@ export function renderStarfield(
       const p2 = projectCoordinates(seg.ra2, seg.dec2, planet.ra, planet.dec);
       if (!p1 || !p2) continue;
 
-      const px1 = southUp ? cssWidth / 2 + p1.x * scaleX : cssWidth / 2 - p1.x * scaleX;
-      const py1 = southUp ? cssHeight / 2 + p1.y * scaleY : cssHeight / 2 - p1.y * scaleY;
-      const px2 = southUp ? cssWidth / 2 + p2.x * scaleX : cssWidth / 2 - p2.x * scaleX;
-      const py2 = southUp ? cssHeight / 2 + p2.y * scaleY : cssHeight / 2 - p2.y * scaleY;
+      const px1 = cssWidth / 2 - (fieldRot.uy * p1.x - fieldRot.ux * p1.y) * scaleX;
+      const py1 = cssHeight / 2 - (fieldRot.ux * p1.x + fieldRot.uy * p1.y) * scaleY;
+      const px2 = cssWidth / 2 - (fieldRot.uy * p2.x - fieldRot.ux * p2.y) * scaleX;
+      const py2 = cssHeight / 2 - (fieldRot.ux * p2.x + fieldRot.uy * p2.y) * scaleY;
 
       ctx.beginPath();
       ctx.moveTo(px1, py1);
@@ -820,7 +916,7 @@ export function renderStarfield(
   const horizonOpt = hasObserver
     ? { lat: options.observerLat!, lon: options.observerLon!, date: currentDate }
     : undefined;
-  const stars = getStarsInField(planet.ra, planet.dec, fovDeg, maxMag, cssWidth, cssHeight, southUp, horizonOpt, aperture);
+  const stars = getStarsInField(planet.ra, planet.dec, fovDeg, maxMag, cssWidth, cssHeight, orientation, horizonOpt, aperture);
 
   for (const s of stars) {
     const isDimmed = Boolean(s.isBelowHorizon && dimBelow);
@@ -968,7 +1064,7 @@ export function renderStarfield(
     fovDeg,
     cssWidth,
     cssHeight,
-    southUp,
+    orientation,
     options.otherBodies ?? [],
     horizonOpt,
     aperture
@@ -1050,9 +1146,13 @@ export function renderStarfield(
         ctx.arc(b.px, b.py, b.radius, 0, Math.PI * 2);
         ctx.clip();
 
-        // Rotate Moon 180° if southUp so phase matches southern sky view
+        // Rotate Moon phase to match sky orientation
         ctx.translate(b.px, b.py);
-        if (southUp) ctx.rotate(Math.PI);
+        if (orientation === 'natural') {
+          ctx.rotate(fieldRot.angleDeg * (Math.PI / 180));
+        } else if (orientation === 'southUp') {
+          ctx.rotate(Math.PI);
+        }
 
         ctx.fillStyle = '#f8fafc';
         if (ill >= 0.96) {
@@ -1212,8 +1312,10 @@ export function renderStarfield(
     const sel = options.selectedTarget;
     const proj = projectCoordinates(sel.ra, sel.dec, planet.ra, planet.dec);
     if (proj) {
-      const selPx = southUp ? cx + proj.x * scaleX : cx - proj.x * scaleX;
-      const selPy = southUp ? cy + proj.y * scaleY : cy - proj.y * scaleY;
+      const xRot = fieldRot.uy * proj.x - fieldRot.ux * proj.y;
+      const yRot = fieldRot.ux * proj.x + fieldRot.uy * proj.y;
+      const selPx = cx - xRot * scaleX;
+      const selPy = cy - yRot * scaleY;
 
       ctx.save();
 
@@ -1320,25 +1422,54 @@ export function renderStarfield(
     ctx.strokeRect(0, 0, cssWidth, cssHeight);
   }
 
-  // 8. Cardinal Directions
+  // 8. Cardinal Directions & Orientation Indicators
+  // Natural perspective:
+  //   Top: ZENITH (UP)
+  //   Bottom: NADIR (DOWN) or HORIZON (DOWN)
+  //   Rim pip: celestial North indicator 'N'
   // North-Up: N top, S bottom, E left, W right
   // South-Up: S top, N bottom, W left, E right
   if (showCompass) {
-    ctx.font = 'bold 10px monospace';
-    ctx.fillStyle = 'rgba(139, 148, 158, 0.65)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(southUp ? 'S' : 'N', cx, 6);
+    if (orientation === 'natural') {
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.75)'; // Sky blue
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText('ZENITH (UP)', cx, 6);
 
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(southUp ? 'N' : 'S', cx, cssHeight - 5);
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.70)';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(isPlanetBelow ? 'NADIR (DOWN)' : 'HORIZON (DOWN)', cx, cssHeight - 5);
 
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';
-    ctx.fillText(southUp ? 'W' : 'E', 8, cy);
+      // Celestial North pip along the perimeter rim
+      const pipR = (cssWidth / 2) - 13;
+      const nx = cx + pipR * fieldRot.ux;
+      const ny = cy - pipR * fieldRot.uy;
 
-    ctx.textAlign = 'right';
-    ctx.fillText(southUp ? 'E' : 'W', cssWidth - 8, cy);
+      ctx.save();
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('N', nx, ny);
+      ctx.restore();
+    } else {
+      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = 'rgba(139, 148, 158, 0.65)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(southUp ? 'S' : 'N', cx, 6);
+
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(southUp ? 'N' : 'S', cx, cssHeight - 5);
+
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      ctx.fillText(southUp ? 'W' : 'E', 8, cy);
+
+      ctx.textAlign = 'right';
+      ctx.fillText(southUp ? 'E' : 'W', cssWidth - 8, cy);
+    }
   }
 
   // 9. Corner Scale & HUD Overlays
@@ -1352,8 +1483,16 @@ export function renderStarfield(
   ctx.fillText(`${fovDeg.toFixed(0)}° ${aperture === 'circular' ? `FOV (${radiusText}° r)` : `× ${fovDeg.toFixed(0)}° Frame`}`, 10, 10);
 
   ctx.font = '9px monospace';
-  ctx.fillStyle = southUp ? '#38bdf8' : '#64748b';
-  ctx.fillText(southUp ? 'SOUTH UP' : 'NORTH UP', 10, 24);
+  if (orientation === 'natural') {
+    ctx.fillStyle = fieldRot.isOverhead ? '#f59e0b' : '#34d399';
+    ctx.fillText(fieldRot.isOverhead ? 'ZENITH UP · OVERHEAD LOCK' : 'NATURAL (ZENITH UP)', 10, 24);
+  } else if (orientation === 'southUp') {
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('SOUTH UP', 10, 24);
+  } else {
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('NORTH UP', 10, 24);
+  }
 
   // Top-right: Planet altitude & Sun separation
   const sunBody = options.otherBodies?.find(b => b.type === 'sun');

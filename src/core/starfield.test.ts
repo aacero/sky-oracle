@@ -16,7 +16,8 @@ import {
   bvToSpectralClass,
   hitTestStarfield,
   renderStarfield,
-  SelectedStarfieldTarget
+  SelectedStarfieldTarget,
+  computeFieldRotation
 } from './starfield.ts';
 import { ZODIAC_CONSTELLATION_LINES } from './constellationLines.ts';
 
@@ -599,6 +600,77 @@ describe('Starfield & Ephemeris Projection Engine', () => {
 
       expect(result.starCount).toBeGreaterThan(0);
       expect(result.stars.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Natural Perspective (Zenith Up / Level Horizon) & Field Rotation', () => {
+    it('returns exact North-Up vectors for northUp and South-Up vectors for southUp', () => {
+      const north = computeFieldRotation('northUp');
+      expect(north.ux).toBe(0);
+      expect(north.uy).toBe(1);
+      expect(north.angleDeg).toBe(0);
+      expect(north.isOverhead).toBe(false);
+
+      const south = computeFieldRotation('southUp');
+      expect(south.ux).toBe(0);
+      expect(south.uy).toBe(-1);
+      expect(south.angleDeg).toBe(180);
+      expect(south.isOverhead).toBe(false);
+
+      // Boolean backward compatibility
+      const boolFalse = computeFieldRotation(false);
+      expect(boolFalse.uy).toBe(1);
+      const boolTrue = computeFieldRotation(true);
+      expect(boolTrue.uy).toBe(-1);
+    });
+
+    it('gracefully handles overhead degeneracy near Zenith (|alt| >= 85°)', () => {
+      // 1. Exact zenith / overhead (|alt| >= 88°) -> locked to North-Up
+      const overheadParams = { c0: 0.9998, cx: 0.005, cy: 0.005, planetAltDeg: 89.2 };
+      const rotOverhead = computeFieldRotation('natural', overheadParams);
+      expect(rotOverhead.isOverhead).toBe(true);
+      expect(rotOverhead.ux).toBe(0);
+      expect(rotOverhead.uy).toBe(1);
+      expect(rotOverhead.angleDeg).toBe(0);
+
+      // 2. Blend zone (85° < |alt| < 88°) -> smoothly blended angle
+      const blendParams = { c0: 0.9975, cx: 0.04, cy: 0.04, planetAltDeg: 86.5 };
+      const rotBlend = computeFieldRotation('natural', blendParams);
+      expect(rotBlend.isOverhead).toBe(true);
+      expect(rotBlend.angleDeg).toBeGreaterThan(0);
+      expect(rotBlend.angleDeg).toBeLessThan(45); // Blended down from raw 45°
+    });
+
+    it('renders the horizon strictly horizontal across the canvas in Natural Perspective', () => {
+      const lat = 40.7128;
+      const lon = -74.0060;
+      const date = new Date('2026-10-25T23:00:00Z'); // 7 PM EDT
+      const mercuryRa = 227.2;
+      const mercuryDec = -20.6;
+
+      const hp = computeHorizonParams(lat, lon, date, mercuryRa, mercuryDec);
+      const W = 360;
+      const H = 360;
+      const fovDeg = 10;
+      const scaleX = (W / 2) / Math.tan((fovDeg / 2) * (Math.PI / 180));
+      const scaleY = scaleX;
+
+      // In standard North-Up, the horizon is angled across the canvas
+      const geomNorthUp = computeGroundPolygonAndHorizon(hp.c0, hp.cx, hp.cy, W, H, scaleX, scaleY, false);
+      expect(geomNorthUp.horizonLine).not.toBeNull();
+      const [n1, n2] = geomNorthUp.horizonLine!;
+      expect(Math.abs(n1.py - n2.py)).toBeGreaterThan(50); // Slanted diagonally by ~50+ pixels!
+
+      // In Natural Perspective, the horizon line MUST be strictly horizontal (level line py1 === py2)
+      const fieldRot = computeFieldRotation('natural', hp);
+      const geomNatural = computeGroundPolygonAndHorizon(hp.c0, hp.cx, hp.cy, W, H, scaleX, scaleY, fieldRot);
+      expect(geomNatural.horizonLine).not.toBeNull();
+      const [h1, h2] = geomNatural.horizonLine!;
+
+      // Verify that py is identical across both ends of the canvas
+      expect(h1.py).toBeCloseTo(h2.py, 3);
+      expect(Math.min(h1.px, h2.px)).toBeCloseTo(0, 1);
+      expect(Math.max(h1.px, h2.px)).toBeCloseTo(W, 1);
     });
   });
 });
