@@ -136,6 +136,33 @@ describe('Starfield & Ephemeris Projection Engine', () => {
       expect(nadirParams.c0).toBeCloseTo(-1.0, 4);
       expect(nadirParams.planetAltDeg).toBeCloseTo(-90.0, 2);
     });
+
+    it('computes exact horizontal azimuth and 16-point compass facing direction', () => {
+      const date = new Date('2026-10-25T12:00:00Z');
+      const lat = 35.0; // Observer at +35°
+      const lon = 0.0;
+      const lmst = calculateLmst(date, lon);
+
+      // Target due South on celestial equator: RA = LMST (HA = 0), Dec = 0
+      const southTarget = computeHorizonParams(lat, lon, date, lmst, 0);
+      expect(southTarget.planetAzDeg).toBeCloseTo(180.0, 1);
+      expect(southTarget.planetAzCompass).toBe('S');
+
+      // Target rising due East: HA = -90° => RA = (LMST + 90) % 360, Dec = 0
+      const eastTarget = computeHorizonParams(lat, lon, date, (lmst + 90) % 360, 0);
+      expect(eastTarget.planetAzDeg).toBeCloseTo(90.0, 1);
+      expect(eastTarget.planetAzCompass).toBe('E');
+
+      // Target setting due West: HA = +90° => RA = (lmst - 90 + 360) % 360, Dec = 0
+      const westTarget = computeHorizonParams(lat, lon, date, (lmst - 90 + 360) % 360, 0);
+      expect(westTarget.planetAzDeg).toBeCloseTo(270.0, 1);
+      expect(westTarget.planetAzCompass).toBe('W');
+
+      // Target due North on meridian: HA = 0, Dec = 60° (north of observer lat 35°)
+      const northTarget = computeHorizonParams(lat, lon, date, lmst, 60);
+      expect(northTarget.planetAzDeg).toBeCloseTo(0.0, 1);
+      expect(northTarget.planetAzCompass).toBe('N');
+    });
   });
 
   describe('Ground Polygon & Horizon Line Geometry', () => {
@@ -626,7 +653,7 @@ describe('Starfield & Ephemeris Projection Engine', () => {
 
     it('gracefully handles overhead degeneracy near Zenith (|alt| >= 85°)', () => {
       // 1. Exact zenith / overhead (|alt| >= 88°) -> locked to North-Up
-      const overheadParams = { c0: 0.9998, cx: 0.005, cy: 0.005, planetAltDeg: 89.2 };
+      const overheadParams = { c0: 0.9998, cx: 0.005, cy: 0.005, planetAltDeg: 89.2, planetAzDeg: 0, planetAzCompass: 'N' };
       const rotOverhead = computeFieldRotation('natural', overheadParams);
       expect(rotOverhead.isOverhead).toBe(true);
       expect(rotOverhead.ux).toBe(0);
@@ -634,7 +661,7 @@ describe('Starfield & Ephemeris Projection Engine', () => {
       expect(rotOverhead.angleDeg).toBe(0);
 
       // 2. Blend zone (85° < |alt| < 88°) -> smoothly blended angle
-      const blendParams = { c0: 0.9975, cx: 0.04, cy: 0.04, planetAltDeg: 86.5 };
+      const blendParams = { c0: 0.9975, cx: 0.04, cy: 0.04, planetAltDeg: 86.5, planetAzDeg: 45, planetAzCompass: 'NE' };
       const rotBlend = computeFieldRotation('natural', blendParams);
       expect(rotBlend.isOverhead).toBe(true);
       expect(rotBlend.angleDeg).toBeGreaterThan(0);

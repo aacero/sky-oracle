@@ -44,7 +44,7 @@ import {
   StarfieldOrientation
 } from './core/starfield.ts';
 
-export const APP_VERSION = '1.0.13';
+export const APP_VERSION = '1.0.14';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -944,7 +944,7 @@ function renderPlanetModal(): string {
                   ${p.status}
                 </span>
                 <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isAboveHorizon ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}">
-                  Alt: ${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° (${isAboveHorizon ? 'Above Horizon' : 'Below Horizon'})
+                  Alt: ${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° · Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass} (${isAboveHorizon ? 'Above' : 'Below'})
                 </span>
               </div>
               <p class="text-xs text-[#8b949e] mt-0.5">${state.starfieldAperture === 'circular' ? `${fovDeg}° Circular Eyepiece (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° Radius)` : `${fovDeg}° × ${fovDeg}° Sensor Frame`}</p>
@@ -1079,9 +1079,9 @@ function renderPlanetModal(): string {
                   <span class="text-[10px] text-[#8b949e] block font-mono">(${p.dec >= 0 ? '+' : ''}${p.dec.toFixed(2)}°)</span>
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Local Altitude</span>
-                  <span class="font-bold ${isAboveHorizon ? 'text-emerald-400' : 'text-rose-400'} text-sm">${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}°</span>
-                  <span class="text-[10px] text-[#8b949e] block">${isAboveHorizon ? 'Above Horizon' : 'Below Horizon'}</span>
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Local Horizon</span>
+                  <span class="font-bold ${isAboveHorizon ? 'text-emerald-400' : 'text-rose-400'} text-sm">${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° Alt</span>
+                  <span class="text-[10px] text-sky-300 block font-mono font-medium">Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass}</span>
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
                   <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Field of View</span>
@@ -1263,6 +1263,21 @@ function renderPlanetModal(): string {
                       `}
                     </div>
                   </div>
+
+                  ${state.starfieldSelectedTarget.alt !== undefined && state.starfieldSelectedTarget.az !== undefined ? `
+                    <div class="px-2.5 py-1.5 rounded-xl bg-black/40 border border-sky-500/20 flex items-center justify-between text-xs font-mono">
+                      <span class="text-[#8b949e] font-sans text-[11px] flex items-center gap-1">
+                        <span>🧭</span>
+                        <span>Local Horizon:</span>
+                      </span>
+                      <span class="${state.starfieldSelectedTarget.alt >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+                        Alt ${state.starfieldSelectedTarget.alt >= 0 ? '+' : ''}${state.starfieldSelectedTarget.alt.toFixed(1)}°
+                      </span>
+                      <span class="text-sky-300 font-bold">
+                        Facing ${state.starfieldSelectedTarget.az.toFixed(0)}° ${state.starfieldSelectedTarget.azCompass}
+                      </span>
+                    </div>
+                  ` : ''}
                 </div>
               ` : ''}
 

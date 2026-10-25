@@ -15,6 +15,8 @@ export interface ProjectedStar {
   color: string;  // CSS color based on B-V
   alt?: number;   // True astronomical altitude in degrees
   isBelowHorizon?: boolean; // True if altitude < 0°
+  az?: number;    // True horizontal azimuth in degrees (0..360, 0=North, 90=East)
+  azCompass?: string; // 16-point compass direction (e.g. 'WSW', 'SE')
 }
 
 export interface PlanetFieldData {
@@ -32,6 +34,8 @@ export interface HorizonParams {
   cx: number;           // East gradient coefficient
   cy: number;           // North gradient coefficient
   planetAltDeg: number; // Center planet altitude in degrees
+  planetAzDeg: number;  // Center planet horizontal azimuth in degrees (0..360, 0=North, 90=East)
+  planetAzCompass: string; // 16-point compass direction (e.g. 'WSW', 'SE')
 }
 
 export interface HorizonIntersection {
@@ -65,6 +69,8 @@ export interface InFieldBody {
   separationDeg: number;  // Angular separation from centered target planet
   alt?: number;           // Astronomical altitude in degrees
   isBelowHorizon?: boolean;
+  az?: number;            // Horizontal azimuth in degrees (0..360°)
+  azCompass?: string;     // 16-point compass direction (e.g. 'WSW', 'SE')
   phaseFraction?: number;
   phaseName?: string;
 }
@@ -83,6 +89,8 @@ export interface SelectedStarfieldTarget {
   bearingCompass: string; // 16-point compass bearing (e.g. 'ENE')
   alt?: number;           // Astronomical altitude in degrees
   isBelowHorizon?: boolean;
+  az?: number;            // Horizontal azimuth in degrees (0..360°)
+  azCompass?: string;     // 16-point compass direction (e.g. 'WSW', 'SE')
 }
 
 export type StarfieldOrientation = 'natural' | 'northUp' | 'southUp';
@@ -269,7 +277,18 @@ export function computeHorizonParams(
 
   const planetAltDeg = Math.asin(Math.max(-1, Math.min(1, c0))) / d2r;
 
-  return { c0, cx, cy, planetAltDeg };
+  // Horizontal azimuth calculation:
+  // azY = -cos(dec) * sin(ha) (East component)
+  // azX = cos(lat) * sin(dec) - sin(lat) * cos(dec) * cos(ha) (North component)
+  const azY = -cosDec0 * sinHa0;
+  const azX = cosPhi * sinDec0 - sinPhi * cosDec0 * cosHa0;
+  let planetAzDeg = Math.atan2(azY, azX) / d2r;
+  if (planetAzDeg < 0) {
+    planetAzDeg += 360;
+  }
+  const planetAzCompass = formatCompassBearing(planetAzDeg);
+
+  return { c0, cx, cy, planetAltDeg, planetAzDeg, planetAzCompass };
 }
 
 /**
@@ -521,6 +540,8 @@ export function getBodiesInField(
 
       let alt: number | undefined;
       let isBelowHorizon: boolean | undefined;
+      let az: number | undefined;
+      let azCompass: string | undefined;
 
       if (horizon) {
         const decR = b.dec * d2r;
@@ -529,6 +550,13 @@ export function getBodiesInField(
         const sinAlt = sinLat * Math.sin(decR) + cosLat * Math.cos(decR) * Math.cos(haR);
         alt = Math.asin(Math.max(-1, Math.min(1, sinAlt))) / d2r;
         isBelowHorizon = alt < 0;
+
+        const azY = -Math.cos(decR) * Math.sin(haR);
+        const azX = cosLat * Math.sin(decR) - sinLat * Math.cos(decR) * Math.cos(haR);
+        let azDeg = Math.atan2(azY, azX) / d2r;
+        if (azDeg < 0) azDeg += 360;
+        az = azDeg;
+        azCompass = formatCompassBearing(azDeg);
       }
 
       results.push({
@@ -546,6 +574,8 @@ export function getBodiesInField(
         separationDeg: sep,
         alt,
         isBelowHorizon,
+        az,
+        azCompass,
         phaseFraction: b.phaseFraction,
         phaseName: b.phaseName
       });
@@ -624,6 +654,8 @@ export function getStarsInField(
 
       let alt: number | undefined;
       let isBelowHorizon: boolean | undefined;
+      let az: number | undefined;
+      let azCompass: string | undefined;
 
       if (horizon) {
         const starDecR = dec * d2r;
@@ -632,6 +664,13 @@ export function getStarsInField(
         const sinAlt = sinLat * Math.sin(starDecR) + cosLat * Math.cos(starDecR) * Math.cos(starHaR);
         alt = Math.asin(Math.max(-1, Math.min(1, sinAlt))) / d2r;
         isBelowHorizon = alt < 0;
+
+        const starAzY = -Math.cos(starDecR) * Math.sin(starHaR);
+        const starAzX = cosLat * Math.sin(starDecR) - sinLat * Math.cos(starDecR) * Math.cos(starHaR);
+        let starAz = Math.atan2(starAzY, starAzX) / d2r;
+        if (starAz < 0) starAz += 360;
+        az = starAz;
+        azCompass = formatCompassBearing(starAz);
       }
 
       results.push({
@@ -647,7 +686,9 @@ export function getStarsInField(
         radius,
         color,
         alt,
-        isBelowHorizon
+        isBelowHorizon,
+        az,
+        azCompass
       });
     }
   }
@@ -696,7 +737,9 @@ export function hitTestStarfield(
       bearingDeg: bearing,
       bearingCompass: formatCompassBearing(bearing),
       alt: bestBody.alt,
-      isBelowHorizon: bestBody.isBelowHorizon
+      isBelowHorizon: bestBody.isBelowHorizon,
+      az: bestBody.az,
+      azCompass: bestBody.azCompass
     };
   }
 
@@ -731,7 +774,9 @@ export function hitTestStarfield(
       bearingDeg: bearing,
       bearingCompass: formatCompassBearing(bearing),
       alt: bestStar.alt,
-      isBelowHorizon: bestStar.isBelowHorizon
+      isBelowHorizon: bestStar.isBelowHorizon,
+      az: bestStar.az,
+      azCompass: bestStar.azCompass
     };
   }
 
@@ -882,7 +927,7 @@ export function renderStarfield(
       ctx.fillStyle = '#34d399';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('━━━ HORIZON ━━━', 0, -3);
+      ctx.fillText(`━━━ HORIZON · ${horizonParams.planetAzCompass} (${horizonParams.planetAzDeg.toFixed(0)}°) ━━━`, 0, -3);
       ctx.restore();
     }
   }
@@ -1439,7 +1484,10 @@ export function renderStarfield(
 
       ctx.fillStyle = 'rgba(148, 163, 184, 0.70)';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(isPlanetBelow ? 'NADIR (DOWN)' : 'HORIZON (DOWN)', cx, cssHeight - 5);
+      const facingText = horizonParams
+        ? `${isPlanetBelow ? 'NADIR (DOWN)' : 'HORIZON (DOWN)'} · ${horizonParams.planetAzCompass} (${horizonParams.planetAzDeg.toFixed(0)}°)`
+        : (isPlanetBelow ? 'NADIR (DOWN)' : 'HORIZON (DOWN)');
+      ctx.fillText(facingText, cx, cssHeight - 5);
 
       // Celestial North pip along the perimeter rim
       const pipR = (cssWidth / 2) - 13;
@@ -1509,10 +1557,14 @@ export function renderStarfield(
     const sign = altDeg >= 0 ? '+' : '';
     ctx.fillText(`Alt: ${sign}${altDeg.toFixed(1)}°${altDeg < 0 ? ' (Below)' : ''}`, cssWidth - 10, 10);
 
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(`Facing: ${horizonParams.planetAzDeg.toFixed(0)}° ${horizonParams.planetAzCompass}`, cssWidth - 10, 24);
+
     if (sunSeparationDeg !== undefined && sunSeparationDeg < 30.0 && !inFieldBodies.some(b => b.type === 'sun')) {
       ctx.font = '9px monospace';
       ctx.fillStyle = '#f59e0b';
-      ctx.fillText(`☀️ Sun: ${sunSeparationDeg.toFixed(1)}° away`, cssWidth - 10, 24);
+      ctx.fillText(`☀️ Sun: ${sunSeparationDeg.toFixed(1)}° away`, cssWidth - 10, 38);
     }
   }
 
