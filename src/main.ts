@@ -29,6 +29,7 @@ import {
   renderStarfield,
   formatRa,
   formatDec,
+  computeHorizonParams,
   PLANET_COLORS
 } from './core/starfield.ts';
 
@@ -45,6 +46,7 @@ interface AppState {
   moon: MoonInfo | null;
   planets: PlanetInfo[];
   selectedPlanet: PlanetInfo | null;
+  starfieldSouthUp: boolean;
   loading: boolean;
   error: string | null;
   searchOpen: boolean;
@@ -54,8 +56,9 @@ interface AppState {
   installPrompt: any | null;
 }
 
+const initialLoc = loadLocation();
 const state: AppState = {
-  location: loadLocation(),
+  location: initialLoc,
   currentDate: new Date(),
   tempUnit: loadTempUnit(),
   forecast: null,
@@ -63,6 +66,7 @@ const state: AppState = {
   moon: null,
   planets: [],
   selectedPlanet: null,
+  starfieldSouthUp: initialLoc.lat < 0,
   loading: false,
   error: null,
   searchOpen: false,
@@ -239,7 +243,13 @@ function drawPlanetStarfield() {
     maxMag: 6.0,
     showLabels: true,
     showReticle: true,
-    showCompass: true
+    showCompass: true,
+    southUp: state.starfieldSouthUp,
+    observerLat: state.location.lat,
+    observerLon: state.location.lon,
+    currentDate: state.currentDate,
+    renderHorizon: true,
+    dimBelowHorizon: true
   });
 }
 
@@ -274,6 +284,7 @@ async function handleGeolocate() {
     const ipLoc = await fetchIpLocation();
     if (ipLoc) {
       state.location = ipLoc;
+      state.starfieldSouthUp = ipLoc.lat < 0;
       saveLocation(ipLoc);
       await refreshAll();
       return true;
@@ -301,6 +312,7 @@ async function handleGeolocate() {
         lon
       };
       state.location = newLoc;
+      state.starfieldSouthUp = newLoc.lat < 0;
       saveLocation(newLoc);
       await refreshAll();
     },
@@ -799,6 +811,16 @@ function renderPlanetModal(): string {
   const isPrime = p.status.includes('Up all night') || p.status.includes('Evening');
   const pColors = PLANET_COLORS[p.key] || { fill: '#fed7aa', stroke: '#fb923c', glow: '', name: p.name };
 
+  const hp = computeHorizonParams(
+    state.location.lat,
+    state.location.lon,
+    state.currentDate,
+    p.ra,
+    p.dec
+  );
+  const planetAlt = hp.planetAltDeg;
+  const isAboveHorizon = planetAlt >= 0;
+
   return `
     <div id="planetModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
       <div class="bg-[#161b22] border border-[#30363d] rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[94vh] overflow-hidden animate-scale-up">
@@ -816,14 +838,31 @@ function renderPlanetModal(): string {
                 <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isPrime ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30' : 'bg-slate-700/30 text-slate-300 border border-slate-700/50'}">
                   ${p.status}
                 </span>
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isAboveHorizon ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}">
+                  Alt: ${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° (${isAboveHorizon ? 'Above Horizon' : 'Below Horizon'})
+                </span>
               </div>
               <p class="text-xs text-[#8b949e] mt-0.5">10° × 10° Geocentric Telescopic / Binocular Starfield</p>
             </div>
           </div>
 
-          <button id="btnClosePlanetModal" class="p-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" aria-label="Close starfield modal">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
+          <div class="flex items-center gap-2">
+            <!-- South-Up / North-Up Toggle Button -->
+            <button
+              id="btnToggleSouthUp"
+              class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldSouthUp ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 hover:bg-sky-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
+              title="Toggle sky view orientation (North-up / South-up)"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+              <span>${state.starfieldSouthUp ? 'South Up' : 'North Up'}</span>
+            </button>
+
+            <button id="btnClosePlanetModal" class="p-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" aria-label="Close starfield modal">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
         </div>
 
         <!-- Coordinates & Telemetry Chip Bar -->
@@ -839,14 +878,14 @@ function renderPlanetModal(): string {
             <span class="text-[10px] text-[#8b949e] block font-mono">(${p.dec >= 0 ? '+' : ''}${p.dec.toFixed(2)}°)</span>
           </div>
           <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Field of View</span>
-            <span class="font-bold text-sky-400 text-sm">10° × 10°</span>
-            <span class="text-[10px] text-[#8b949e] block">7×50 / Finder FOV</span>
+            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Local Altitude</span>
+            <span class="font-bold ${isAboveHorizon ? 'text-emerald-400' : 'text-rose-400'} text-sm">${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}°</span>
+            <span class="text-[10px] text-[#8b949e] block">${isAboveHorizon ? 'Above Horizon' : 'Below Horizon'}</span>
           </div>
           <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Star Depth</span>
-            <span class="font-bold text-amber-300 text-sm">Mag ≤ 6.0</span>
-            <span class="text-[10px] text-[#8b949e] block">Naked-Eye Limit</span>
+            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Field & Depth</span>
+            <span class="font-bold text-amber-300 text-sm">10° · Mag ≤ 6.0</span>
+            <span class="text-[10px] text-[#8b949e] block">Binocular / Naked-Eye</span>
           </div>
         </div>
 
@@ -862,7 +901,11 @@ function renderPlanetModal(): string {
           <!-- Guide / Caption -->
           <div class="mt-3 text-center text-xs text-[#8b949e] max-w-sm">
             <p>
-              Standard sky view (<span class="font-semibold text-[#e6edf3]">North up, East left</span>). Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad-style target</span>. Stars colored by spectral class.
+              ${state.starfieldSouthUp
+                ? 'Southern sky view (<span class="font-semibold text-sky-300">South up, West left</span> · Inverted). Green line marks the <span class="font-semibold text-emerald-400">local horizon</span>.'
+                : 'Standard sky view (<span class="font-semibold text-[#e6edf3]">North up, East left</span>). Green line marks the <span class="font-semibold text-emerald-400">local horizon</span>.'
+              }
+              Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad-style target</span>.
             </p>
           </div>
         </div>
@@ -880,6 +923,7 @@ function attachEventHandlers() {
 
     const loc: SavedLocation = { place, lat, lon };
     state.location = loc;
+    state.starfieldSouthUp = loc.lat < 0;
     saveLocation(loc);
     state.searchOpen = false;
     refreshAll();
@@ -1011,6 +1055,12 @@ function attachEventHandlers() {
         btn.click();
       }
     });
+  });
+
+  // Toggle South-Up / North-Up
+  document.getElementById('btnToggleSouthUp')?.addEventListener('click', () => {
+    state.starfieldSouthUp = !state.starfieldSouthUp;
+    render();
   });
 
   // Close Planet Modal
