@@ -1079,7 +1079,9 @@ export function renderStarfield(
   ctx.textBaseline = 'top';
   ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#8b949e';
-  ctx.fillText(`${fovDeg.toFixed(0)}° ${aperture === 'circular' ? 'FOV (5° r)' : '× 10° Frame'}`, 10, 10);
+  const radiusDeg = fovDeg / 2;
+  const radiusText = radiusDeg.toFixed(1).replace(/\.0$/, '');
+  ctx.fillText(`${fovDeg.toFixed(0)}° ${aperture === 'circular' ? `FOV (${radiusText}° r)` : `× ${fovDeg.toFixed(0)}° Frame`}`, 10, 10);
 
   ctx.font = '9px monospace';
   ctx.fillStyle = southUp ? '#38bdf8' : '#64748b';
@@ -1107,8 +1109,9 @@ export function renderStarfield(
     }
   }
 
-  // Bottom-left: 1° scale bar
-  const barLen = oneDegreePx * 2; // diameter of 1-deg circle = 1 full degree
+  // Bottom-left: scale bar (1° or 5° adaptive based on zoom)
+  const scaleBarDeg = fovDeg >= 25 ? 5 : 1;
+  const barLen = Math.tan(scaleBarDeg * d2r) * scaleX;
   const barY = cssHeight - 16;
   const barX = 14;
   ctx.strokeStyle = '#8b949e';
@@ -1123,9 +1126,10 @@ export function renderStarfield(
   ctx.lineTo(barX + barLen, barY + 3);
   ctx.stroke();
 
+  ctx.textAlign = 'center';
   ctx.font = '9px monospace';
   ctx.fillStyle = '#8b949e';
-  ctx.fillText('1°', barX + barLen / 2 - 5, barY - 11);
+  ctx.fillText(`${scaleBarDeg}°`, barX + barLen / 2, barY - 5);
 
   // Bottom-right: Star count
   ctx.textAlign = 'right';

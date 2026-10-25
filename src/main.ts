@@ -38,7 +38,7 @@ import {
   PLANET_COLORS
 } from './core/starfield.ts';
 
-export const APP_VERSION = '1.0.7';
+export const APP_VERSION = '1.0.8';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -54,6 +54,7 @@ interface AppState {
   starfieldSouthUp: boolean;
   starfieldAperture: 'circular' | 'square';
   starfieldShowLabels: boolean;
+  starfieldFovDeg: number;
   loading: boolean;
   error: string | null;
   searchOpen: boolean;
@@ -76,6 +77,7 @@ const state: AppState = {
   starfieldSouthUp: initialLoc.lat < 0,
   starfieldAperture: 'circular',
   starfieldShowLabels: true,
+  starfieldFovDeg: 10,
   loading: false,
   error: null,
   searchOpen: false,
@@ -287,7 +289,7 @@ function drawPlanetStarfield() {
   const otherBodies = getOtherSolarBodies(state.selectedPlanet.key);
 
   renderStarfield(canvas, state.selectedPlanet, {
-    fovDeg: 10.0,
+    fovDeg: state.starfieldFovDeg,
     maxMag: 6.0,
     showLabels: state.starfieldShowLabels,
     showReticle: true,
@@ -872,10 +874,11 @@ function renderPlanetModal(): string {
   const isAboveHorizon = planetAlt >= 0;
 
   const otherBodies = getOtherSolarBodies(p.key);
+  const fovDeg = state.starfieldFovDeg;
   const bodiesInField = getBodiesInField(
     p.ra,
     p.dec,
-    10.0,
+    fovDeg,
     360,
     360,
     state.starfieldSouthUp,
@@ -912,7 +915,7 @@ function renderPlanetModal(): string {
                   Alt: ${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° (${isAboveHorizon ? 'Above Horizon' : 'Below Horizon'})
                 </span>
               </div>
-              <p class="text-xs text-[#8b949e] mt-0.5">${state.starfieldAperture === 'circular' ? '10° Circular Eyepiece Starfield (5° Radius)' : '10° × 10° Sensor Frame Starfield'}</p>
+              <p class="text-xs text-[#8b949e] mt-0.5">${state.starfieldAperture === 'circular' ? `${fovDeg}° Circular Eyepiece (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° Radius)` : `${fovDeg}° × ${fovDeg}° Sensor Frame`}</p>
             </div>
           </div>
 
@@ -930,9 +933,9 @@ function renderPlanetModal(): string {
             <button
               id="btnToggleAperture"
               class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldAperture === 'circular' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
-              title="Toggle field of view between circular eyepiece (5° radius) and square sensor frame (10°x10°)"
+              title="Toggle field of view between circular eyepiece and square sensor frame"
             >
-              <span>${state.starfieldAperture === 'circular' ? '◯ Eyepiece (5° r)' : '▢ Sensor (10°)'}</span>
+              <span>${state.starfieldAperture === 'circular' ? `◯ Eyepiece (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `▢ Sensor (${fovDeg}°)`}</span>
             </button>
 
             <!-- South-Up / North-Up Toggle Button -->
@@ -1021,8 +1024,8 @@ function renderPlanetModal(): string {
             <span class="text-[10px] text-[#8b949e] block">${isAboveHorizon ? 'Above Horizon' : 'Below Horizon'}</span>
           </div>
           <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Field & Depth</span>
-            <span class="font-bold text-amber-300 text-sm">${state.starfieldAperture === 'circular' ? '10° ◯ · 5° Radius' : '10° ▢ · 7.1° Diag'}</span>
+            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Field of View</span>
+            <span class="font-bold text-amber-300 text-sm">${state.starfieldAperture === 'circular' ? `${fovDeg}° ◯ (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `${fovDeg}° ▢ Sensor`}</span>
             <span class="text-[10px] text-[#8b949e] block">${state.starfieldAperture === 'circular' ? 'Eyepiece (Mag ≤ 6.0)' : 'Sensor (Mag ≤ 6.0)'}</span>
           </div>
         </div>
@@ -1036,8 +1039,50 @@ function renderPlanetModal(): string {
             ></canvas>
           </div>
 
+          <!-- Zoom In / Out Controls & FOV Presets -->
+          <div class="mt-3 flex items-center justify-between w-full max-w-[360px] px-1 text-xs gap-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] font-bold text-[#8b949e] uppercase tracking-wider">FOV:</span>
+              <div class="flex items-center bg-white/5 border border-[#30363d] rounded-xl p-0.5">
+                <button
+                  id="btnZoomOut"
+                  type="button"
+                  class="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  ${state.starfieldFovDeg >= 45 ? 'disabled' : ''}
+                  title="Zoom Out (Wider Field of View)"
+                >
+                  −
+                </button>
+                <span class="px-2 font-mono font-bold text-sky-300 text-xs">${state.starfieldFovDeg}°</span>
+                <button
+                  id="btnZoomIn"
+                  type="button"
+                  class="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  ${state.starfieldFovDeg <= 5 ? 'disabled' : ''}
+                  title="Zoom In (Narrower Field of View)"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick FOV Presets -->
+            <div class="flex items-center gap-1 flex-wrap justify-end">
+              ${[5, 10, 20, 30, 45].map(deg => `
+                <button
+                  type="button"
+                  class="btnFovPreset px-2 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${state.starfieldFovDeg === deg ? 'bg-sky-500/25 text-sky-200 border-sky-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}"
+                  data-fov="${deg}"
+                  title="Set field of view to ${deg}°"
+                >
+                  ${deg}°
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
           <!-- Guide / Caption -->
-          <div class="mt-3 text-center text-xs text-[#8b949e] max-w-sm">
+          <div class="mt-2.5 text-center text-xs text-[#8b949e] max-w-sm">
             <p>
               ${state.starfieldSouthUp
                 ? 'Southern sky view (<span class="font-semibold text-sky-300">South up, West left</span> · Inverted). '
@@ -1046,8 +1091,8 @@ function renderPlanetModal(): string {
               Green line marks the <span class="font-semibold text-emerald-400">local horizon</span>.
               Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad target</span>.
               ${state.starfieldAperture === 'circular'
-                ? 'Showing <span class="font-semibold text-indigo-300">5° circular eyepiece</span>.'
-                : 'Showing <span class="font-semibold text-indigo-300">10°×10° sensor frame</span> (7.1° corners).'
+                ? `Showing <span class="font-semibold text-indigo-300">${fovDeg}° circular eyepiece</span> (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° radius).`
+                : `Showing <span class="font-semibold text-indigo-300">${fovDeg}°×${fovDeg}° sensor frame</span>.`
               }
               ${bodiesInField.length > 0
                 ? `<span class="block mt-1 font-semibold text-indigo-300">In field: ${bodiesInField.map(b => `${b.symbol} ${b.name}`).join(', ')}</span>`
@@ -1225,6 +1270,61 @@ function attachEventHandlers() {
     state.starfieldShowLabels = !state.starfieldShowLabels;
     render();
   });
+
+  // Zoom In / Out & FOV Presets
+  const FOV_STEPS = [5, 10, 20, 30, 45];
+
+  document.getElementById('btnZoomOut')?.addEventListener('click', () => {
+    const idx = FOV_STEPS.indexOf(state.starfieldFovDeg);
+    if (idx !== -1 && idx < FOV_STEPS.length - 1) {
+      state.starfieldFovDeg = FOV_STEPS[idx + 1];
+    } else if (idx === -1) {
+      const next = FOV_STEPS.find(s => s > state.starfieldFovDeg);
+      state.starfieldFovDeg = next ?? 45;
+    }
+    render();
+  });
+
+  document.getElementById('btnZoomIn')?.addEventListener('click', () => {
+    const idx = FOV_STEPS.indexOf(state.starfieldFovDeg);
+    if (idx !== -1 && idx > 0) {
+      state.starfieldFovDeg = FOV_STEPS[idx - 1];
+    } else if (idx === -1) {
+      const prev = [...FOV_STEPS].reverse().find(s => s < state.starfieldFovDeg);
+      state.starfieldFovDeg = prev ?? 5;
+    }
+    render();
+  });
+
+  document.querySelectorAll<HTMLElement>('.btnFovPreset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const fov = parseFloat(btn.getAttribute('data-fov') || '10');
+      if (!isNaN(fov)) {
+        state.starfieldFovDeg = fov;
+        render();
+      }
+    });
+  });
+
+  // Wheel zoom on canvas
+  const canvasEl = document.getElementById('planetStarfieldCanvas');
+  if (canvasEl) {
+    canvasEl.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const idx = FOV_STEPS.indexOf(state.starfieldFovDeg);
+      if (e.deltaY > 0) {
+        if (idx !== -1 && idx < FOV_STEPS.length - 1) {
+          state.starfieldFovDeg = FOV_STEPS[idx + 1];
+          render();
+        }
+      } else if (e.deltaY < 0) {
+        if (idx !== -1 && idx > 0) {
+          state.starfieldFovDeg = FOV_STEPS[idx - 1];
+          render();
+        }
+      }
+    }, { passive: false });
+  }
 
   // Toggle Aperture (Circular Eyepiece vs Square Sensor Frame)
   document.getElementById('btnToggleAperture')?.addEventListener('click', () => {
