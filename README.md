@@ -45,7 +45,7 @@ Open **[aacero.github.io/sky-tonight/](https://aacero.github.io/sky-tonight/)** 
 - **100% Offline Astronomical Ephemeris**:
   - **Solar Twilights**: Exact times for Sunset (-0.8°), Civil Dusk (-6°), Nautical Dusk (-12°), Astronomical Dusk (-18°), Astronomical Dawn (-18°), and Sunrise (-0.8°).
   - **Moon Phase & Illumination**: Exact geocentric lunar age in days, illuminated percentage, synodic phase name, and SVG lunar terminator visualizer.
-  - **Naked-Eye Planets**: Local rise and set times, viewing conditions, and host astronomical constellation positions (Pisces, Aries, Taurus, Gemini, Cancer, Leo, Virgo, Libra, Scorpius, Ophiuchus, Sagittarius, Capricornus, Aquarius) for Mercury, Venus, Mars, Jupiter, and Saturn.
+  - **Naked-Eye Planets & 10° Starfields**: Local rise and set times, viewing conditions, and host astronomical constellation positions for Mercury, Venus, Mars, Jupiter, and Saturn. Tap any planet to reveal an interactive 10° × 10° telescopic/binocular starfield with real Hipparcos stars down to 6th magnitude colored by spectral type, labeled navigational stars, and a 1° Telrad-style reticle.
 - **Open Cloud Telemetry**: Fetches hourly cloud and temperature forecasts from Open-Meteo's open, keyless, CORS-enabled REST API.
 - **1-Tap Location & Geocoding**:
   - Browser GPS coordinate detection via `navigator.geolocation`.

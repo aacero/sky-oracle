@@ -53,6 +53,7 @@ The table below maps the astronomical logic and UI components between EdgeHub QM
 | **Lunar Cycle Progress Bar** | `ui/qml/widgets/MoonWidget.qml` (`moonCyclePosition`) | `src/main.ts` (Moon Phase card) | Visual horizontal bar: `NEW ──── FULL ──── NEW` scaled by `cyclePos * 100%`. |
 | **Solar Twilights** | `ui/qml/widgets/SkyTonightWidget.qml` (`calculateSunEvents()`) | `src/core/astronomy.ts` (`calculateSunEvents()`) | Scans 24h starting at observing day noon. Solar thresholds: Sunset `-0.833°`, Civil `-6.0°`, Nautical `-12.0°`, Astronomical `-18.0°`. |
 | **Naked-Eye Planets** | `ui/qml/widgets/SkyTonightWidget.qml` (`calculateAllPlanets()`) | `src/core/astronomy.ts` (`calculateAllPlanets()`, `calculatePlanetRiseSet()`) | Classical 5 planets (Mercury, Venus, Mars, Jupiter, Saturn) with IAU ecliptic constellation boundaries. |
+| **10° Planetary Starfield** | *New in SkyOracle (candidate for EdgeHub back-port)* | `src/core/starfield.ts`, `src/core/zodiacStars.ts`, `src/main.ts` | Gnomonic projection of Hipparcos stars down to mag 6.0 in a 10°×10° FOV centered on planet's $(\alpha, \delta)$ with spectral colors, named stars, and 1° Telrad-style reticle. |
 | **Observing Forecast & Cloud Telemetry** | `ui/qml/widgets/SkyTonightWidget.qml` (`_fetchForecast()`) | `src/core/weather.ts` (`fetchCloudForecast()`) | Open-Meteo hourly cloud cover (total, low, mid, high), 2m temperature, relative humidity, dew point, wind speed. |
 
 ---

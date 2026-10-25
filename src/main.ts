@@ -25,6 +25,13 @@ import {
   SavedLocation
 } from './core/storage.ts';
 
+import {
+  renderStarfield,
+  formatRa,
+  formatDec,
+  PLANET_COLORS
+} from './core/starfield.ts';
+
 export const APP_VERSION = '1.0.2';
 
 // ── Application State ───────────────────────────────────────────────────────
@@ -37,6 +44,7 @@ interface AppState {
   sunEvents: SunEvents | null;
   moon: MoonInfo | null;
   planets: PlanetInfo[];
+  selectedPlanet: PlanetInfo | null;
   loading: boolean;
   error: string | null;
   searchOpen: boolean;
@@ -54,6 +62,7 @@ const state: AppState = {
   sunEvents: null,
   moon: null,
   planets: [],
+  selectedPlanet: null,
   loading: false,
   error: null,
   searchOpen: false,
@@ -218,6 +227,20 @@ function drawMoonCanvas() {
   ctx.stroke();
 
   ctx.restore(); // Restore initial canvas state
+}
+
+function drawPlanetStarfield() {
+  if (!state.selectedPlanet) return;
+  const canvas = document.getElementById('planetStarfieldCanvas') as HTMLCanvasElement | null;
+  if (!canvas) return;
+
+  renderStarfield(canvas, state.selectedPlanet, {
+    fovDeg: 10.0,
+    maxMag: 6.0,
+    showLabels: true,
+    showReticle: true,
+    showCompass: true
+  });
 }
 
 // ── Geolocation & IP Fallback ───────────────────────────────────────────────
@@ -505,12 +528,18 @@ function render() {
               ${state.planets.map(p => {
                 const isPrime = p.status.includes('Up all night') || p.status.includes('Evening');
                 return `
-                  <div class="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-[#30363d]/50 transition">
+                  <div
+                    role="button"
+                    tabindex="0"
+                    data-planet="${p.key}"
+                    class="btnPlanetCard flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-[#30363d]/50 hover:border-amber-400/40 transition cursor-pointer group"
+                    title="Click to view 10° starfield centered on ${p.name}"
+                  >
                     <div class="flex items-center gap-3">
-                      <span class="text-xl ${isPrime ? 'text-amber-400' : 'text-[#e6edf3]'} font-bold w-6 text-center">${p.symbol}</span>
+                      <span class="text-xl ${isPrime ? 'text-amber-400' : 'text-[#e6edf3]'} font-bold w-6 text-center group-hover:scale-110 transition-transform">${p.symbol}</span>
                       <div>
                         <div class="flex items-center gap-2">
-                          <span class="font-bold text-sm text-[#e6edf3]">${p.name}</span>
+                          <span class="font-bold text-sm text-[#e6edf3] group-hover:text-amber-300 transition-colors">${p.name}</span>
                           <!-- Plain-text Constellation badge -->
                           <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
                             ${p.constellation}
@@ -522,9 +551,15 @@ function render() {
                       </div>
                     </div>
 
-                    <div class="text-right text-xs text-[#8b949e]">
-                      ${p.set ? `<div>Set ${formatTime(p.set)}</div>` : ''}
-                      ${p.rise ? `<div>Rise ${formatTime(p.rise)}</div>` : ''}
+                    <div class="flex items-center gap-3">
+                      <div class="text-right text-xs text-[#8b949e]">
+                        ${p.set ? `<div>Set ${formatTime(p.set)}</div>` : ''}
+                        ${p.rise ? `<div>Rise ${formatTime(p.rise)}</div>` : ''}
+                      </div>
+                      <div class="flex items-center gap-1 text-[#8b949e] group-hover:text-amber-400 transition-colors pl-1">
+                        <span class="text-[11px] font-bold hidden sm:inline opacity-70 group-hover:opacity-100 transition-opacity">10° Field</span>
+                        <span class="text-sm">🔭</span>
+                      </div>
                     </div>
                   </div>
                 `;
@@ -665,10 +700,14 @@ function render() {
 
     <!-- Location Search Modal -->
     ${state.searchOpen ? renderSearchModal() : ''}
+
+    <!-- Planet 10x10 Starfield Modal -->
+    ${state.selectedPlanet ? renderPlanetModal() : ''}
   `;
 
   attachEventHandlers();
   drawMoonCanvas();
+  drawPlanetStarfield();
 }
 
 function renderSearchResultsList(results: GeocodingResult[]): string {
@@ -748,6 +787,86 @@ function renderSearchModal(): string {
             `).join('')}
           </div>
         </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPlanetModal(): string {
+  const p = state.selectedPlanet;
+  if (!p) return '';
+
+  const isPrime = p.status.includes('Up all night') || p.status.includes('Evening');
+  const pColors = PLANET_COLORS[p.key] || { fill: '#fed7aa', stroke: '#fb923c', glow: '', name: p.name };
+
+  return `
+    <div id="planetModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+      <div class="bg-[#161b22] border border-[#30363d] rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[94vh] overflow-hidden animate-scale-up">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-[#30363d] bg-black/20">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl font-bold w-8 text-center drop-shadow" style="color: ${pColors.fill}">${p.symbol}</span>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-lg font-bold text-[#e6edf3]">${p.name}</h3>
+                <span class="px-2 py-0.5 rounded text-xs font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
+                  ${p.constellation}
+                </span>
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isPrime ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30' : 'bg-slate-700/30 text-slate-300 border border-slate-700/50'}">
+                  ${p.status}
+                </span>
+              </div>
+              <p class="text-xs text-[#8b949e] mt-0.5">10° × 10° Geocentric Telescopic / Binocular Starfield</p>
+            </div>
+          </div>
+
+          <button id="btnClosePlanetModal" class="p-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" aria-label="Close starfield modal">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <!-- Coordinates & Telemetry Chip Bar -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-black/30 border-b border-[#30363d]/60 text-xs">
+          <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Right Ascension</span>
+            <span class="font-bold text-[#e6edf3] text-sm">${formatRa(p.ra)}</span>
+            <span class="text-[10px] text-[#8b949e] block font-mono">(${p.ra.toFixed(2)}°)</span>
+          </div>
+          <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Declination</span>
+            <span class="font-bold text-[#e6edf3] text-sm">${formatDec(p.dec)}</span>
+            <span class="text-[10px] text-[#8b949e] block font-mono">(${p.dec >= 0 ? '+' : ''}${p.dec.toFixed(2)}°)</span>
+          </div>
+          <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Field of View</span>
+            <span class="font-bold text-sky-400 text-sm">10° × 10°</span>
+            <span class="text-[10px] text-[#8b949e] block">7×50 / Finder FOV</span>
+          </div>
+          <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+            <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Star Depth</span>
+            <span class="font-bold text-amber-300 text-sm">Mag ≤ 6.0</span>
+            <span class="text-[10px] text-[#8b949e] block">Naked-Eye Limit</span>
+          </div>
+        </div>
+
+        <!-- Starfield Canvas Container -->
+        <div class="p-4 flex flex-col items-center justify-center overflow-y-auto">
+          <div class="relative w-full max-w-[360px] aspect-square">
+            <canvas
+              id="planetStarfieldCanvas"
+              class="w-full h-full rounded-2xl border border-[#30363d] shadow-2xl block bg-[#020408]"
+            ></canvas>
+          </div>
+
+          <!-- Guide / Caption -->
+          <div class="mt-3 text-center text-xs text-[#8b949e] max-w-sm">
+            <p>
+              Standard sky view (<span class="font-semibold text-[#e6edf3]">North up, East left</span>). Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad-style target</span>. Stars colored by spectral class.
+            </p>
+          </div>
+        </div>
+
       </div>
     </div>
   `;
@@ -874,7 +993,58 @@ function attachEventHandlers() {
   document.querySelectorAll<HTMLElement>('.btnSelectCity').forEach(btn => {
     btn.addEventListener('click', () => selectCity(btn));
   });
+
+  // Planet Card Click -> 10° Starfield Modal
+  document.querySelectorAll<HTMLElement>('.btnPlanetCard').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pKey = btn.getAttribute('data-planet');
+      const p = state.planets.find(item => item.key === pKey);
+      if (p) {
+        state.selectedPlanet = p;
+        render();
+      }
+    });
+
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        btn.click();
+      }
+    });
+  });
+
+  // Close Planet Modal
+  document.getElementById('btnClosePlanetModal')?.addEventListener('click', () => {
+    state.selectedPlanet = null;
+    render();
+  });
+
+  document.getElementById('planetModalOverlay')?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).id === 'planetModalOverlay') {
+      state.selectedPlanet = null;
+      render();
+    }
+  });
 }
+
+// Global Keyboard & Window Listeners
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (state.selectedPlanet) {
+      state.selectedPlanet = null;
+      render();
+    } else if (state.searchOpen) {
+      state.searchOpen = false;
+      render();
+    }
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (state.selectedPlanet) {
+    drawPlanetStarfield();
+  }
+});
 
 // ── App Startup ─────────────────────────────────────────────────────────────
 

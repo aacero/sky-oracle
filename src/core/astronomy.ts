@@ -43,6 +43,8 @@ export interface PlanetInfo {
   status: string;
   constellation: string;
   ecLon: number;
+  ra: number;
+  dec: number;
 }
 
 export interface ConstellationInfo {
@@ -504,7 +506,9 @@ export function calculatePlanetRiseSet(
       set: null,
       status: "Below horizon",
       constellation: cInfo.name,
-      ecLon: eq.ecLon
+      ecLon: eq.ecLon,
+      ra: eq.ra,
+      dec: eq.dec
     };
   }
   if (cosH0 < -1) {
@@ -516,7 +520,9 @@ export function calculatePlanetRiseSet(
       set: null,
       status: "Circumpolar",
       constellation: cInfo.name,
-      ecLon: eq.ecLon
+      ecLon: eq.ecLon,
+      ra: eq.ra,
+      dec: eq.dec
     };
   }
 
@@ -549,7 +555,9 @@ export function calculatePlanetRiseSet(
     set: setDate,
     status: stat,
     constellation: cInfo.name,
-    ecLon: eq.ecLon
+    ecLon: eq.ecLon,
+    ra: eq.ra,
+    dec: eq.dec
   };
 }
 
