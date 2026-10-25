@@ -10,8 +10,15 @@ import {
   computeGroundPolygonAndHorizon,
   angularSeparationDeg,
   getBodiesInField,
-  OtherSolarBody
+  OtherSolarBody,
+  calculatePositionAngleDeg,
+  formatCompassBearing,
+  bvToSpectralClass,
+  hitTestStarfield,
+  renderStarfield,
+  SelectedStarfieldTarget
 } from './starfield.ts';
+import { ZODIAC_CONSTELLATION_LINES } from './constellationLines.ts';
 
 describe('Starfield & Ephemeris Projection Engine', () => {
   describe('Formatters', () => {
@@ -391,6 +398,207 @@ describe('Starfield & Ephemeris Projection Engine', () => {
       const clampedMin = getStarsInField(205.074, -17.104, 1.0, 6.0, 360, 360);
       const exact3Min = getStarsInField(205.074, -17.104, 3.0, 6.0, 360, 360);
       expect(clampedMin.length).toBe(exact3Min.length);
+    });
+  });
+
+  describe('Astronomical Bearing & Position Angle', () => {
+    it('calculates cardinal position angles correctly', () => {
+      // Due North
+      expect(calculatePositionAngleDeg(100, 0, 100, 10)).toBeCloseTo(0, 1);
+      expect(formatCompassBearing(0)).toBe('N');
+
+      // Due East
+      expect(calculatePositionAngleDeg(100, 0, 110, 0)).toBeCloseTo(90, 1);
+      expect(formatCompassBearing(90)).toBe('E');
+
+      // Due South
+      expect(calculatePositionAngleDeg(100, 0, 100, -10)).toBeCloseTo(180, 1);
+      expect(formatCompassBearing(180)).toBe('S');
+
+      // Due West
+      expect(calculatePositionAngleDeg(100, 0, 90, 0)).toBeCloseTo(270, 1);
+      expect(formatCompassBearing(270)).toBe('W');
+
+      // North-East quadrant
+      const paNE = calculatePositionAngleDeg(100, 0, 105, 5);
+      expect(paNE).toBeGreaterThan(40);
+      expect(paNE).toBeLessThan(50);
+      expect(formatCompassBearing(paNE)).toBe('NE');
+    });
+
+    it('classifies stellar spectral types and colors from B-V index', () => {
+      expect(bvToSpectralClass(-0.20).type).toBe('Class O/B');
+      expect(bvToSpectralClass(0.0).type).toBe('Class A');
+      expect(bvToSpectralClass(0.20).type).toBe('Class F');
+      expect(bvToSpectralClass(0.50).type).toBe('Class G');
+      expect(bvToSpectralClass(0.85).type).toBe('Class K');
+      expect(bvToSpectralClass(1.40).type).toBe('Class M');
+    });
+  });
+
+  describe('Interactive Hit-Testing & Celestial Ruler Engine', () => {
+    const centerPlanet = {
+      key: 'saturn',
+      name: 'Saturn',
+      symbol: '♄',
+      ra: 9.70,
+      dec: 1.25,
+      constellation: 'Pisces',
+      status: 'Up all night'
+    };
+
+    it('detects a tapped solar system body with high priority', () => {
+      const bodies: any[] = [
+        {
+          type: 'planet',
+          key: 'venus',
+          name: 'Venus',
+          symbol: '♀',
+          ra: 12.5,
+          dec: 2.1,
+          px: 180,
+          py: 120,
+          radius: 6,
+          separationDeg: 2.9
+        }
+      ];
+
+      // Tap directly on or near Venus
+      const hit = hitTestStarfield(184, 122, [], bodies, centerPlanet);
+      expect(hit).not.toBeNull();
+      expect(hit!.type).toBe('planet');
+      expect(hit!.name).toBe('Venus');
+      expect(hit!.separationDeg).toBeCloseTo(2.9, 1);
+      expect(hit!.bearingCompass).toMatch(/ENE|E|NE/);
+    });
+
+    it('detects a tapped star and measures exact separation and bearing from center', () => {
+      const stars: any[] = [
+        {
+          ra: 10.5,
+          dec: 1.8,
+          mag: 3.2,
+          bv: 1.1,
+          name: 'Delta Psc',
+          px: 210,
+          py: 160,
+          radius: 3.5,
+          color: '#ffd7a0'
+        }
+      ];
+
+      // Tap near Delta Psc
+      const hit = hitTestStarfield(214, 162, stars, [], centerPlanet);
+      expect(hit).not.toBeNull();
+      expect(hit!.type).toBe('star');
+      expect(hit!.name).toBe('Delta Psc');
+      expect(hit!.mag).toBe(3.2);
+      expect(hit!.separationDeg).toBeGreaterThan(0.5);
+      expect(hit!.bearingDeg).toBeGreaterThan(0);
+    });
+
+    it('returns null when tapping empty background space', () => {
+      const stars: any[] = [
+        {
+          ra: 10.5,
+          dec: 1.8,
+          mag: 3.2,
+          bv: 1.1,
+          name: 'Delta Psc',
+          px: 50,
+          py: 50,
+          radius: 3.5,
+          color: '#ffd7a0'
+        }
+      ];
+
+      const hit = hitTestStarfield(300, 300, stars, [], centerPlanet);
+      expect(hit).toBeNull();
+    });
+  });
+
+  describe('Constellation Lines & Canvas Rendering', () => {
+    it('has valid zodiac constellation stick lines defined', () => {
+      expect(ZODIAC_CONSTELLATION_LINES.length).toBeGreaterThanOrEqual(30);
+
+      // Verify each segment has valid coordinates and constellation name
+      for (const seg of ZODIAC_CONSTELLATION_LINES) {
+        expect(seg.ra1).toBeGreaterThanOrEqual(0);
+        expect(seg.ra1).toBeLessThanOrEqual(360);
+        expect(seg.ra2).toBeGreaterThanOrEqual(0);
+        expect(seg.ra2).toBeLessThanOrEqual(360);
+        expect(seg.dec1).toBeGreaterThanOrEqual(-90);
+        expect(seg.dec1).toBeLessThanOrEqual(90);
+        expect(seg.dec2).toBeGreaterThanOrEqual(-90);
+        expect(seg.dec2).toBeLessThanOrEqual(90);
+        expect(seg.constellation.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('renders starfield with constellation lines and selected target ruler without error', () => {
+      // Mock canvas for headless test environment
+      const canvas = {
+        width: 360,
+        height: 360,
+        getBoundingClientRect: () => ({ width: 360, height: 360 }),
+        getContext: () => ({
+          save: () => {},
+          restore: () => {},
+          scale: () => {},
+          createRadialGradient: () => ({ addColorStop: () => {} }),
+          fillRect: () => {},
+          beginPath: () => {},
+          arc: () => {},
+          clip: () => {},
+          moveTo: () => {},
+          lineTo: () => {},
+          closePath: () => {},
+          fill: () => {},
+          stroke: () => {},
+          strokeRect: () => {},
+          setLineDash: () => {},
+          translate: () => {},
+          rotate: () => {},
+          fillText: () => {},
+          strokeText: () => {},
+          measureText: (text: string) => ({ width: text.length * 6 }),
+          rect: () => {},
+          roundRect: () => {}
+        })
+      } as unknown as HTMLCanvasElement;
+
+      const planet = {
+        key: 'jupiter',
+        name: 'Jupiter',
+        symbol: '♃',
+        ra: 145.65,
+        dec: 14.43,
+        constellation: 'Leo',
+        status: 'Up all night'
+      };
+
+      const selectedTarget: SelectedStarfieldTarget = {
+        type: 'star',
+        name: 'Regulus',
+        mag: 1.36,
+        bv: -0.09,
+        ra: 152.09,
+        dec: 11.97,
+        px: 250,
+        py: 180,
+        separationDeg: 6.8,
+        bearingDeg: 112,
+        bearingCompass: 'ESE'
+      };
+
+      const result = renderStarfield(canvas, planet, {
+        fovDeg: 20.0,
+        showConstellationLines: true,
+        selectedTarget
+      });
+
+      expect(result.starCount).toBeGreaterThan(0);
+      expect(result.stars.length).toBeGreaterThan(0);
     });
   });
 });

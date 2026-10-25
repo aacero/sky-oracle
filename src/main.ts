@@ -35,10 +35,15 @@ import {
   angularSeparationDeg,
   getBodiesInField,
   OtherSolarBody,
-  PLANET_COLORS
+  PLANET_COLORS,
+  ProjectedStar,
+  InFieldBody,
+  SelectedStarfieldTarget,
+  hitTestStarfield,
+  bvToSpectralClass
 } from './core/starfield.ts';
 
-export const APP_VERSION = '1.0.10';
+export const APP_VERSION = '1.0.11';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -54,7 +59,10 @@ interface AppState {
   starfieldSouthUp: boolean;
   starfieldAperture: 'circular' | 'square';
   starfieldShowLabels: boolean;
+  starfieldShowLines: boolean;
   starfieldFovDeg: number;
+  starfieldTimeOffsetHours: number;
+  starfieldSelectedTarget: SelectedStarfieldTarget | null;
   loading: boolean;
   error: string | null;
   searchOpen: boolean;
@@ -77,7 +85,10 @@ const state: AppState = {
   starfieldSouthUp: initialLoc.lat < 0,
   starfieldAperture: 'circular',
   starfieldShowLabels: true,
+  starfieldShowLines: false,
   starfieldFovDeg: 10,
+  starfieldTimeOffsetHours: 0,
+  starfieldSelectedTarget: null,
   loading: false,
   error: null,
   searchOpen: false,
@@ -244,7 +255,14 @@ function drawMoonCanvas() {
   ctx.restore(); // Restore initial canvas state
 }
 
-function getOtherSolarBodies(excludePlanetKey: string): OtherSolarBody[] {
+function getStarfieldEffectiveDate(): Date {
+  if (state.starfieldTimeOffsetHours === 0) {
+    return state.currentDate;
+  }
+  return new Date(state.currentDate.getTime() + state.starfieldTimeOffsetHours * 3600 * 1000);
+}
+
+function getOtherSolarBodies(excludePlanetKey: string, obsDate: Date = state.currentDate): OtherSolarBody[] {
   const otherPlanets: OtherSolarBody[] = state.planets
     .filter(p => p.key !== excludePlanetKey)
     .map(p => ({
@@ -256,7 +274,7 @@ function getOtherSolarBodies(excludePlanetKey: string): OtherSolarBody[] {
       dec: p.dec
     }));
 
-  const moonCoords = getMoonCoordinates(state.currentDate);
+  const moonCoords = getMoonCoordinates(obsDate);
   const moonBody: OtherSolarBody = {
     type: 'moon',
     key: 'moon',
@@ -268,7 +286,7 @@ function getOtherSolarBodies(excludePlanetKey: string): OtherSolarBody[] {
     phaseName: state.moon ? state.moon.name : 'Moon'
   };
 
-  const sunCoords = sunPosition(state.currentDate);
+  const sunCoords = sunPosition(obsDate);
   const sunBody: OtherSolarBody = {
     type: 'sun',
     key: 'sun',
@@ -281,28 +299,42 @@ function getOtherSolarBodies(excludePlanetKey: string): OtherSolarBody[] {
   return [...otherPlanets, moonBody, sunBody];
 }
 
+// Caches active projection geometry for sub-millisecond canvas hit-testing
+let currentStarfieldResult: {
+  stars: ProjectedStar[];
+  inFieldBodies: InFieldBody[];
+} | null = null;
+
 function drawPlanetStarfield() {
   if (!state.selectedPlanet) return;
   const canvas = document.getElementById('planetStarfieldCanvas') as HTMLCanvasElement | null;
   if (!canvas) return;
 
-  const otherBodies = getOtherSolarBodies(state.selectedPlanet.key);
+  const effectiveDate = getStarfieldEffectiveDate();
+  const otherBodies = getOtherSolarBodies(state.selectedPlanet.key, effectiveDate);
 
-  renderStarfield(canvas, state.selectedPlanet, {
+  const res = renderStarfield(canvas, state.selectedPlanet, {
     fovDeg: state.starfieldFovDeg,
     maxMag: 6.0,
     showLabels: state.starfieldShowLabels,
+    showConstellationLines: state.starfieldShowLines,
     showReticle: true,
     showCompass: true,
     southUp: state.starfieldSouthUp,
     observerLat: state.location.lat,
     observerLon: state.location.lon,
-    currentDate: state.currentDate,
+    currentDate: effectiveDate,
     renderHorizon: true,
     dimBelowHorizon: true,
     otherBodies,
-    aperture: state.starfieldAperture
+    aperture: state.starfieldAperture,
+    selectedTarget: state.starfieldSelectedTarget
   });
+
+  currentStarfieldResult = {
+    stars: res.stars,
+    inFieldBodies: res.inFieldBodies
+  };
 }
 
 // ── Geolocation & IP Fallback ───────────────────────────────────────────────
@@ -863,17 +895,18 @@ function renderPlanetModal(): string {
   const isPrime = p.status.includes('Up all night') || p.status.includes('Evening');
   const pColors = PLANET_COLORS[p.key] || { fill: '#fed7aa', stroke: '#fb923c', glow: '', name: p.name };
 
+  const effectiveDate = getStarfieldEffectiveDate();
   const hp = computeHorizonParams(
     state.location.lat,
     state.location.lon,
-    state.currentDate,
+    effectiveDate,
     p.ra,
     p.dec
   );
   const planetAlt = hp.planetAltDeg;
   const isAboveHorizon = planetAlt >= 0;
 
-  const otherBodies = getOtherSolarBodies(p.key);
+  const otherBodies = getOtherSolarBodies(p.key, effectiveDate);
   const fovDeg = state.starfieldFovDeg;
   const bodiesInField = getBodiesInField(
     p.ra,
@@ -883,7 +916,7 @@ function renderPlanetModal(): string {
     360,
     state.starfieldSouthUp,
     otherBodies,
-    { lat: state.location.lat, lon: state.location.lon, date: state.currentDate },
+    { lat: state.location.lat, lon: state.location.lon, date: effectiveDate },
     state.starfieldAperture
   );
 
@@ -920,6 +953,15 @@ function renderPlanetModal(): string {
           </div>
 
           <div class="flex items-center gap-2">
+            <!-- Constellation Stick Lines Toggle Button -->
+            <button
+              id="btnToggleConstellationLines"
+              class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldShowLines ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 hover:bg-sky-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
+              title="Toggle zodiac constellation stick lines"
+            >
+              <span>${state.starfieldShowLines ? '✨ Lines' : '✨ Lines Off'}</span>
+            </button>
+
             <!-- Star Names Toggle Button -->
             <button
               id="btnToggleStarLabels"
@@ -1030,12 +1072,51 @@ function renderPlanetModal(): string {
           </div>
         </div>
 
+        <!-- Observation Time Scrubbing Toolbar -->
+        <div class="px-4 py-2 bg-[#0d1117] border-b border-[#30363d]/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-bold text-[#8b949e] uppercase tracking-wider flex items-center gap-1">
+              <span>🕒</span>
+              <span>Time:</span>
+            </span>
+            <span class="font-mono font-semibold text-xs ${state.starfieldTimeOffsetHours === 0 ? 'text-[#e6edf3]' : 'text-amber-300'}">
+              ${formatTime(effectiveDate)}
+              ${state.starfieldTimeOffsetHours !== 0
+                ? `<span class="text-[11px] font-normal text-amber-400 font-sans ml-1">(${state.starfieldTimeOffsetHours > 0 ? '+' : ''}${state.starfieldTimeOffsetHours.toFixed(1).replace(/\.0$/, '')}h)</span>`
+                : '<span class="text-[11px] font-normal text-emerald-400 font-sans ml-1">(Live)</span>'
+              }
+            </span>
+            ${state.starfieldTimeOffsetHours !== 0 ? `
+              <button id="btnTimeResetNow" class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition cursor-pointer" title="Reset to live current time">
+                Reset to Now
+              </button>
+            ` : ''}
+          </div>
+
+          <!-- Quick Time Presets & Steppers -->
+          <div class="flex items-center gap-1 flex-wrap">
+            <button id="btnTimeStepBack" class="w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-[#30363d] text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer text-xs font-bold" title="Step back 1 hour">◀</button>
+            
+            <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${state.starfieldTimeOffsetHours === 0 ? 'bg-emerald-500/25 text-emerald-200 border-emerald-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}" data-time-preset="now">Now</button>
+            
+            <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dusk" title="End of evening twilight (Astro Dusk tonight)">Dusk</button>
+            
+            <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="10pm" title="10:00 PM local evening observing">10 PM</button>
+            
+            <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="2am" title="2:00 AM local night observing">2 AM</button>
+            
+            <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dawn" title="Morning twilight (Astro Dawn)">Dawn</button>
+            
+            <button id="btnTimeStepForward" class="w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-[#30363d] text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer text-xs font-bold" title="Step forward 1 hour">▶</button>
+          </div>
+        </div>
+
         <!-- Starfield Canvas Container -->
         <div class="p-4 flex flex-col items-center justify-center overflow-y-auto">
           <div class="relative w-full max-w-[360px] aspect-square">
             <canvas
               id="planetStarfieldCanvas"
-              class="w-full h-full rounded-2xl border border-[#30363d] shadow-2xl block bg-[#020408]"
+              class="w-full h-full rounded-2xl border border-[#30363d] shadow-2xl block bg-[#020408] cursor-crosshair"
             ></canvas>
           </div>
 
@@ -1066,20 +1147,102 @@ function renderPlanetModal(): string {
               </div>
             </div>
 
-            <!-- Quick FOV Presets -->
+            <!-- Quick FOV Presets with Optical Instrument Tooltips -->
             <div class="flex items-center gap-1 flex-wrap justify-end">
-              ${[5, 10, 20, 30, 45].map(deg => `
+              ${[
+                { deg: 5, label: '5°', title: '5° Finder / 10×50 Binoculars' },
+                { deg: 10, label: '10°', title: '10° 7×50 Binoculars' },
+                { deg: 20, label: '20°', title: '20° Wide Finder / Telrad' },
+                { deg: 30, label: '30°', title: '30° Sky Scan' },
+                { deg: 45, label: '45°', title: '45° Naked Eye View' }
+              ].map(opt => `
                 <button
                   type="button"
-                  class="btnFovPreset px-2 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${state.starfieldFovDeg === deg ? 'bg-sky-500/25 text-sky-200 border-sky-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}"
-                  data-fov="${deg}"
-                  title="Set field of view to ${deg}°"
+                  class="btnFovPreset px-2 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${state.starfieldFovDeg === opt.deg ? 'bg-sky-500/25 text-sky-200 border-sky-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}"
+                  data-fov="${opt.deg}"
+                  title="${opt.title}"
                 >
-                  ${deg}°
+                  ${opt.label}
                 </button>
               `).join('')}
             </div>
           </div>
+
+          <!-- Active Optical Profile & Tap hint -->
+          <div class="w-full max-w-[360px] px-1 mt-1 text-[11px] text-[#8b949e] flex items-center justify-between">
+            <span class="text-sky-300/80 font-mono">
+              ${state.starfieldFovDeg === 5 ? '🔭 5° Finder / 10×50' :
+                state.starfieldFovDeg === 10 ? '🔭 10° 7×50 Binoculars' :
+                state.starfieldFovDeg === 20 ? '🔭 20° Wide Finder / Telrad' :
+                state.starfieldFovDeg === 30 ? '🔭 30° Wide Sky Scan' :
+                '👀 45° Naked Eye Central View'}
+            </span>
+            <span class="text-[10px] text-[#8b949e]">Tap any star to inspect & measure</span>
+          </div>
+
+          <!-- Unified Target Inspector & Celestial Ruler Card -->
+          ${state.starfieldSelectedTarget ? `
+            <div class="mt-3 w-full max-w-[360px] p-3 rounded-2xl bg-gradient-to-br from-[#1c2433] to-[#121822] border border-sky-500/40 shadow-xl flex flex-col gap-2.5 animate-fade-in text-xs">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">${state.starfieldSelectedTarget.type === 'star' ? '⭐' : state.starfieldSelectedTarget.type === 'planet' ? '🪐' : state.starfieldSelectedTarget.type === 'moon' ? '🌙' : '☀️'}</span>
+                  <div>
+                    <h4 class="font-bold text-[#e6edf3] text-sm leading-tight">${state.starfieldSelectedTarget.name}</h4>
+                    <span class="text-[10px] text-sky-400 font-mono">Celestial Ruler Active</span>
+                  </div>
+                </div>
+                <button id="btnDeselectTarget" class="p-1 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" title="Dismiss selection and ruler">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="p-2 rounded-xl bg-black/40 border border-white/5">
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Angular Separation</span>
+                  <span class="font-bold text-sky-300 text-sm font-mono">
+                    ${state.starfieldSelectedTarget.separationDeg < 1.0
+                      ? `${(state.starfieldSelectedTarget.separationDeg * 60).toFixed(1)}' (${(state.starfieldSelectedTarget.separationDeg * 3600).toFixed(0)}")`
+                      : `${state.starfieldSelectedTarget.separationDeg.toFixed(2)}°`
+                    }
+                  </span>
+                  <span class="text-[10px] text-[#8b949e] block">from ${p.name} center</span>
+                </div>
+
+                <div class="p-2 rounded-xl bg-black/40 border border-white/5">
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Bearing / Position Angle</span>
+                  <span class="font-bold text-sky-300 text-sm font-mono">
+                    ${state.starfieldSelectedTarget.bearingDeg.toFixed(0)}° (${state.starfieldSelectedTarget.bearingCompass})
+                  </span>
+                  <span class="text-[10px] text-[#8b949e] block">from North through East</span>
+                </div>
+
+                <div class="p-2 rounded-xl bg-black/40 border border-white/5">
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Apparent Magnitude</span>
+                  <span class="font-bold text-[#e6edf3] text-sm font-mono">
+                    ${state.starfieldSelectedTarget.mag !== undefined
+                      ? `${state.starfieldSelectedTarget.mag >= 0 ? '+' : ''}${state.starfieldSelectedTarget.mag.toFixed(2)}`
+                      : '—'
+                    }
+                  </span>
+                  <span class="text-[10px] text-[#8b949e] block">${state.starfieldSelectedTarget.mag !== undefined && state.starfieldSelectedTarget.mag <= 3 ? 'Bright Naked-Eye' : state.starfieldSelectedTarget.mag !== undefined && state.starfieldSelectedTarget.mag <= 6 ? 'Faint / Binocular' : 'Solar System'}</span>
+                </div>
+
+                <div class="p-2 rounded-xl bg-black/40 border border-white/5">
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Classification / Color</span>
+                  ${state.starfieldSelectedTarget.bv !== undefined ? `
+                    <div class="flex items-center gap-1.5 mt-0.5">
+                      <span class="w-2.5 h-2.5 rounded-full inline-block shrink-0 shadow-sm" style="background-color: ${bvToSpectralClass(state.starfieldSelectedTarget.bv).color}"></span>
+                      <span class="font-bold text-[#e6edf3] text-xs">${bvToSpectralClass(state.starfieldSelectedTarget.bv).type}</span>
+                    </div>
+                    <span class="text-[10px] text-[#8b949e] block truncate">${bvToSpectralClass(state.starfieldSelectedTarget.bv).desc}</span>
+                  ` : `
+                    <span class="font-bold text-[#e6edf3] text-xs capitalize">${state.starfieldSelectedTarget.type}</span>
+                    <span class="text-[10px] text-[#8b949e] block">Solar System Body</span>
+                  `}
+                </div>
+              </div>
+            </div>
+          ` : ''}
 
           <!-- Guide / Caption -->
           <div class="mt-2.5 text-center text-xs text-[#8b949e] max-w-sm">
@@ -1099,7 +1262,7 @@ function renderPlanetModal(): string {
                 : ''
               }
               ${!isAboveHorizon
-                ? `<span class="block mt-1.5 text-amber-300/90 font-medium">🌍 Target is currently ${Math.abs(planetAlt).toFixed(0)}° below the local horizon (${p.status}). Previewing night sky through the Earth.</span>`
+                ? `<span class="block mt-1.5 text-amber-300/90 font-medium">🌍 Target is currently ${Math.abs(planetAlt).toFixed(0)}° below the local horizon (${p.status}). Previewing night sky through the Earth. Use the time scrubber above to preview when it rises tonight.</span>`
                 : ''
               }
             </p>
@@ -1241,6 +1404,8 @@ function attachEventHandlers() {
       const p = state.planets.find(item => item.key === pKey);
       if (p) {
         state.selectedPlanet = p;
+        state.starfieldTimeOffsetHours = 0;
+        state.starfieldSelectedTarget = null;
         render();
       }
     });
@@ -1260,15 +1425,108 @@ function attachEventHandlers() {
       const target = state.planets.find(item => item.key === key);
       if (target) {
         state.selectedPlanet = target;
+        state.starfieldSelectedTarget = null;
         render();
       }
     });
+  });
+
+  // Toggle Constellation Stick Lines
+  document.getElementById('btnToggleConstellationLines')?.addEventListener('click', () => {
+    state.starfieldShowLines = !state.starfieldShowLines;
+    render();
   });
 
   // Toggle Star Names / Labels
   document.getElementById('btnToggleStarLabels')?.addEventListener('click', () => {
     state.starfieldShowLabels = !state.starfieldShowLabels;
     render();
+  });
+
+  // Canvas Tap / Click -> Tap-to-Inspect & Celestial Ruler
+  const starfieldCanvas = document.getElementById('planetStarfieldCanvas') as HTMLCanvasElement | null;
+  if (starfieldCanvas && currentStarfieldResult && state.selectedPlanet) {
+    starfieldCanvas.addEventListener('click', (e) => {
+      const rect = starfieldCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      const hit = hitTestStarfield(
+        clickX,
+        clickY,
+        currentStarfieldResult!.stars,
+        currentStarfieldResult!.inFieldBodies,
+        state.selectedPlanet!
+      );
+
+      if (hit) {
+        state.starfieldSelectedTarget = hit;
+        render();
+      } else {
+        if (state.starfieldSelectedTarget) {
+          state.starfieldSelectedTarget = null;
+          render();
+        }
+      }
+    });
+  }
+
+  // Deselect target / dismiss ruler
+  document.getElementById('btnDeselectTarget')?.addEventListener('click', () => {
+    state.starfieldSelectedTarget = null;
+    render();
+  });
+
+  // Observation Time Scrubbing Controls
+  document.getElementById('btnTimeResetNow')?.addEventListener('click', () => {
+    state.starfieldTimeOffsetHours = 0;
+    render();
+  });
+
+  document.getElementById('btnTimeStepBack')?.addEventListener('click', () => {
+    state.starfieldTimeOffsetHours -= 1;
+    render();
+  });
+
+  document.getElementById('btnTimeStepForward')?.addEventListener('click', () => {
+    state.starfieldTimeOffsetHours += 1;
+    render();
+  });
+
+  document.querySelectorAll<HTMLElement>('.btnTimePreset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = btn.getAttribute('data-time-preset');
+      if (preset === 'now') {
+        state.starfieldTimeOffsetHours = 0;
+      } else if (preset === 'dusk') {
+        if (state.sunEvents?.astroDusk) {
+          const diffH = (state.sunEvents.astroDusk.getTime() - state.currentDate.getTime()) / 3600000;
+          state.starfieldTimeOffsetHours = Math.round(diffH * 10) / 10;
+        } else {
+          state.starfieldTimeOffsetHours = 6;
+        }
+      } else if (preset === '10pm') {
+        const target = new Date(state.currentDate);
+        target.setHours(22, 0, 0, 0);
+        let diffH = (target.getTime() - state.currentDate.getTime()) / 3600000;
+        if (diffH < -3) diffH += 24;
+        state.starfieldTimeOffsetHours = Math.round(diffH * 10) / 10;
+      } else if (preset === '2am') {
+        const target = new Date(state.currentDate);
+        target.setHours(2, 0, 0, 0);
+        let diffH = (target.getTime() - state.currentDate.getTime()) / 3600000;
+        if (diffH < 0) diffH += 24;
+        state.starfieldTimeOffsetHours = Math.round(diffH * 10) / 10;
+      } else if (preset === 'dawn') {
+        if (state.sunEvents?.astroDawn) {
+          const diffH = (state.sunEvents.astroDawn.getTime() - state.currentDate.getTime()) / 3600000;
+          state.starfieldTimeOffsetHours = Math.round(diffH * 10) / 10;
+        } else {
+          state.starfieldTimeOffsetHours = 12;
+        }
+      }
+      render();
+    });
   });
 
   // Zoom In / Out & FOV Presets
@@ -1339,15 +1597,18 @@ function attachEventHandlers() {
   });
 
   // Close Planet Modal
-  document.getElementById('btnClosePlanetModal')?.addEventListener('click', () => {
+  const closePlanetModal = () => {
     state.selectedPlanet = null;
+    state.starfieldSelectedTarget = null;
+    state.starfieldTimeOffsetHours = 0;
     render();
-  });
+  };
+
+  document.getElementById('btnClosePlanetModal')?.addEventListener('click', closePlanetModal);
 
   document.getElementById('planetModalOverlay')?.addEventListener('click', (e) => {
     if ((e.target as HTMLElement).id === 'planetModalOverlay') {
-      state.selectedPlanet = null;
-      render();
+      closePlanetModal();
     }
   });
 }
@@ -1357,6 +1618,8 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (state.selectedPlanet) {
       state.selectedPlanet = null;
+      state.starfieldSelectedTarget = null;
+      state.starfieldTimeOffsetHours = 0;
       render();
     } else if (state.searchOpen) {
       state.searchOpen = false;

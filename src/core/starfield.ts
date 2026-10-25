@@ -1,4 +1,5 @@
 import { ZODIAC_STARS } from './zodiacStars.ts';
+import { ZODIAC_CONSTELLATION_LINES } from './constellationLines.ts';
 
 export interface ProjectedStar {
   ra: number;
@@ -68,10 +69,27 @@ export interface InFieldBody {
   phaseName?: string;
 }
 
+export interface SelectedStarfieldTarget {
+  type: 'star' | 'planet' | 'moon' | 'sun';
+  name: string;
+  mag?: number;
+  bv?: number;
+  ra: number;
+  dec: number;
+  px: number;
+  py: number;
+  separationDeg: number;  // Angular separation from center target planet
+  bearingDeg: number;     // Astronomical position angle from North through East (0..360°)
+  bearingCompass: string; // 16-point compass bearing (e.g. 'ENE')
+  alt?: number;           // Astronomical altitude in degrees
+  isBelowHorizon?: boolean;
+}
+
 export interface StarfieldOptions {
   fovDeg?: number;          // Field of view in degrees (default: 10.0)
   maxMag?: number;          // Magnitude cutoff (default: 6.0)
   showLabels?: boolean;     // Show star names/Bayer designations (default: true)
+  showConstellationLines?: boolean; // Show stick figure lines (default: false)
   showReticle?: boolean;    // Show 1° Telrad-style reticle (default: true)
   showCompass?: boolean;    // Show N/E/S/W indicators (default: true)
   southUp?: boolean;        // Invert view for Southern hemisphere (default: false)
@@ -82,6 +100,7 @@ export interface StarfieldOptions {
   dimBelowHorizon?: boolean;// Dim stars located below the horizon (default: true)
   otherBodies?: OtherSolarBody[]; // Companion planets, Moon, Sun to check for and render in the field
   aperture?: 'circular' | 'square'; // 'circular' (default, 5° radius eyepiece) or 'square' (10°x10° sensor)
+  selectedTarget?: SelectedStarfieldTarget | null; // Highlighted object with celestial ruler
 }
 
 export const PLANET_COLORS: Record<string, { fill: string; stroke: string; glow: string; name: string }> = {
@@ -144,6 +163,55 @@ export function bvToColor(bv: number): string {
   if (bv < 0.65)  return '#fff8ee'; // G class: warm solar yellow-white
   if (bv < 1.15)  return '#ffd7a0'; // K class: golden-orange
   return '#ff9e59';                 // M class: reddish-orange (Betelgeuse / Antares)
+}
+
+/**
+ * Returns Harvard spectral classification and descriptive label based on Johnson B-V color index.
+ */
+export function bvToSpectralClass(bv: number): { type: string; desc: string; color: string } {
+  if (bv < -0.15) return { type: 'Class O/B', desc: 'Blue-White (Very Hot)', color: '#9bb0ff' };
+  if (bv < 0.05)  return { type: 'Class A', desc: 'White Main Sequence', color: '#c8d7ff' };
+  if (bv < 0.35)  return { type: 'Class F', desc: 'Yellow-White Star', color: '#f4f6ff' };
+  if (bv < 0.65)  return { type: 'Class G', desc: 'Solar-type Yellow Star', color: '#fff8ee' };
+  if (bv < 1.15)  return { type: 'Class K', desc: 'Golden-Orange Giant', color: '#ffd7a0' };
+  return { type: 'Class M', desc: 'Cool Red Giant / Supergiant', color: '#ff9e59' };
+}
+
+/**
+ * Calculates standard astronomical Position Angle (bearing) in degrees (0° = North, 90° = East, 180° = South, 270° = West)
+ * from center celestial coordinate (ra1, dec1) to target (ra2, dec2).
+ */
+export function calculatePositionAngleDeg(
+  ra1Deg: number,
+  dec1Deg: number,
+  ra2Deg: number,
+  dec2Deg: number
+): number {
+  const d2r = Math.PI / 180;
+  const dRa = (ra2Deg - ra1Deg) * d2r;
+  const d1 = dec1Deg * d2r;
+  const d2 = dec2Deg * d2r;
+
+  const y = Math.sin(dRa) * Math.cos(d2);
+  const x = Math.cos(d1) * Math.sin(d2) - Math.sin(d1) * Math.cos(d2) * Math.cos(dRa);
+
+  const paRad = Math.atan2(y, x);
+  return ((paRad / d2r) % 360 + 360) % 360;
+}
+
+/**
+ * Converts degree bearing (0° to 360°) to 16-wind compass abbreviation (e.g. NNE, ESE, SW).
+ */
+export function formatCompassBearing(deg: number): string {
+  const COMPASS_POINTS = [
+    'N', 'NNE', 'NE', 'ENE',
+    'E', 'ESE', 'SE', 'SSE',
+    'S', 'SSW', 'SW', 'WSW',
+    'W', 'WNW', 'NW', 'NNW'
+  ];
+  const norm = ((deg % 360) + 360) % 360;
+  const index = Math.round(norm / 22.5) % 16;
+  return COMPASS_POINTS[index];
 }
 
 /**
@@ -499,6 +567,89 @@ export function getStarsInField(
 }
 
 /**
+ * Hit-tests user tap/click coordinates against in-field bodies and stars.
+ * Returns the closest celestial target within the hit threshold, or null if empty space.
+ */
+export function hitTestStarfield(
+  clickPx: number,
+  clickPy: number,
+  stars: ProjectedStar[],
+  bodies: InFieldBody[],
+  centerPlanet: PlanetFieldData,
+  thresholdPx: number = 20
+): SelectedStarfieldTarget | null {
+  // Check solar system bodies first (higher visual priority)
+  let bestBody: InFieldBody | null = null;
+  let bestBodyDist = Infinity;
+
+  for (const b of bodies) {
+    const dx = clickPx - b.px;
+    const dy = clickPy - b.py;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const hitRadius = Math.max(thresholdPx, b.radius + 10);
+    if (dist <= hitRadius && dist < bestBodyDist) {
+      bestBodyDist = dist;
+      bestBody = b;
+    }
+  }
+
+  if (bestBody) {
+    const sep = angularSeparationDeg(centerPlanet.ra, centerPlanet.dec, bestBody.ra, bestBody.dec);
+    const bearing = calculatePositionAngleDeg(centerPlanet.ra, centerPlanet.dec, bestBody.ra, bestBody.dec);
+    return {
+      type: bestBody.type,
+      name: bestBody.name,
+      ra: bestBody.ra,
+      dec: bestBody.dec,
+      px: bestBody.px,
+      py: bestBody.py,
+      separationDeg: sep,
+      bearingDeg: bearing,
+      bearingCompass: formatCompassBearing(bearing),
+      alt: bestBody.alt,
+      isBelowHorizon: bestBody.isBelowHorizon
+    };
+  }
+
+  // Check stars in the field
+  let bestStar: ProjectedStar | null = null;
+  let bestStarDist = Infinity;
+
+  for (const s of stars) {
+    const dx = clickPx - s.px;
+    const dy = clickPy - s.py;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const hitRadius = Math.max(thresholdPx, s.radius + 8);
+    if (dist <= hitRadius && dist < bestStarDist) {
+      bestStarDist = dist;
+      bestStar = s;
+    }
+  }
+
+  if (bestStar) {
+    const sep = angularSeparationDeg(centerPlanet.ra, centerPlanet.dec, bestStar.ra, bestStar.dec);
+    const bearing = calculatePositionAngleDeg(centerPlanet.ra, centerPlanet.dec, bestStar.ra, bestStar.dec);
+    return {
+      type: 'star',
+      name: bestStar.name || 'Unnamed Field Star',
+      mag: bestStar.mag,
+      bv: bestStar.bv,
+      ra: bestStar.ra,
+      dec: bestStar.dec,
+      px: bestStar.px,
+      py: bestStar.py,
+      separationDeg: sep,
+      bearingDeg: bearing,
+      bearingCompass: formatCompassBearing(bearing),
+      alt: bestStar.alt,
+      isBelowHorizon: bestStar.isBelowHorizon
+    };
+  }
+
+  return null;
+}
+
+/**
  * High-DPI canvas renderer for a 10° centered planet starfield.
  * Fully supports circular telescope/binocular eyepiece aperture, companion planets, Moon, Sun,
  * Southern hemisphere South-Up mode, and horizon rendering / below-horizon dimming.
@@ -538,7 +689,7 @@ export function renderStarfield(
     );
   }
 
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
   const rect = canvas.getBoundingClientRect();
   const cssWidth = Math.round(rect.width || 360);
   const cssHeight = Math.round(rect.height || 360);
@@ -638,6 +789,31 @@ export function renderStarfield(
       ctx.fillText('━━━ HORIZON ━━━', 0, -3);
       ctx.restore();
     }
+  }
+
+  // 2b. Zodiac Constellation Stick Lines (if enabled)
+  if (options.showConstellationLines) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(96, 165, 250, 0.28)';
+    ctx.lineWidth = 1.0;
+    ctx.setLineDash([4, 4]);
+
+    for (const seg of ZODIAC_CONSTELLATION_LINES) {
+      const p1 = projectCoordinates(seg.ra1, seg.dec1, planet.ra, planet.dec);
+      const p2 = projectCoordinates(seg.ra2, seg.dec2, planet.ra, planet.dec);
+      if (!p1 || !p2) continue;
+
+      const px1 = southUp ? cssWidth / 2 + p1.x * scaleX : cssWidth / 2 - p1.x * scaleX;
+      const py1 = southUp ? cssHeight / 2 + p1.y * scaleY : cssHeight / 2 - p1.y * scaleY;
+      const px2 = southUp ? cssWidth / 2 + p2.x * scaleX : cssWidth / 2 - p2.x * scaleX;
+      const py2 = southUp ? cssHeight / 2 + p2.y * scaleY : cssHeight / 2 - p2.y * scaleY;
+
+      ctx.beginPath();
+      ctx.moveTo(px1, py1);
+      ctx.lineTo(px2, py2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // 3. Compute & Draw Stars
@@ -1030,6 +1206,93 @@ export function renderStarfield(
   ctx.fillText(`${planet.symbol} ${planet.name}${isPlanetBelow ? ' (Below)' : ''}`, cx + 9, cy - 8);
 
   ctx.restore();
+
+  // 7b. Selected Target Reticle & Celestial Ruler
+  if (options.selectedTarget) {
+    const sel = options.selectedTarget;
+    const proj = projectCoordinates(sel.ra, sel.dec, planet.ra, planet.dec);
+    if (proj) {
+      const selPx = southUp ? cx + proj.x * scaleX : cx - proj.x * scaleX;
+      const selPy = southUp ? cy + proj.y * scaleY : cy - proj.y * scaleY;
+
+      ctx.save();
+
+      // 1. Dashed celestial ruler line from center planet to target
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.75;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(selPx, selPy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 2. Selection Reticle around target
+      const reticleGlow = ctx.createRadialGradient(selPx, selPy, 4, selPx, selPy, 18);
+      reticleGlow.addColorStop(0, 'rgba(56, 189, 248, 0.40)');
+      reticleGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = reticleGlow;
+      ctx.beginPath();
+      ctx.arc(selPx, selPy, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Dual concentric reticle rings
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(selPx, selPy, 10, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.arc(selPx, selPy, 5, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 4 crosshair ticks
+      const rInner = 10;
+      const rOuter = 16;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(selPx, selPy - rOuter); ctx.lineTo(selPx, selPy - rInner);
+      ctx.moveTo(selPx, selPy + rOuter); ctx.lineTo(selPx, selPy + rInner);
+      ctx.moveTo(selPx - rOuter, selPy); ctx.lineTo(selPx - rInner, selPy);
+      ctx.moveTo(selPx + rOuter, selPy); ctx.lineTo(selPx + rInner, selPy);
+      ctx.stroke();
+
+      // 3. Distance & Bearing Badge at ruler midpoint
+      const midX = (cx + selPx) / 2;
+      const midY = (cy + selPy) / 2;
+      const sep = sel.separationDeg;
+      const sepText = sep < 1.0 ? `${(sep * 60).toFixed(1)}'` : `${sep.toFixed(2)}°`;
+      const badgeText = `${sepText} · ${sel.bearingDeg.toFixed(0)}° ${sel.bearingCompass}`;
+
+      ctx.font = 'bold 9.5px monospace';
+      const textW = ctx.measureText(badgeText).width;
+      const padX = 6;
+      const padY = 3;
+      const badgeW = textW + padX * 2;
+      const badgeH = 14 + padY;
+
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.92)';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(midX - badgeW / 2, midY - badgeH / 2, badgeW, badgeH, 4);
+      } else {
+        ctx.rect(midX - badgeW / 2, midY - badgeH / 2, badgeW, badgeH);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badgeText, midX, midY + 0.5);
+
+      ctx.restore();
+    }
+  }
 
   // End circular aperture clipping if active
   if (aperture === 'circular') {
