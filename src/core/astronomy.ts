@@ -56,7 +56,7 @@ export interface ConstellationInfo {
 
 // ── 1. Solar Altitude & Twilights ──────────────────────────────────────────
 
-export function sunPosition(date: Date): { ra: number; dec: number } {
+export function getSunCoordinates(date: Date): { ra: number; dec: number; ecLon: number } {
   const jd = date.getTime() / 86400000 + 2440587.5;
   const n = jd - 2451545.0;
   const L = (280.460 + 0.9856474 * n) % 360;
@@ -68,7 +68,13 @@ export function sunPosition(date: Date): { ra: number; dec: number } {
   const delta = Math.asin(Math.sin(eps) * Math.sin(lambda));
   const ra = ((alpha * 180 / Math.PI) % 360 + 360) % 360;
   const dec = delta * 180 / Math.PI;
-  return { ra, dec };
+  const ecLon = ((lambda * 180 / Math.PI) % 360 + 360) % 360;
+  return { ra, dec, ecLon };
+}
+
+export function sunPosition(date: Date): { ra: number; dec: number } {
+  const c = getSunCoordinates(date);
+  return { ra: c.ra, dec: c.dec };
 }
 
 export function solarAltitude(date: Date, latitude: number, longitude: number): number {
@@ -225,7 +231,7 @@ export function calculateMoonInfo(date: Date, latitude?: number, longitude?: num
   };
 }
 
-export function moonPosition(date: Date): { ra: number; dec: number } {
+export function getMoonEclipticCoordinates(date: Date): { ra: number; dec: number; ecLon: number } {
   const jd = date.getTime() / 86400000 + 2440587.5;
   const d = jd - 2451545.0;
   const T = d / 36525;
@@ -263,7 +269,12 @@ export function moonPosition(date: Date): { ra: number; dec: number } {
   const x = Math.cos(bR) * Math.cos(lR);
   const ra = ((Math.atan2(y, x) * DEG) % 360 + 360) % 360;
 
-  return { ra, dec };
+  return { ra, dec, ecLon: l };
+}
+
+export function moonPosition(date: Date): { ra: number; dec: number } {
+  const c = getMoonEclipticCoordinates(date);
+  return { ra: c.ra, dec: c.dec };
 }
 
 /**
@@ -591,6 +602,56 @@ export function calculateAllPlanets(refDate: Date, latitude: number, longitude: 
     if (p) out.push(p);
   }
   return out;
+}
+
+export function calculateMoonPlanetInfo(
+  refDate: Date,
+  latitude: number,
+  longitude: number,
+  moonInfo?: MoonInfo | null
+): PlanetInfo {
+  const mCoords = getMoonEclipticCoordinates(refDate);
+  const mRiseSet = calculateMoonRiseSet(refDate, latitude, longitude);
+  const cInfo = getConstellation(mCoords.ecLon);
+  const mInf = moonInfo ?? calculateMoonInfo(refDate, latitude, longitude);
+  const stat = `${mInf.name} · ${mInf.illum}% lit`;
+
+  return {
+    key: 'moon',
+    name: 'Moon',
+    symbol: mInf.glyph || '🌙',
+    rise: mRiseSet.rise,
+    set: mRiseSet.set,
+    status: stat,
+    constellation: cInfo.name,
+    ecLon: mCoords.ecLon,
+    ra: mCoords.ra,
+    dec: mCoords.dec
+  };
+}
+
+export function calculateSunPlanetInfo(
+  refDate: Date,
+  latitude: number,
+  longitude: number,
+  sunEvents?: SunEvents | null
+): PlanetInfo {
+  const sCoords = getSunCoordinates(refDate);
+  const sEvents = sunEvents ?? calculateSunEvents(refDate, latitude, longitude);
+  const cInfo = getConstellation(sCoords.ecLon);
+
+  return {
+    key: 'sun',
+    name: 'Sun',
+    symbol: '☀️',
+    rise: sEvents?.sunrise ?? null,
+    set: sEvents?.sunset ?? null,
+    status: 'Daylight / Solar',
+    constellation: cInfo.name,
+    ecLon: sCoords.ecLon,
+    ra: sCoords.ra,
+    dec: sCoords.dec
+  };
 }
 
 // ── 5. Formatting Helpers ──────────────────────────────────────────────────

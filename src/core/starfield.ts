@@ -1,5 +1,6 @@
 import { ZODIAC_STARS } from './zodiacStars.ts';
 import { ZODIAC_CONSTELLATION_LINES } from './constellationLines.ts';
+import { calculateMoonInfo } from './astronomy.ts';
 
 export interface ProjectedStar {
   ra: number;
@@ -122,6 +123,8 @@ export interface StarfieldOptions {
 }
 
 export const PLANET_COLORS: Record<string, { fill: string; stroke: string; glow: string; name: string }> = {
+  moon:    { fill: '#fef3c7', stroke: '#f59e0b', glow: 'rgba(254, 243, 199, 0.65)', name: 'Moon' },
+  sun:     { fill: '#fef08a', stroke: '#eab308', glow: 'rgba(251, 191, 36, 0.75)', name: 'Sun' },
   mercury: { fill: '#cbd5e1', stroke: '#94a3b8', glow: 'rgba(203, 213, 225, 0.45)', name: 'Mercury' },
   venus:   { fill: '#ffffff', stroke: '#cbd5e1', glow: 'rgba(255, 255, 255, 0.85)', name: 'Venus' },
   mars:    { fill: '#f87171', stroke: '#ef4444', glow: 'rgba(248, 113, 113, 0.55)', name: 'Mars' },
@@ -1323,34 +1326,132 @@ export function renderStarfield(
     ctx.globalAlpha = 0.85;
   }
 
-  // Planet outer atmospheric glow
-  const pGlow = ctx.createRadialGradient(cx, cy, 2, cx, cy, 18);
-  pGlow.addColorStop(0, isPlanetBelow ? 'rgba(148, 163, 184, 0.25)' : pStyle.glow);
-  pGlow.addColorStop(1, 'transparent');
-  ctx.fillStyle = pGlow;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-  ctx.fill();
+  if (planet.key === 'moon') {
+    const moonRadius = Math.max(8.0, Math.tan((0.5 / 2) * d2r) * scaleX);
 
-  // Planet disc
-  ctx.fillStyle = pStyle.fill;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 5.0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = pStyle.stroke;
-  ctx.lineWidth = 1.5;
-  if (isPlanetBelow) {
-    ctx.setLineDash([3, 2]);
+    // 1. Soft outer lunar glow
+    const mGlow = ctx.createRadialGradient(cx, cy, moonRadius * 0.5, cx, cy, moonRadius * 2.5);
+    mGlow.addColorStop(0, isPlanetBelow ? 'rgba(148, 163, 184, 0.25)' : 'rgba(226, 232, 240, 0.50)');
+    mGlow.addColorStop(0.5, isPlanetBelow ? 'rgba(148, 163, 184, 0.10)' : 'rgba(203, 213, 225, 0.18)');
+    mGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = mGlow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, moonRadius * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Opaque Earthshine base disc (solidly occults background stars)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(cx, cy, moonRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.55)';
+    ctx.lineWidth = 1.0;
+    if (isPlanetBelow) ctx.setLineDash([3, 2]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 3. Real-time illuminated phase disc with Bezier terminator
+    const mInfo = calculateMoonInfo(currentDate);
+    const cyclePos = mInfo.cyclePos;
+    const phase = Math.max(0, Math.min(1, cyclePos));
+    const k = 1.333333;
+
+    if (phase > 0.001 && phase < 0.999) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, moonRadius, 0, Math.PI * 2);
+      ctx.clip();
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - moonRadius);
+      if (phase <= 0.5) {
+        // Waxing
+        ctx.bezierCurveTo(cx + k * moonRadius, cy - moonRadius, cx + k * moonRadius, cy + moonRadius, cx, cy + moonRadius);
+        const p = cx + k * moonRadius * Math.cos(2 * Math.PI * phase);
+        ctx.bezierCurveTo(p, cy + moonRadius, p, cy - moonRadius, cx, cy - moonRadius);
+      } else {
+        // Waning
+        ctx.bezierCurveTo(cx - k * moonRadius, cy - moonRadius, cx - k * moonRadius, cy + moonRadius, cx, cy + moonRadius);
+        const p = cx - k * moonRadius * Math.cos(2 * Math.PI * phase);
+        ctx.bezierCurveTo(p, cy + moonRadius, p, cy - moonRadius, cx, cy - moonRadius);
+      }
+      ctx.closePath();
+      ctx.fillStyle = isPlanetBelow ? '#cbd5e1' : '#fef3c7';
+      ctx.fill();
+      ctx.restore();
+    } else if (phase >= 0.999) {
+      ctx.fillStyle = isPlanetBelow ? '#cbd5e1' : '#fef3c7';
+      ctx.beginPath();
+      ctx.arc(cx, cy, moonRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Label beside Moon
+    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = isPlanetBelow ? '#cbd5e1' : '#ffffff';
+    ctx.fillText(`${planet.symbol} ${planet.name} (${mInfo.name})${isPlanetBelow ? ' (Below)' : ''}`, cx + moonRadius + 8, cy - 4);
+    ctx.restore();
+
+  } else if (planet.key === 'sun') {
+    const sunRadius = Math.max(9.0, Math.tan((0.53 / 2) * d2r) * scaleX);
+
+    // Coronal outer glow
+    const sGlow = ctx.createRadialGradient(cx, cy, sunRadius * 0.5, cx, cy, sunRadius * 3.5);
+    sGlow.addColorStop(0, isPlanetBelow ? 'rgba(148, 163, 184, 0.35)' : 'rgba(254, 240, 138, 0.85)');
+    sGlow.addColorStop(0.35, isPlanetBelow ? 'rgba(148, 163, 184, 0.15)' : 'rgba(245, 158, 11, 0.35)');
+    sGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = sGlow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, sunRadius * 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Solar core disc (occults background stars)
+    ctx.fillStyle = isPlanetBelow ? '#94a3b8' : '#fef08a';
+    ctx.beginPath();
+    ctx.arc(cx, cy, sunRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.5;
+    if (isPlanetBelow) ctx.setLineDash([3, 2]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label beside Sun
+    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = isPlanetBelow ? '#cbd5e1' : '#ffffff';
+    ctx.fillText(`${planet.symbol} ${planet.name}${isPlanetBelow ? ' (Below)' : ''}`, cx + sunRadius + 8, cy - 4);
+    ctx.restore();
+
+  } else {
+    // Standard Planet atmospheric glow
+    const pGlow = ctx.createRadialGradient(cx, cy, 2, cx, cy, 18);
+    pGlow.addColorStop(0, isPlanetBelow ? 'rgba(148, 163, 184, 0.25)' : pStyle.glow);
+    pGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = pGlow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Planet disc
+    ctx.fillStyle = pStyle.fill;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5.0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = pStyle.stroke;
+    ctx.lineWidth = 1.5;
+    if (isPlanetBelow) {
+      ctx.setLineDash([3, 2]);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Planet label beside center disc
+    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = isPlanetBelow ? '#cbd5e1' : '#ffffff';
+    ctx.fillText(`${planet.symbol} ${planet.name}${isPlanetBelow ? ' (Below)' : ''}`, cx + 9, cy - 8);
+
+    ctx.restore();
   }
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Planet label beside center disc
-  ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillStyle = isPlanetBelow ? '#cbd5e1' : '#ffffff';
-  ctx.fillText(`${planet.symbol} ${planet.name}${isPlanetBelow ? ' (Below)' : ''}`, cx + 9, cy - 8);
-
-  ctx.restore();
 
   // 7b. Selected Target Reticle & Celestial Ruler
   if (options.selectedTarget) {

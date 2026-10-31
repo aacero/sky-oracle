@@ -8,6 +8,8 @@ import {
   calculateMoonRiseSet,
   lunarAltitude,
   calculateAllPlanets,
+  calculateMoonPlanetInfo,
+  calculateSunPlanetInfo,
   getConstellation,
   formatHour,
   formatHourCompact,
@@ -189,6 +191,42 @@ describe('Astronomy Engine', () => {
       expect(formatHourCompact(7)).toBe('7a');
       expect(formatHourCompact(12)).toBe('12p');
       expect(formatHourCompact(21)).toBe('9p');
+    });
+  });
+
+  describe('Solar System Targets (Moon & Sun PlanetInfo)', () => {
+    it('generates valid PlanetInfo for Moon', () => {
+      const moonInfo = calculateMoonInfo(EQUINOX_DATE, ST_AUGUSTINE.lat, ST_AUGUSTINE.lon);
+      const moonTarget = calculateMoonPlanetInfo(EQUINOX_DATE, ST_AUGUSTINE.lat, ST_AUGUSTINE.lon, moonInfo);
+
+      expect(moonTarget.key).toBe('moon');
+      expect(moonTarget.name).toBe('Moon');
+      expect(moonTarget.symbol).toBe(moonInfo.glyph);
+      expect(moonTarget.ra).toBeGreaterThanOrEqual(0);
+      expect(moonTarget.ra).toBeLessThan(360);
+      expect(moonTarget.dec).toBeGreaterThanOrEqual(-30);
+      expect(moonTarget.dec).toBeLessThanOrEqual(30);
+      expect(moonTarget.constellation).toBeTruthy();
+      expect(moonTarget.status).toContain(`${moonInfo.illum}% lit`);
+      expect(moonTarget.rise).toBeInstanceOf(Date);
+      expect(moonTarget.set).toBeInstanceOf(Date);
+    });
+
+    it('generates valid PlanetInfo for Sun', () => {
+      const sunEvents = calculateSunEvents(EQUINOX_DATE, ST_AUGUSTINE.lat, ST_AUGUSTINE.lon);
+      const sunTarget = calculateSunPlanetInfo(EQUINOX_DATE, ST_AUGUSTINE.lat, ST_AUGUSTINE.lon, sunEvents);
+
+      expect(sunTarget.key).toBe('sun');
+      expect(sunTarget.name).toBe('Sun');
+      expect(sunTarget.symbol).toBe('☀️');
+      expect(sunTarget.ra).toBeGreaterThanOrEqual(0);
+      expect(sunTarget.ra).toBeLessThan(360);
+      expect(sunTarget.dec).toBeGreaterThanOrEqual(-25);
+      expect(sunTarget.dec).toBeLessThanOrEqual(25);
+      expect(sunTarget.constellation).toBe('Virgo'); // Equinox in late Sept is in Virgo
+      expect(sunTarget.status).toBe('Daylight / Solar');
+      expect(sunTarget.rise).toBeInstanceOf(Date);
+      expect(sunTarget.set).toBeInstanceOf(Date);
     });
   });
 });

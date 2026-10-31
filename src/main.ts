@@ -2,6 +2,8 @@ import {
   calculateSunEvents,
   calculateMoonInfo,
   calculateAllPlanets,
+  calculateMoonPlanetInfo,
+  calculateSunPlanetInfo,
   sunPosition,
   getMoonCoordinates,
   formatTime,
@@ -44,7 +46,7 @@ import {
   StarfieldOrientation
 } from './core/starfield.ts';
 
-export const APP_VERSION = '1.0.14';
+export const APP_VERSION = '1.0.16';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -72,6 +74,8 @@ interface AppState {
   searchResults: GeocodingResult[];
   searchLoading: boolean;
   installPrompt: any | null;
+  tourModalOpen: boolean;
+  tourSlideIndex: number;
 }
 
 const initialLoc = loadLocation();
@@ -98,7 +102,9 @@ const state: AppState = {
   searchQuery: '',
   searchResults: [],
   searchLoading: false,
-  installPrompt: null
+  installPrompt: null,
+  tourModalOpen: false,
+  tourSlideIndex: 0
 };
 
 // ── PWA Install Prompt Listener ─────────────────────────────────────────────
@@ -265,6 +271,22 @@ function getStarfieldEffectiveDate(): Date {
   return new Date(state.currentDate.getTime() + state.starfieldTimeOffsetHours * 3600 * 1000);
 }
 
+function getTargetEffectiveCoordinates(p: PlanetInfo, obsDate: Date): { ra: number; dec: number } {
+  if (p.key === 'moon') {
+    return getMoonCoordinates(obsDate);
+  }
+  if (p.key === 'sun') {
+    return sunPosition(obsDate);
+  }
+  return { ra: p.ra, dec: p.dec };
+}
+
+function getAllSolarTargets(st: AppState): PlanetInfo[] {
+  const moonObj = calculateMoonPlanetInfo(st.currentDate, st.location.lat, st.location.lon, st.moon);
+  const sunObj = calculateSunPlanetInfo(st.currentDate, st.location.lat, st.location.lon, st.sunEvents);
+  return [moonObj, ...st.planets, sunObj];
+}
+
 function getOtherSolarBodies(excludePlanetKey: string, obsDate: Date = state.currentDate): OtherSolarBody[] {
   const otherPlanets: OtherSolarBody[] = state.planets
     .filter(p => p.key !== excludePlanetKey)
@@ -277,29 +299,35 @@ function getOtherSolarBodies(excludePlanetKey: string, obsDate: Date = state.cur
       dec: p.dec
     }));
 
-  const moonCoords = getMoonCoordinates(obsDate);
-  const moonBody: OtherSolarBody = {
-    type: 'moon',
-    key: 'moon',
-    name: 'Moon',
-    symbol: '🌙',
-    ra: moonCoords.ra,
-    dec: moonCoords.dec,
-    phaseFraction: state.moon ? state.moon.illum / 100 : 0.5,
-    phaseName: state.moon ? state.moon.name : 'Moon'
-  };
+  const bodies: OtherSolarBody[] = [...otherPlanets];
 
-  const sunCoords = sunPosition(obsDate);
-  const sunBody: OtherSolarBody = {
-    type: 'sun',
-    key: 'sun',
-    name: 'Sun',
-    symbol: '☀️',
-    ra: sunCoords.ra,
-    dec: sunCoords.dec
-  };
+  if (excludePlanetKey !== 'moon') {
+    const moonCoords = getMoonCoordinates(obsDate);
+    bodies.push({
+      type: 'moon',
+      key: 'moon',
+      name: 'Moon',
+      symbol: '🌙',
+      ra: moonCoords.ra,
+      dec: moonCoords.dec,
+      phaseFraction: state.moon ? state.moon.illum / 100 : 0.5,
+      phaseName: state.moon ? state.moon.name : 'Moon'
+    });
+  }
 
-  return [...otherPlanets, moonBody, sunBody];
+  if (excludePlanetKey !== 'sun') {
+    const sunCoords = sunPosition(obsDate);
+    bodies.push({
+      type: 'sun',
+      key: 'sun',
+      name: 'Sun',
+      symbol: '☀️',
+      ra: sunCoords.ra,
+      dec: sunCoords.dec
+    });
+  }
+
+  return bodies;
 }
 
 // Caches active projection geometry for sub-millisecond canvas hit-testing
@@ -314,9 +342,15 @@ function drawPlanetStarfield() {
   if (!canvas) return;
 
   const effectiveDate = getStarfieldEffectiveDate();
+  const coords = getTargetEffectiveCoordinates(state.selectedPlanet, effectiveDate);
+  const activePlanet = {
+    ...state.selectedPlanet,
+    ra: coords.ra,
+    dec: coords.dec
+  };
   const otherBodies = getOtherSolarBodies(state.selectedPlanet.key, effectiveDate);
 
-  const res = renderStarfield(canvas, state.selectedPlanet, {
+  const res = renderStarfield(canvas, activePlanet, {
     fovDeg: state.starfieldFovDeg,
     maxMag: 6.0,
     showLabels: state.starfieldShowLabels,
@@ -345,12 +379,13 @@ function updateStarfieldLiveScrub() {
   const p = state.selectedPlanet;
 
   const effectiveDate = getStarfieldEffectiveDate();
+  const coords = getTargetEffectiveCoordinates(p, effectiveDate);
   const hp = computeHorizonParams(
     state.location.lat,
     state.location.lon,
     effectiveDate,
-    p.ra,
-    p.dec
+    coords.ra,
+    coords.dec
   );
   const planetAlt = hp.planetAltDeg;
   const isAboveHorizon = planetAlt >= 0;
@@ -520,6 +555,11 @@ function render() {
           </button>
         ` : ''}
 
+        <!-- Feature Tour Guide Button -->
+        <button id="btnOpenTour" title="Explore Sky Oracle features & interactive starfield guide" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 hover:text-white transition cursor-pointer">
+          <span>💡 Tour</span>
+        </button>
+
         <!-- Unit Toggle Button -->
         <button id="btnToggleUnit" title="Switch to ${state.tempUnit === 'F' ? 'Celsius' : 'Fahrenheit'}" class="px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-bold text-[#58a6ff] hover:text-white transition cursor-pointer">
           °${state.tempUnit}
@@ -664,24 +704,35 @@ function render() {
       <!-- 2-Column Responsive Cards Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        <!-- Naked-Eye Planets Card -->
+        <!-- Solar System Targets Card -->
         <section class="rounded-2xl p-5 sm:p-6 bg-[#161b22] border border-[#30363d] shadow-lg flex flex-col justify-between">
           <div>
-            <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#30363d] flex-wrap gap-2">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d] flex-wrap gap-2">
               <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
-                <span>🪐</span> NAKED-EYE PLANETS
+                <span>🪐</span> SOLAR SYSTEM TARGETS
               </h3>
               <div class="flex items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20" title="Planets in amber text are up all night or well-positioned in the evening sky">
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20" title="Targets in amber text are up all night or well-positioned in the evening sky">
                   <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                   Amber = Evening / Night Viewable
                 </span>
               </div>
             </div>
 
+            <!-- Discovery Callout Banner -->
+            <div class="flex items-center justify-between p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-sky-500/10 to-transparent border border-amber-500/25 text-xs text-[#cbd5e1]">
+              <div class="flex items-center gap-2">
+                <span class="text-base">💡</span>
+                <span><strong>Tap any target below</strong> to launch its interactive 10° eyepiece, live horizon & time scrubber.</span>
+              </div>
+              <button id="btnOpenTourFromList" class="shrink-0 text-[11px] font-bold text-amber-300 hover:text-white hover:underline transition ml-2 cursor-pointer">
+                Tour ➔
+              </button>
+            </div>
+
             <div class="flex flex-col gap-2.5">
-              ${state.planets.map(p => {
-                const isPrime = p.status.includes('Up all night') || p.status.includes('Evening');
+              ${getAllSolarTargets(state).map(p => {
+                const isPrime = p.status.includes('Up all night') || p.status.includes('Evening') || (p.key === 'moon' && (state.moon?.isUp ?? false));
                 return `
                   <div
                     role="button"
@@ -858,6 +909,9 @@ function render() {
 
     <!-- Planet 10x10 Starfield Modal -->
     ${state.selectedPlanet ? renderPlanetModal() : ''}
+
+    <!-- Feature Tour Carousel Modal -->
+    ${state.tourModalOpen ? renderTourModal() : ''}
   `;
 
   drawMoonCanvas();
@@ -885,6 +939,168 @@ function renderSearchResultsList(results: GeocodingResult[]): string {
           <div class="text-xs font-mono text-[#58a6ff]">${r.latitude.toFixed(2)}°, ${r.longitude.toFixed(2)}°</div>
         </button>
       `).join('')}
+    </div>
+  `;
+}
+
+interface TourSlide {
+  badge: string;
+  title: string;
+  tagline: string;
+  icon: string;
+  accentColor: string;
+  description: string;
+  highlights: { emoji: string; label: string }[];
+}
+
+const TOUR_SLIDES: TourSlide[] = [
+  {
+    badge: '🔭 FEATURE 1 OF 4',
+    title: 'Interactive 10° Starfield Eyepiece',
+    tagline: 'High-precision telescopic starfield for Moon, Sun & planets',
+    icon: '🔭',
+    accentColor: '#38bdf8',
+    description: 'Tap any planet, the Moon, or Sun on the dashboard to launch its live, interactive telescopic starfield. Zoom continuously between 5° (binoculars / finder), 10°, 20°, 30°, and 45° (naked eye), or toggle between a circular eyepiece and a square camera sensor.',
+    highlights: [
+      { emoji: '◯', label: '5°–45° Field of View' },
+      { emoji: '✨', label: 'Zodiac Constellation Lines' },
+      { emoji: '🏷️', label: 'Bayer & Flamsteed Star Names' }
+    ]
+  },
+  {
+    badge: '👁️ FEATURE 2 OF 4',
+    title: 'Natural Perspective & Level Horizon',
+    tagline: 'Matches what you see looking up into the night sky',
+    icon: '👁️',
+    accentColor: '#10b981',
+    description: 'Natural mode keeps the Earth\'s horizon level across the bottom with true 16-point compass facing azimuth (e.g. WSW 245°). If an object dips below the horizon, the ground dims and coordinates turn red. Switch instantly between Natural, North-Up (star atlases), and South-Up (Newtonian reflectors).',
+    highlights: [
+      { emoji: '━━━', label: 'Level Horizon Line' },
+      { emoji: '🧭', label: 'Compass Facing Azimuth' },
+      { emoji: '📐', label: 'Telescope Orientations' }
+    ]
+  },
+  {
+    badge: '🕒 FEATURE 3 OF 4',
+    title: 'Time Scrubber & Horizon Crossings',
+    tagline: 'Simulate sunrise, sunset, moonrise, or planetary sets with 36-second fluidity',
+    icon: '🕒',
+    accentColor: '#f59e0b',
+    description: 'Drag the amber slider to scrub ±1 hour with silky 60fps real-time updates, or step by ±2 hours. When an object has an upcoming rise or set event, tap the 🌇 Set or 🌅 Rise quick button to lock it right on the green horizon line (0.0° Alt) and watch it cross in real time!',
+    highlights: [
+      { emoji: '●', label: '2-Hour Continuous Scrubber' },
+      { emoji: '🌇', label: '1-Tap Rise / Set Jumps' },
+      { emoji: '⚡', label: 'Instant 60fps Ephemeris' }
+    ]
+  },
+  {
+    badge: '📏 FEATURE 4 OF 4',
+    title: 'Tap-to-Inspect & Celestial Ruler',
+    tagline: 'Identify stars, companion planets, and measure separations',
+    icon: '📏',
+    accentColor: '#a855f7',
+    description: 'Tap any star or companion body in the field. Sky Oracle draws a live cyan distance ruler connecting your center target to the star, displaying exact angular separation in degrees or arcminutes, true position angle bearing, and apparent magnitude.',
+    highlights: [
+      { emoji: '⭐', label: 'Star Identification' },
+      { emoji: '📏', label: 'Angular Distance & Arcmin' },
+      { emoji: '🧭', label: 'Position Angle Bearing' }
+    ]
+  }
+];
+
+function renderTourModal(): string {
+  const slide = TOUR_SLIDES[state.tourSlideIndex] || TOUR_SLIDES[0];
+
+  return `
+    <div id="tourModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+      <div class="bg-[#161b22] border border-[#30363d] rounded-2xl max-w-lg w-full shadow-2xl flex flex-col overflow-hidden animate-scale-up">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-3.5 sm:p-4 border-b border-[#30363d] bg-black/25">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">💡</span>
+            <h3 class="text-base sm:text-lg font-bold text-[#e6edf3]">Sky Oracle Feature Tour</h3>
+          </div>
+          <button id="btnCloseTourModal" class="p-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" aria-label="Close tour">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <!-- Slide Body -->
+        <div class="p-5 sm:p-6 flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full" style="color: ${slide.accentColor}; background: ${slide.accentColor}20; border: 1px solid ${slide.accentColor}40;">
+              ${slide.badge}
+            </span>
+            <div class="flex items-center gap-1.5">
+              ${TOUR_SLIDES.map((_, i) => `
+                <button
+                  type="button"
+                  class="btnTourDot w-2.5 h-2.5 rounded-full transition cursor-pointer ${i === state.tourSlideIndex ? 'bg-amber-400 scale-125' : 'bg-white/20 hover:bg-white/40'}"
+                  data-slide="${i}"
+                  title="Go to slide ${i + 1}"
+                ></button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0 border" style="background: ${slide.accentColor}15; border-color: ${slide.accentColor}40;">
+              ${slide.icon}
+            </div>
+            <div>
+              <h4 class="text-lg font-bold text-[#e6edf3] leading-snug">${slide.title}</h4>
+              <p class="text-xs text-sky-300 font-medium mt-0.5">${slide.tagline}</p>
+            </div>
+          </div>
+
+          <p class="text-sm text-[#cbd5e1] leading-relaxed">
+            ${slide.description}
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-[#30363d]/60">
+            ${slide.highlights.map(h => `
+              <div class="p-2 rounded-xl bg-white/[0.03] border border-[#30363d]/40 flex items-center gap-2 text-xs">
+                <span class="text-base">${h.emoji}</span>
+                <span class="text-white font-medium">${h.label}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Footer Controls -->
+        <div class="p-3.5 sm:p-4 border-t border-[#30363d] bg-black/25 flex items-center justify-between">
+          <button
+            id="btnTourPrev"
+            type="button"
+            class="px-3 py-1.5 rounded-xl border border-[#30363d] text-xs font-semibold text-[#8b949e] hover:text-white hover:bg-white/5 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            ${state.tourSlideIndex === 0 ? 'disabled' : ''}
+          >
+            ◀ Previous
+          </button>
+
+          <span class="text-xs text-[#8b949e] font-mono">
+            ${state.tourSlideIndex + 1} of ${TOUR_SLIDES.length}
+          </span>
+
+          ${state.tourSlideIndex < TOUR_SLIDES.length - 1 ? `
+            <button
+              id="btnTourNext"
+              type="button"
+              class="px-4 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-500/40 text-xs font-semibold text-sky-200 transition cursor-pointer"
+            >
+              Next ▶
+            </button>
+          ` : `
+            <button
+              id="btnTourFinish"
+              type="button"
+              class="px-4 py-1.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/50 text-xs font-bold text-amber-200 transition cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.3)]"
+            >
+              Got It — Let's Stargaze! 🔭
+            </button>
+          `}
+        </div>
+      </div>
     </div>
   `;
 }
@@ -955,12 +1171,13 @@ function renderPlanetModal(): string {
   const pColors = PLANET_COLORS[p.key] || { fill: '#fed7aa', stroke: '#fb923c', glow: '', name: p.name };
 
   const effectiveDate = getStarfieldEffectiveDate();
+  const coords = getTargetEffectiveCoordinates(p, effectiveDate);
   const hp = computeHorizonParams(
     state.location.lat,
     state.location.lon,
     effectiveDate,
-    p.ra,
-    p.dec
+    coords.ra,
+    coords.dec
   );
   const planetAlt = hp.planetAltDeg;
   const isAboveHorizon = planetAlt >= 0;
@@ -968,8 +1185,8 @@ function renderPlanetModal(): string {
   const otherBodies = getOtherSolarBodies(p.key, effectiveDate);
   const fovDeg = state.starfieldFovDeg;
   const bodiesInField = getBodiesInField(
-    p.ra,
-    p.dec,
+    coords.ra,
+    coords.dec,
     fovDeg,
     360,
     360,
@@ -980,9 +1197,11 @@ function renderPlanetModal(): string {
   );
 
   const sunBody = otherBodies.find(b => b.type === 'sun');
-  const sunSep = sunBody ? angularSeparationDeg(p.ra, p.dec, sunBody.ra, sunBody.dec) : 999;
-  const sunInField = bodiesInField.some(b => b.type === 'sun');
-  const sunNearField = !sunInField && sunSep < 30.0;
+  const sunSep = p.key === 'sun'
+    ? 0
+    : (sunBody ? angularSeparationDeg(coords.ra, coords.dec, sunBody.ra, sunBody.dec) : 999);
+  const sunInField = p.key === 'sun' || bodiesInField.some(b => b.type === 'sun');
+  const sunNearField = p.key !== 'sun' && !sunInField && sunSep < 30.0;
 
   const companionPlanets = bodiesInField.filter(b => b.type === 'planet');
 
@@ -1126,7 +1345,15 @@ function renderPlanetModal(): string {
               ` : ''}
 
               <!-- Solar Proximity / Hazard Warning Banner -->
-              ${sunInField ? `
+              ${p.key === 'sun' ? `
+                <div class="px-3.5 py-2 rounded-xl bg-rose-950/90 border border-rose-500/50 flex items-center gap-2.5 text-xs text-rose-200">
+                  <span class="text-lg">⚠️</span>
+                  <div>
+                    <span class="font-bold text-rose-300 uppercase tracking-wide">Solar Observation Hazard:</span>
+                    <span>Directly viewing the Sun through binoculars or telescopes without certified solar filters causes immediate, permanent blindness!</span>
+                  </div>
+                </div>
+              ` : sunInField ? `
                 <div class="px-3.5 py-2 rounded-xl bg-rose-950/90 border border-rose-500/50 flex items-center gap-2.5 text-xs text-rose-200">
                   <span class="text-lg">⚠️</span>
                   <div>
@@ -1145,13 +1372,13 @@ function renderPlanetModal(): string {
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 bg-black/30 rounded-xl border border-[#30363d]/60 text-xs">
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
                   <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Right Ascension</span>
-                  <span class="font-bold text-[#e6edf3] text-sm">${formatRa(p.ra)}</span>
-                  <span class="text-[10px] text-[#8b949e] block font-mono">(${p.ra.toFixed(2)}°)</span>
+                  <span class="font-bold text-[#e6edf3] text-sm">${formatRa(coords.ra)}</span>
+                  <span class="text-[10px] text-[#8b949e] block font-mono">(${coords.ra.toFixed(2)}°)</span>
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
                   <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Declination</span>
-                  <span class="font-bold text-[#e6edf3] text-sm">${formatDec(p.dec)}</span>
-                  <span class="text-[10px] text-[#8b949e] block font-mono">(${p.dec >= 0 ? '+' : ''}${p.dec.toFixed(2)}°)</span>
+                  <span class="font-bold text-[#e6edf3] text-sm">${formatDec(coords.dec)}</span>
+                  <span class="text-[10px] text-[#8b949e] block font-mono">(${coords.dec >= 0 ? '+' : ''}${coords.dec.toFixed(2)}°)</span>
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
                   <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Local Horizon</span>
@@ -1494,6 +1721,51 @@ function attachEventHandlers() {
     }
   });
 
+  // Tour Modal Open / Close / Navigation
+  const openTour = () => {
+    state.tourModalOpen = true;
+    state.tourSlideIndex = 0;
+    render();
+  };
+  document.getElementById('btnOpenTour')?.addEventListener('click', openTour);
+  document.getElementById('btnOpenTourFromList')?.addEventListener('click', openTour);
+
+  const closeTour = () => {
+    state.tourModalOpen = false;
+    render();
+  };
+  document.getElementById('btnCloseTourModal')?.addEventListener('click', closeTour);
+  document.getElementById('btnTourFinish')?.addEventListener('click', closeTour);
+  document.getElementById('tourModalOverlay')?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).id === 'tourModalOverlay') {
+      closeTour();
+    }
+  });
+
+  document.getElementById('btnTourPrev')?.addEventListener('click', () => {
+    if (state.tourSlideIndex > 0) {
+      state.tourSlideIndex--;
+      render();
+    }
+  });
+
+  document.getElementById('btnTourNext')?.addEventListener('click', () => {
+    if (state.tourSlideIndex < TOUR_SLIDES.length - 1) {
+      state.tourSlideIndex++;
+      render();
+    }
+  });
+
+  document.querySelectorAll<HTMLElement>('.btnTourDot').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const slideIdx = parseInt(btn.getAttribute('data-slide') || '0', 10);
+      if (!isNaN(slideIdx) && slideIdx >= 0 && slideIdx < TOUR_SLIDES.length) {
+        state.tourSlideIndex = slideIdx;
+        render();
+      }
+    });
+  });
+
   // Geolocate
   document.getElementById('btnGeolocate')?.addEventListener('click', () => {
     handleGeolocate();
@@ -1578,11 +1850,12 @@ function attachEventHandlers() {
     btn.addEventListener('click', () => selectCity(btn));
   });
 
-  // Planet Card Click -> 10° Starfield Modal
+  // Planet / Target Card Click -> 10° Starfield Modal
   document.querySelectorAll<HTMLElement>('.btnPlanetCard').forEach(btn => {
     btn.addEventListener('click', () => {
       const pKey = btn.getAttribute('data-planet');
-      const p = state.planets.find(item => item.key === pKey);
+      const allTargets = getAllSolarTargets(state);
+      const p = allTargets.find(item => item.key === pKey);
       if (p) {
         state.selectedPlanet = p;
         state.starfieldTimeOffsetHours = 0;
@@ -1604,7 +1877,8 @@ function attachEventHandlers() {
   document.querySelectorAll<HTMLElement>('.btnCenterOtherPlanet').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.getAttribute('data-planet');
-      const target = state.planets.find(item => item.key === key);
+      const allTargets = getAllSolarTargets(state);
+      const target = allTargets.find(item => item.key === key);
       if (target) {
         state.selectedPlanet = target;
         state.starfieldTimeOffsetHours = 0;
@@ -1848,7 +2122,10 @@ function attachEventHandlers() {
 // Global Keyboard & Window Listeners
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    if (state.selectedPlanet) {
+    if (state.tourModalOpen) {
+      state.tourModalOpen = false;
+      render();
+    } else if (state.selectedPlanet) {
       state.selectedPlanet = null;
       state.starfieldSelectedTarget = null;
       state.starfieldTimeOffsetHours = 0;
@@ -1856,6 +2133,14 @@ window.addEventListener('keydown', (e) => {
       render();
     } else if (state.searchOpen) {
       state.searchOpen = false;
+      render();
+    }
+  } else if (state.tourModalOpen) {
+    if (e.key === 'ArrowRight' && state.tourSlideIndex < TOUR_SLIDES.length - 1) {
+      state.tourSlideIndex++;
+      render();
+    } else if (e.key === 'ArrowLeft' && state.tourSlideIndex > 0) {
+      state.tourSlideIndex--;
       render();
     }
   }
