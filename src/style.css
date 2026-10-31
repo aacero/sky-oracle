@@ -100,3 +100,74 @@
     max-height: min(320px, 54vh) !important;
   }
 }
+
+/* Custom Starfield Time Scrubber Slider */
+.time-scrubber-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(
+    to right,
+    rgba(56, 189, 248, 0.25) 0%,
+    rgba(56, 189, 248, 0.25) 49%,
+    rgba(251, 191, 36, 0.7) 49.5%,
+    rgba(251, 191, 36, 0.7) 50.5%,
+    rgba(56, 189, 248, 0.25) 51%,
+    rgba(56, 189, 248, 0.25) 100%
+  );
+  border-radius: 9999px;
+  border: 1px solid rgba(48, 54, 61, 0.8);
+  outline: none;
+  cursor: pointer;
+  touch-action: pan-y;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.time-scrubber-slider:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.time-scrubber-slider:focus-visible {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+}
+
+.time-scrubber-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.65), 0 2px 4px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+}
+
+.time-scrubber-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.15);
+  background: #fbbf24;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.95), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.time-scrubber-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.65), 0 2px 4px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+}
+
+.time-scrubber-slider::-moz-range-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.15);
+  background: #fbbf24;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.95), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+

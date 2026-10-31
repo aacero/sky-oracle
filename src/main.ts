@@ -63,6 +63,7 @@ interface AppState {
   starfieldShowLines: boolean;
   starfieldFovDeg: number;
   starfieldTimeOffsetHours: number;
+  starfieldTimeAnchorHours: number;
   starfieldSelectedTarget: SelectedStarfieldTarget | null;
   loading: boolean;
   error: string | null;
@@ -89,6 +90,7 @@ const state: AppState = {
   starfieldShowLines: false,
   starfieldFovDeg: 10,
   starfieldTimeOffsetHours: 0,
+  starfieldTimeAnchorHours: 0,
   starfieldSelectedTarget: null,
   loading: false,
   error: null,
@@ -336,6 +338,64 @@ function drawPlanetStarfield() {
     stars: res.stars,
     inFieldBodies: res.inFieldBodies
   };
+}
+
+function updateStarfieldLiveScrub() {
+  if (!state.selectedPlanet) return;
+  const p = state.selectedPlanet;
+
+  const effectiveDate = getStarfieldEffectiveDate();
+  const hp = computeHorizonParams(
+    state.location.lat,
+    state.location.lon,
+    effectiveDate,
+    p.ra,
+    p.dec
+  );
+  const planetAlt = hp.planetAltDeg;
+  const isAboveHorizon = planetAlt >= 0;
+
+  // 1. Redraw starfield canvas at 60fps
+  drawPlanetStarfield();
+
+  // 2. Update time readout display
+  const timeDisplay = document.getElementById('starfieldTimeDisplay');
+  if (timeDisplay) {
+    const isLive = state.starfieldTimeOffsetHours === 0;
+    timeDisplay.className = `font-mono font-semibold text-xs ${isLive ? 'text-[#e6edf3]' : 'text-amber-300'}`;
+    const offsetStr = isLive
+      ? '<span class="text-[11px] font-normal text-emerald-400 font-sans ml-1">(Live)</span>'
+      : `<span class="text-[11px] font-normal text-amber-400 font-sans ml-1">(${state.starfieldTimeOffsetHours > 0 ? '+' : ''}${state.starfieldTimeOffsetHours.toFixed(1).replace(/\.0$/, '')}h)</span>`;
+    timeDisplay.innerHTML = `${formatTime(effectiveDate)} ${offsetStr}`;
+  }
+
+  // 3. Update header altitude badge
+  const headerBadge = document.getElementById('modalPlanetAltBadge');
+  if (headerBadge) {
+    headerBadge.className = `px-2 py-0.5 rounded text-[11px] font-bold ${isAboveHorizon ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}`;
+    headerBadge.textContent = `Alt: ${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° · Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass} (${isAboveHorizon ? 'Above' : 'Below'})`;
+  }
+
+  // 4. Update Local Horizon telemetry chip
+  const chipAlt = document.getElementById('chipPlanetAlt');
+  if (chipAlt) {
+    chipAlt.className = `font-bold ${isAboveHorizon ? 'text-emerald-400' : 'text-rose-400'} text-sm`;
+    chipAlt.textContent = `${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° Alt`;
+  }
+  const chipAz = document.getElementById('chipPlanetAz');
+  if (chipAz) {
+    chipAz.textContent = `Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass}`;
+  }
+
+  // 5. Update Reset to Now button visibility
+  const resetBtn = document.getElementById('btnTimeResetNow');
+  if (resetBtn) {
+    if (state.starfieldTimeOffsetHours === 0) {
+      resetBtn.classList.add('hidden');
+    } else {
+      resetBtn.classList.remove('hidden');
+    }
+  }
 }
 
 // ── Geolocation & IP Fallback ───────────────────────────────────────────────
@@ -926,6 +986,21 @@ function renderPlanetModal(): string {
 
   const companionPlanets = bodiesInField.filter(b => b.type === 'planet');
 
+  const anchorH = typeof state.starfieldTimeAnchorHours === 'number' ? state.starfieldTimeAnchorHours : state.starfieldTimeOffsetHours;
+  const sliderMin = anchorH - 1.0;
+  const sliderMax = anchorH + 1.0;
+  const minDate = new Date(state.currentDate.getTime() + sliderMin * 3600000);
+  const maxDate = new Date(state.currentDate.getTime() + sliderMax * 3600000);
+
+  let pSetDiffH: number | null = null;
+  if (p.set) {
+    pSetDiffH = (p.set.getTime() - state.currentDate.getTime()) / 3600000;
+  }
+  let pRiseDiffH: number | null = null;
+  if (p.rise) {
+    pRiseDiffH = (p.rise.getTime() - state.currentDate.getTime()) / 3600000;
+  }
+
   return `
     <div id="planetModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-fade-in">
       <div class="planet-modal-content bg-[#161b22] border border-[#30363d] rounded-2xl w-full shadow-2xl flex flex-col overflow-hidden animate-scale-up">
@@ -943,7 +1018,7 @@ function renderPlanetModal(): string {
                 <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isPrime ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30' : 'bg-slate-700/30 text-slate-300 border border-slate-700/50'}">
                   ${p.status}
                 </span>
-                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isAboveHorizon ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}">
+                <span id="modalPlanetAltBadge" class="px-2 py-0.5 rounded text-[11px] font-bold ${isAboveHorizon ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}">
                   Alt: ${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° · Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass} (${isAboveHorizon ? 'Above' : 'Below'})
                 </span>
               </div>
@@ -1080,8 +1155,8 @@ function renderPlanetModal(): string {
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
                   <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Local Horizon</span>
-                  <span class="font-bold ${isAboveHorizon ? 'text-emerald-400' : 'text-rose-400'} text-sm">${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° Alt</span>
-                  <span class="text-[10px] text-sky-300 block font-mono font-medium">Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass}</span>
+                  <span id="chipPlanetAlt" class="font-bold ${isAboveHorizon ? 'text-emerald-400' : 'text-rose-400'} text-sm">${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° Alt</span>
+                  <span id="chipPlanetAz" class="text-[10px] text-sky-300 block font-mono font-medium">Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass}</span>
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
                   <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Field of View</span>
@@ -1091,41 +1166,103 @@ function renderPlanetModal(): string {
               </div>
 
               <!-- Observation Time Scrubbing Toolbar -->
-              <div class="px-3.5 py-2 bg-[#0d1117] rounded-xl border border-[#30363d]/60 flex flex-wrap items-center justify-between gap-2 text-xs">
-                <div class="flex items-center gap-2">
-                  <span class="text-[11px] font-bold text-[#8b949e] uppercase tracking-wider flex items-center gap-1">
-                    <span>🕒</span>
-                    <span>Time:</span>
-                  </span>
-                  <span class="font-mono font-semibold text-xs ${state.starfieldTimeOffsetHours === 0 ? 'text-[#e6edf3]' : 'text-amber-300'}">
-                    ${formatTime(effectiveDate)}
-                    ${state.starfieldTimeOffsetHours !== 0
-                      ? `<span class="text-[11px] font-normal text-amber-400 font-sans ml-1">(${state.starfieldTimeOffsetHours > 0 ? '+' : ''}${state.starfieldTimeOffsetHours.toFixed(1).replace(/\.0$/, '')}h)</span>`
-                      : '<span class="text-[11px] font-normal text-emerald-400 font-sans ml-1">(Live)</span>'
-                    }
-                  </span>
-                  ${state.starfieldTimeOffsetHours !== 0 ? `
-                    <button id="btnTimeResetNow" class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition cursor-pointer" title="Reset to live current time">
+              <div class="px-3.5 py-2.5 bg-[#0d1117] rounded-xl border border-[#30363d]/60 flex flex-col gap-2 text-xs">
+                <!-- Top Row: Time Readout + Reset + Quick Jump Presets -->
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[11px] font-bold text-[#8b949e] uppercase tracking-wider flex items-center gap-1">
+                      <span>🕒</span>
+                      <span>Time:</span>
+                    </span>
+                    <span id="starfieldTimeDisplay" class="font-mono font-semibold text-xs ${state.starfieldTimeOffsetHours === 0 ? 'text-[#e6edf3]' : 'text-amber-300'}">
+                      ${formatTime(effectiveDate)}
+                      ${state.starfieldTimeOffsetHours !== 0
+                        ? `<span class="text-[11px] font-normal text-amber-400 font-sans ml-1">(${state.starfieldTimeOffsetHours > 0 ? '+' : ''}${state.starfieldTimeOffsetHours.toFixed(1).replace(/\.0$/, '')}h)</span>`
+                        : '<span class="text-[11px] font-normal text-emerald-400 font-sans ml-1">(Live)</span>'
+                      }
+                    </span>
+                    <button
+                      id="btnTimeResetNow"
+                      class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition cursor-pointer ${state.starfieldTimeOffsetHours === 0 ? 'hidden' : ''}"
+                      title="Reset to live current time"
+                    >
                       Reset to Now
                     </button>
-                  ` : ''}
+                  </div>
+
+                  <!-- Quick Time Presets & Planetary Rise/Set Jumpers -->
+                  <div class="flex items-center gap-1 flex-wrap">
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${state.starfieldTimeOffsetHours === 0 ? 'bg-emerald-500/25 text-emerald-200 border-emerald-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}" data-time-preset="now">Now</button>
+
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dusk" title="End of evening twilight (Astro Dusk tonight)">Dusk</button>
+
+                    ${p.set && pSetDiffH !== null && pSetDiffH >= -6 && pSetDiffH <= 18 ? `
+                      <button
+                        class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${Math.abs(state.starfieldTimeOffsetHours - pSetDiffH) < 0.15 ? 'bg-amber-500/25 text-amber-200 border-amber-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}"
+                        data-time-preset="planet-set"
+                        title="Simulate ${p.name} setting on the horizon (${formatTime(p.set)})"
+                      >
+                        🌇 Set (${formatTime(p.set)})
+                      </button>
+                    ` : ''}
+
+                    ${p.rise && pRiseDiffH !== null && pRiseDiffH >= -6 && pRiseDiffH <= 18 ? `
+                      <button
+                        class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${Math.abs(state.starfieldTimeOffsetHours - pRiseDiffH) < 0.15 ? 'bg-amber-500/25 text-amber-200 border-amber-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}"
+                        data-time-preset="planet-rise"
+                        title="Simulate ${p.name} rising on the horizon (${formatTime(p.rise)})"
+                      >
+                        🌅 Rise (${formatTime(p.rise)})
+                      </button>
+                    ` : ''}
+
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="10pm" title="10:00 PM local evening observing">10 PM</button>
+
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="2am" title="2:00 AM local night observing">2 AM</button>
+
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dawn" title="Morning twilight (Astro Dawn)">Dawn</button>
+                  </div>
                 </div>
 
-                <!-- Quick Time Presets & Steppers -->
-                <div class="flex items-center gap-1 flex-wrap">
-                  <button id="btnTimeStepBack" class="w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-[#30363d] text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer text-xs font-bold" title="Step back 1 hour">◀</button>
-                  
-                  <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${state.starfieldTimeOffsetHours === 0 ? 'bg-emerald-500/25 text-emerald-200 border-emerald-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}" data-time-preset="now">Now</button>
-                  
-                  <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dusk" title="End of evening twilight (Astro Dusk tonight)">Dusk</button>
-                  
-                  <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="10pm" title="10:00 PM local evening observing">10 PM</button>
-                  
-                  <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="2am" title="2:00 AM local night observing">2 AM</button>
-                  
-                  <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dawn" title="Morning twilight (Astro Dawn)">Dawn</button>
-                  
-                  <button id="btnTimeStepForward" class="w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-[#30363d] text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer text-xs font-bold" title="Step forward 1 hour">▶</button>
+                <!-- Bottom Row: 2h Stepper ◀ | Interactive 2-Hour Scrubber Bar | 2h Stepper ▶ -->
+                <div class="flex items-center gap-2 pt-1 border-t border-[#30363d]/50">
+                  <button
+                    id="btnTimeStepBack"
+                    class="px-2 py-1 flex items-center justify-center rounded-lg bg-white/5 border border-[#30363d] text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer text-xs font-bold shrink-0"
+                    title="Step back 2 hours"
+                  >
+                    ◀ −2h
+                  </button>
+
+                  <div class="flex-1 flex flex-col gap-1 min-w-0">
+                    <div class="flex items-center justify-between text-[10px] text-[#8b949e] font-mono leading-none px-0.5">
+                      <span id="scrubberMinTime">${formatTime(minDate)}</span>
+                      <span class="text-amber-400/90 font-semibold flex items-center gap-1">
+                        <span>●</span>
+                        <span>2h Window (±1h) · Drag to scrub</span>
+                      </span>
+                      <span id="scrubberMaxTime">${formatTime(maxDate)}</span>
+                    </div>
+
+                    <input
+                      type="range"
+                      id="starfieldTimeScrubber"
+                      class="time-scrubber-slider"
+                      min="${sliderMin.toFixed(2)}"
+                      max="${sliderMax.toFixed(2)}"
+                      step="0.01"
+                      value="${state.starfieldTimeOffsetHours.toFixed(2)}"
+                      aria-label="Starfield observation time scrubber"
+                    />
+                  </div>
+
+                  <button
+                    id="btnTimeStepForward"
+                    class="px-2 py-1 flex items-center justify-center rounded-lg bg-white/5 border border-[#30363d] text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer text-xs font-bold shrink-0"
+                    title="Step forward 2 hours"
+                  >
+                    +2h ▶
+                  </button>
                 </div>
               </div>
             </div>
@@ -1449,6 +1586,7 @@ function attachEventHandlers() {
       if (p) {
         state.selectedPlanet = p;
         state.starfieldTimeOffsetHours = 0;
+        state.starfieldTimeAnchorHours = 0;
         state.starfieldSelectedTarget = null;
         render();
       }
@@ -1469,6 +1607,8 @@ function attachEventHandlers() {
       const target = state.planets.find(item => item.key === key);
       if (target) {
         state.selectedPlanet = target;
+        state.starfieldTimeOffsetHours = 0;
+        state.starfieldTimeAnchorHours = 0;
         state.starfieldSelectedTarget = null;
         render();
       }
@@ -1525,24 +1665,52 @@ function attachEventHandlers() {
   // Observation Time Scrubbing Controls
   document.getElementById('btnTimeResetNow')?.addEventListener('click', () => {
     state.starfieldTimeOffsetHours = 0;
+    state.starfieldTimeAnchorHours = 0;
     render();
   });
 
   document.getElementById('btnTimeStepBack')?.addEventListener('click', () => {
-    state.starfieldTimeOffsetHours -= 1;
+    state.starfieldTimeOffsetHours -= 2;
+    state.starfieldTimeAnchorHours = state.starfieldTimeOffsetHours;
     render();
   });
 
   document.getElementById('btnTimeStepForward')?.addEventListener('click', () => {
-    state.starfieldTimeOffsetHours += 1;
+    state.starfieldTimeOffsetHours += 2;
+    state.starfieldTimeAnchorHours = state.starfieldTimeOffsetHours;
     render();
+  });
+
+  // Range Slider live input & change listeners
+  const scrubber = document.getElementById('starfieldTimeScrubber') as HTMLInputElement | null;
+  scrubber?.addEventListener('input', () => {
+    const val = parseFloat(scrubber.value);
+    if (!isNaN(val)) {
+      state.starfieldTimeOffsetHours = val;
+      updateStarfieldLiveScrub();
+    }
+  });
+
+  scrubber?.addEventListener('change', () => {
+    const val = parseFloat(scrubber.value);
+    if (!isNaN(val)) {
+      state.starfieldTimeOffsetHours = val;
+      if (Math.abs(state.starfieldTimeOffsetHours - state.starfieldTimeAnchorHours) > 0.85) {
+        state.starfieldTimeAnchorHours = Math.round(state.starfieldTimeOffsetHours * 10) / 10;
+        render();
+      } else {
+        updateStarfieldLiveScrub();
+      }
+    }
   });
 
   document.querySelectorAll<HTMLElement>('.btnTimePreset').forEach(btn => {
     btn.addEventListener('click', () => {
       const preset = btn.getAttribute('data-time-preset');
+      const p = state.selectedPlanet;
       if (preset === 'now') {
         state.starfieldTimeOffsetHours = 0;
+        state.starfieldTimeAnchorHours = 0;
       } else if (preset === 'dusk') {
         if (state.sunEvents?.astroDusk) {
           const diffH = (state.sunEvents.astroDusk.getTime() - state.currentDate.getTime()) / 3600000;
@@ -1550,18 +1718,29 @@ function attachEventHandlers() {
         } else {
           state.starfieldTimeOffsetHours = 6;
         }
+        state.starfieldTimeAnchorHours = state.starfieldTimeOffsetHours;
+      } else if (preset === 'planet-set' && p?.set) {
+        const diffH = (p.set.getTime() - state.currentDate.getTime()) / 3600000;
+        state.starfieldTimeOffsetHours = Math.round(diffH * 100) / 100;
+        state.starfieldTimeAnchorHours = state.starfieldTimeOffsetHours;
+      } else if (preset === 'planet-rise' && p?.rise) {
+        const diffH = (p.rise.getTime() - state.currentDate.getTime()) / 3600000;
+        state.starfieldTimeOffsetHours = Math.round(diffH * 100) / 100;
+        state.starfieldTimeAnchorHours = state.starfieldTimeOffsetHours;
       } else if (preset === '10pm') {
         const target = new Date(state.currentDate);
         target.setHours(22, 0, 0, 0);
         let diffH = (target.getTime() - state.currentDate.getTime()) / 3600000;
         if (diffH < -3) diffH += 24;
         state.starfieldTimeOffsetHours = Math.round(diffH * 10) / 10;
+        state.starfieldTimeAnchorHours = state.starfieldTimeOffsetHours;
       } else if (preset === '2am') {
         const target = new Date(state.currentDate);
         target.setHours(2, 0, 0, 0);
         let diffH = (target.getTime() - state.currentDate.getTime()) / 3600000;
         if (diffH < 0) diffH += 24;
         state.starfieldTimeOffsetHours = Math.round(diffH * 10) / 10;
+        state.starfieldTimeAnchorHours = state.starfieldTimeOffsetHours;
       } else if (preset === 'dawn') {
         if (state.sunEvents?.astroDawn) {
           const diffH = (state.sunEvents.astroDawn.getTime() - state.currentDate.getTime()) / 3600000;
@@ -1569,6 +1748,7 @@ function attachEventHandlers() {
         } else {
           state.starfieldTimeOffsetHours = 12;
         }
+        state.starfieldTimeAnchorHours = state.starfieldTimeOffsetHours;
       }
       render();
     });
@@ -1652,6 +1832,7 @@ function attachEventHandlers() {
     state.selectedPlanet = null;
     state.starfieldSelectedTarget = null;
     state.starfieldTimeOffsetHours = 0;
+    state.starfieldTimeAnchorHours = 0;
     render();
   };
 
@@ -1671,6 +1852,7 @@ window.addEventListener('keydown', (e) => {
       state.selectedPlanet = null;
       state.starfieldSelectedTarget = null;
       state.starfieldTimeOffsetHours = 0;
+      state.starfieldTimeAnchorHours = 0;
       render();
     } else if (state.searchOpen) {
       state.searchOpen = false;

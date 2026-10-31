@@ -163,6 +163,35 @@ describe('Starfield & Ephemeris Projection Engine', () => {
       expect(northTarget.planetAzDeg).toBeCloseTo(0.0, 1);
       expect(northTarget.planetAzCompass).toBe('N');
     });
+
+    it('accurately models time scrubbing across rising and setting horizon transitions', () => {
+      const baseDate = new Date('2026-10-25T18:00:00Z');
+      const lat = 30.0;
+      const lon = -80.0;
+      const lmstBase = calculateLmst(baseDate, lon);
+
+      // Target on celestial equator setting due West: HA = +90° at baseDate
+      // RA = (lmstBase - 90 + 360) % 360, Dec = 0
+      const targetRa = (lmstBase - 90 + 360) % 360;
+      const targetDec = 0.0;
+
+      // 1. Exactly at setting: altitude is ~0°
+      const atSetting = computeHorizonParams(lat, lon, baseDate, targetRa, targetDec);
+      expect(atSetting.planetAltDeg).toBeCloseTo(0.0, 1);
+      expect(atSetting.planetAzCompass).toBe('W');
+
+      // 2. 15 minutes before setting (scrubbing -0.25h): target should be ~3.25° above horizon
+      const beforeDate = new Date(baseDate.getTime() - 15 * 60 * 1000);
+      const beforeSetting = computeHorizonParams(lat, lon, beforeDate, targetRa, targetDec);
+      expect(beforeSetting.planetAltDeg).toBeGreaterThan(2.5);
+      expect(beforeSetting.planetAltDeg).toBeLessThan(4.5);
+
+      // 3. 15 minutes after setting (scrubbing +0.25h): target should be ~3.25° below horizon
+      const afterDate = new Date(baseDate.getTime() + 15 * 60 * 1000);
+      const afterSetting = computeHorizonParams(lat, lon, afterDate, targetRa, targetDec);
+      expect(afterSetting.planetAltDeg).toBeLessThan(-2.5);
+      expect(afterSetting.planetAltDeg).toBeGreaterThan(-4.5);
+    });
   });
 
   describe('Ground Polygon & Horizon Line Geometry', () => {
