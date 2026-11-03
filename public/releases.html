@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Release Notes & Changelog — SkyOracle</title>
+    <meta name="theme-color" content="#0d1117" />
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #0d1117;
+        color: #e6edf3;
+        line-height: 1.6;
+        padding: 2rem 1rem;
+        margin: 0;
+      }
+      .container {
+        max-width: 760px;
+        margin: 0 auto;
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      }
+      h1 { color: #58a6ff; margin: 0; font-size: 1.75rem; }
+      h2 { color: #e6edf3; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; margin-top: 2rem; font-size: 1.3rem; }
+      h3 { color: #58a6ff; margin-top: 1.25rem; font-size: 1.05rem; }
+      a { color: #58a6ff; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 9999px;
+        background-color: rgba(88, 166, 255, 0.15);
+        color: #58a6ff;
+        font-size: 0.8rem;
+        font-weight: bold;
+        border: 1px solid rgba(88, 166, 255, 0.3);
+      }
+      .badge-green {
+        background-color: rgba(52, 211, 153, 0.15);
+        color: #34d399;
+        border-color: rgba(52, 211, 153, 0.3);
+      }
+      .release-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid #30363d;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        margin-top: 1rem;
+      }
+      ul { padding-left: 1.25rem; margin: 0.5rem 0; }
+      li { margin-bottom: 0.4rem; color: #cbd5e1; }
+      li strong { color: #e6edf3; }
+      .meta { font-size: 0.85rem; color: #8b949e; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <h1>Release Notes & Changelog</h1>
+          <p class="meta" style="margin: 0.25rem 0 0 0;">SkyOracle: Stargazing Forecast & Ephemeris</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <span class="badge badge-green">v1.0.17 Active</span>
+          <a href="./" class="badge">Back to App 🔭</a>
+        </div>
+      </div>
+
+      <!-- Release v1.0.17 -->
+      <div class="release-card" style="border-left: 4px solid #34d399;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <h2 style="margin: 0; border: none; padding: 0;">Version 1.0.17 (Build 4)</h2>
+          <span class="meta">November 2026</span>
+        </div>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-top: 0.25rem;">
+          Major usability, starfield typography, interactive onboarding, and lunar/solar ephemeris release.
+        </p>
+
+        <h3>🔤 Starfield Typography & Night-Vision Contrast</h3>
+        <ul>
+          <li><strong>High-Contrast Halos:</strong> Added thick 3.5px contrast halos (<code style="color: #38bdf8;">rgba(2, 6, 17, 0.95)</code>) behind all star labels, ensuring constellation stick-lines and background stars never cut through text.</li>
+          <li><strong>Legibility Upgrade:</strong> Increased star and companion body text from 9.5px regular to bold 11.5px, and centered target labels to bold 12px for instant readability under dark sky conditions and high-DPI mobile screens.</li>
+          <li><strong>Horizon & Facing Heading:</strong> Upgraded compass azimuth headings to bold 11px monospace with protective halos for arm's length observation.</li>
+        </ul>
+
+        <h3>💡 Interactive 4-Slide Feature Tour</h3>
+        <ul>
+          <li><strong>Guided Carousel:</strong> Added a clean 4-slide interactive modal walking through the 10° eyepiece, Natural Perspective level horizon, time scrubber, and celestial ruler.</li>
+          <li><strong>Discovery Callouts:</strong> Added a permanent <code style="color: #fbbf24;">💡 Tour</code> button in the top navigation and discovery callout banners above the target table.</li>
+        </ul>
+
+        <h3>🌙 Moon & ☀️ Sun Centered Telescopic Starfields</h3>
+        <ul>
+          <li><strong>True-to-Scale Discs:</strong> Centering on the Moon (0.5° scale) or Sun (0.53° scale) renders physically scaled bodies matching the field of view.</li>
+          <li><strong>Real-Time Star Occultation:</strong> The Moon renders an opaque earthshine disc that physically occults background stars as it drifts at 0.5°/hour across the celestial sphere.</li>
+          <li><strong>Solar Safety Guidance:</strong> Dedicated Solar Observation Hazard banner advising against unshielded optics when centered on the Sun.</li>
+        </ul>
+
+        <h3>🕒 Fluid 2-Hour Time Scrubber</h3>
+        <ul>
+          <li><strong>Smooth 60fps Scrubbing:</strong> Drag ±1 hour with 36-second precision or jump with ±2h outer buttons.</li>
+          <li><strong>1-Tap Horizon Locks:</strong> Instant <code style="color: #fbbf24;">🌇 Set</code> and <code style="color: #fbbf24;">🌅 Rise</code> buttons lock objects right on the green horizon line (0.0° altitude) for rising and setting simulations.</li>
+        </ul>
+
+        <h3>📏 Tap-to-Inspect & Celestial Ruler</h3>
+        <ul>
+          <li><strong>Interactive Inspection:</strong> Tap any star or companion planet in the field to draw a live distance ruler displaying angular separation (degrees & arcmin) and position angle bearing.</li>
+        </ul>
+
+        <h3>⚡ 100% Offline Resilience</h3>
+        <ul>
+          <li>Service worker caching shell and local astronomical algorithms (NOAA solar algorithms + Jean Meeus lunar/planetary series) operate with zero network requirement.</li>
+        </ul>
+      </div>
+
+      <!-- Release v1.0.2 - v1.0.16 Summary -->
+      <div class="release-card" style="margin-top: 1.5rem;">
+        <h2 style="margin: 0; border: none; padding: 0; font-size: 1.15rem;">Previous Iterations (v1.0.2 – v1.0.16)</h2>
+        <span class="meta">October 2026</span>
+        <ul>
+          <li><strong>Natural Horizon Orientation:</strong> Added Earth horizon rendering keeping the ground level across the bottom with 16-point facing compass bearings.</li>
+          <li><strong>Orientation Modes:</strong> Switch instantly between Natural (Zenith-Up), North-Up (star atlases), and South-Up (Newtonian reflectors).</li>
+          <li><strong>Zodiac Constellations:</strong> Integrated authentic stick-figure lines for all 12 zodiac constellations + Orion and Cassiopeia.</li>
+          <li><strong>Location Search:</strong> Added responsive city geocoding with 1-tap GPS detection and offline coordinate persistence.</li>
+          <li><strong>Unit Toggle:</strong> Seamless 1-tap toggle between Fahrenheit (°F) and Celsius (°C).</li>
+        </ul>
+      </div>
+
+      <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #30363d; display: flex; justify-content: space-between; font-size: 0.85rem; color: #8b949e;">
+        <span>SkyOracle © 2026 Lapsed Academics</span>
+        <a href="./privacy.html">Privacy Policy</a>
+      </div>
+    </div>
+  </body>
+</html>
