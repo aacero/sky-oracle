@@ -20,8 +20,8 @@
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionCode": 1,
-  "appVersion": "1.0.17",
+  "appVersionCode": 5,
+  "appVersion": "1.0.18",
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://aacero.github.io/sky-oracle/manifest.json",
   "fallbackType": "customtabs",

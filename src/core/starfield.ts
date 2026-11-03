@@ -1,6 +1,7 @@
 import { ZODIAC_STARS } from './zodiacStars.ts';
 import { ZODIAC_CONSTELLATION_LINES } from './constellationLines.ts';
 import { calculateMoonInfo } from './astronomy.ts';
+import { t } from './i18n.ts';
 
 export interface ProjectedStar {
   ra: number;
@@ -927,13 +928,14 @@ export function renderStarfield(
       ctx.translate(midPx, midPy);
       ctx.rotate(angle);
       ctx.font = 'bold 11px monospace';
+      const horizText = `━━━ ${t('starfield.horizon')} · ${horizonParams.planetAzCompass} (${horizonParams.planetAzDeg.toFixed(0)}°) ━━━`;
       ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
       ctx.lineWidth = 3;
-      ctx.strokeText(`━━━ HORIZON · ${horizonParams.planetAzCompass} (${horizonParams.planetAzDeg.toFixed(0)}°) ━━━`, 0, -3);
+      ctx.strokeText(horizText, 0, -3);
       ctx.fillStyle = '#34d399';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(`━━━ HORIZON · ${horizonParams.planetAzCompass} (${horizonParams.planetAzDeg.toFixed(0)}°) ━━━`, 0, -3);
+      ctx.fillText(horizText, 0, -3);
       ctx.restore();
     }
   }
@@ -1105,9 +1107,10 @@ export function renderStarfield(
     ctx.font = 'bold 11px monospace';
     ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
     ctx.lineWidth = 3;
-    ctx.strokeText(`🌍 Earth Surface · Target Alt ${horizonParams.planetAltDeg.toFixed(0)}°`, cx, cssHeight - 28);
+    const earthSurfaceText = t('starfield.earth_surface', { alt: horizonParams.planetAltDeg.toFixed(0) });
+    ctx.strokeText(earthSurfaceText, cx, cssHeight - 28);
     ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
-    ctx.fillText(`🌍 Earth Surface · Target Alt ${horizonParams.planetAltDeg.toFixed(0)}°`, cx, cssHeight - 28);
+    ctx.fillText(earthSurfaceText, cx, cssHeight - 28);
     ctx.restore();
   }
 
@@ -1168,10 +1171,11 @@ export function renderStarfield(
       ctx.textBaseline = 'middle';
       ctx.fillText(`${b.symbol} ${b.name}`, b.px + 9, b.py - 4);
 
+      const sepText = t('starfield.sep', { deg: b.separationDeg.toFixed(1) });
       ctx.font = 'bold 10px monospace';
-      ctx.strokeText(`${b.separationDeg.toFixed(1)}° sep`, b.px + 9, b.py + 8);
+      ctx.strokeText(sepText, b.px + 9, b.py + 8);
       ctx.fillStyle = '#38bdf8';
-      ctx.fillText(`${b.separationDeg.toFixed(1)}° sep`, b.px + 9, b.py + 8);
+      ctx.fillText(sepText, b.px + 9, b.py + 8);
       ctx.restore();
 
     } else if (b.type === 'moon') {
@@ -1233,7 +1237,7 @@ export function renderStarfield(
       ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
       ctx.lineWidth = 3.5;
       const pct = Math.round(ill * 100);
-      const moonLabel = `🌙 Moon (${pct}%)`;
+      const moonLabel = `🌙 ${t('planets.moon')} (${pct}%)`;
       ctx.strokeText(moonLabel, b.px + b.radius + 6, b.py - 4);
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
@@ -1241,7 +1245,7 @@ export function renderStarfield(
       ctx.fillText(moonLabel, b.px + b.radius + 6, b.py - 4);
 
       ctx.font = 'bold 10px monospace';
-      const sepMoonText = `${b.separationDeg.toFixed(1)}° sep`;
+      const sepMoonText = t('starfield.sep', { deg: b.separationDeg.toFixed(1) });
       ctx.strokeText(sepMoonText, b.px + b.radius + 6, b.py + 8);
       ctx.fillStyle = '#38bdf8';
       ctx.fillText(sepMoonText, b.px + b.radius + 6, b.py + 8);
@@ -1288,7 +1292,7 @@ export function renderStarfield(
       ctx.font = 'bold 11.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
       ctx.lineWidth = 3.5;
-      const sunLabel = `☀️ Sun (${b.separationDeg.toFixed(1)}°)`;
+      const sunLabel = `☀️ ${t('planets.sun')} (${b.separationDeg.toFixed(1)}°)`;
       ctx.strokeText(sunLabel, b.px + b.radius + 8, b.py - 4);
       ctx.fillStyle = '#fbbf24';
       ctx.textAlign = 'left';
@@ -1296,9 +1300,10 @@ export function renderStarfield(
       ctx.fillText(sunLabel, b.px + b.radius + 8, b.py - 4);
 
       ctx.font = 'bold 10px monospace';
-      ctx.strokeText('⚠️ SOLAR HAZARD', b.px + b.radius + 8, b.py + 8);
+      const solarHazText = t('starfield.solar_hazard');
+      ctx.strokeText(solarHazText, b.px + b.radius + 8, b.py + 8);
       ctx.fillStyle = '#ef4444';
-      ctx.fillText('⚠️ SOLAR HAZARD', b.px + b.radius + 8, b.py + 8);
+      ctx.fillText(solarHazText, b.px + b.radius + 8, b.py + 8);
       ctx.restore();
     }
   }
@@ -1618,14 +1623,16 @@ export function renderStarfield(
       ctx.lineWidth = 3;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.strokeText('ZENITH (UP)', cx, 6);
+      const zenithText = t('starfield.zenith_up');
+      ctx.strokeText(zenithText, cx, 6);
       ctx.fillStyle = '#38bdf8'; // Sky blue
-      ctx.fillText('ZENITH (UP)', cx, 6);
+      ctx.fillText(zenithText, cx, 6);
 
       ctx.textBaseline = 'bottom';
+      const groundLabel = isPlanetBelow ? 'NADIR (DOWN)' : `${t('starfield.horizon')} (DOWN)`;
       const facingText = horizonParams
-        ? `${isPlanetBelow ? 'NADIR (DOWN)' : 'HORIZON (DOWN)'} · ${horizonParams.planetAzCompass} (${horizonParams.planetAzDeg.toFixed(0)}°)`
-        : (isPlanetBelow ? 'NADIR (DOWN)' : 'HORIZON (DOWN)');
+        ? `${groundLabel} · ${horizonParams.planetAzCompass} (${horizonParams.planetAzDeg.toFixed(0)}°)`
+        : groundLabel;
       ctx.strokeText(facingText, cx, cssHeight - 5);
       ctx.fillStyle = 'rgba(226, 232, 240, 0.90)';
       ctx.fillText(facingText, cx, cssHeight - 5);
@@ -1687,8 +1694,8 @@ export function renderStarfield(
 
   ctx.font = 'bold 10px monospace';
   const orientText = orientation === 'natural'
-    ? (fieldRot.isOverhead ? 'ZENITH UP · OVERHEAD LOCK' : 'NATURAL (ZENITH UP)')
-    : (orientation === 'southUp' ? 'SOUTH UP' : 'NORTH UP');
+    ? (fieldRot.isOverhead ? 'ZENITH UP · OVERHEAD LOCK' : t('starfield.orient_natural'))
+    : (orientation === 'southUp' ? t('starfield.orient_south_up') : t('starfield.orient_north_up'));
   const orientColor = orientation === 'natural'
     ? (fieldRot.isOverhead ? '#f59e0b' : '#34d399')
     : (orientation === 'southUp' ? '#38bdf8' : '#cbd5e1');
@@ -1760,7 +1767,7 @@ export function renderStarfield(
   ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
   ctx.lineWidth = 3;
-  const countText = `${stars.length} stars (mag ≤ ${maxMag.toFixed(1)})`;
+  const countText = `${t('starfield.stars_count', { count: stars.length })} (mag ≤ ${maxMag.toFixed(1)})`;
   ctx.strokeText(countText, cssWidth - 10, cssHeight - 8);
   ctx.fillStyle = '#94a3b8';
   ctx.fillText(countText, cssWidth - 10, cssHeight - 8);
@@ -1780,7 +1787,7 @@ export function renderStarfield(
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⚠️ SOLAR PROXIMITY HAZARD — NO OPTICS', cx, bannerY + bannerH / 2);
+    ctx.fillText(t('starfield.solar_proximity'), cx, bannerY + bannerH / 2);
   }
 
   ctx.restore();

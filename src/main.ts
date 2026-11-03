@@ -46,7 +46,17 @@ import {
   StarfieldOrientation
 } from './core/starfield.ts';
 
-export const APP_VERSION = '1.0.17';
+import {
+  t,
+  getLocale,
+  setLocale,
+  SUPPORTED_LOCALES,
+  onLocaleChange,
+  formatLocalizedDate,
+  Locale
+} from './core/i18n.ts';
+
+export const APP_VERSION = '1.0.18';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -507,6 +517,73 @@ async function handleGeolocate() {
   );
 }
 
+// ── Localization Helpers ───────────────────────────────────────────────────
+
+function getLocalizedVerdict(v?: string): string {
+  if (!v) return t('verdict.clear');
+  if (v.startsWith('Clear')) return t('verdict.clear');
+  if (v.startsWith('Partly')) return t('verdict.partly_cloudy');
+  if (v.startsWith('Mostly')) return t('verdict.mostly_cloudy');
+  if (v.startsWith('Overcast')) return t('verdict.overcast');
+  return v;
+}
+
+function getLocalizedDewRisk(f?: ObservingForecast | null): string {
+  if (!f) return t('weather.dew_low');
+  if (f.dewRisk === 'high') {
+    return f.minTempC <= 0 ? t('weather.dew_frost') : t('weather.dew_high');
+  }
+  if (f.dewRisk === 'moderate') {
+    return t('weather.dew_moderate');
+  }
+  return t('weather.dew_low');
+}
+
+function getLocalizedMoonPhase(name?: string): string {
+  if (!name) return t('moon.phase.waxing_crescent');
+  const key = 'moon.phase.' + name.toLowerCase().replace(/ /g, '_');
+  return t(key);
+}
+
+function getLocalizedMoonDirection(dir?: string): string {
+  return dir === 'Waning' ? t('moon.waning') : t('moon.waxing');
+}
+
+function formatLocalizedPlanetStatus(p: PlanetInfo): string {
+  if (p.key === 'sun') {
+    return t('planets.daylight_solar');
+  }
+  if (p.key === 'moon') {
+    if (state.moon) {
+      const phaseKey = 'moon.phase.' + state.moon.name.toLowerCase().replace(/ /g, '_');
+      return `${t(phaseKey)} · ${t('moon.lit', { pct: state.moon.illum })}`;
+    }
+  }
+  if (p.status === 'Up all night') return t('planets.up_all_night');
+  if (p.status === 'Below horizon') return t('planets.below_horizon');
+  if (p.status === 'Circumpolar') return t('planets.circumpolar');
+  if (p.status.startsWith('Evening · sets ')) {
+    return t('planets.evening_sets', { time: p.set ? formatTime(p.set) : '' });
+  }
+  if (p.status.startsWith('Morning · rises ')) {
+    return t('planets.morning_rises', { time: p.rise ? formatTime(p.rise) : '' });
+  }
+  if (p.status.startsWith('Sets ')) {
+    return t('planets.sets_at', { time: p.set ? formatTime(p.set) : '' });
+  }
+  return p.status;
+}
+
+function getLocalizedObservingDate(f?: ObservingForecast | null): string {
+  if (!f) return '';
+  const now = state.currentDate;
+  const dayFmt = formatLocalizedDate(now);
+  if (f.observingDateLabel.startsWith('Tonight')) {
+    return t('verdict.tonight', { date: dayFmt });
+  }
+  return dayFmt;
+}
+
 // ── UI Rendering ────────────────────────────────────────────────────────────
 
 function render() {
@@ -531,7 +608,7 @@ function render() {
             SkyOracle
             <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 text-[#58a6ff] border border-[#58a6ff]/30 font-mono">v${APP_VERSION}</span>
           </h1>
-          <p class="text-xs text-[#8b949e]">Stargazing forecast, ephemeris & planet guide</p>
+          <p class="text-xs text-[#8b949e]">${t('app.tagline')}</p>
         </div>
       </div>
 
@@ -544,21 +621,29 @@ function render() {
         </button>
 
         <!-- 1-Tap GPS Button -->
-        <button id="btnGeolocate" title="Use current GPS location" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#58a6ff] hover:text-white transition cursor-pointer">
+        <button id="btnGeolocate" title="${t('app.use_gps')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#58a6ff] hover:text-white transition cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         </button>
 
         <!-- Install PWA Button (if available) -->
         ${state.installPrompt ? `
           <button id="btnInstallPwa" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 text-xs font-semibold transition cursor-pointer">
-            <span>📲 Install App</span>
+            <span>📲 ${t('app.install_app')}</span>
           </button>
         ` : ''}
 
         <!-- Feature Tour Guide Button -->
-        <button id="btnOpenTour" title="Explore Sky Oracle features & interactive starfield guide" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 hover:text-white transition cursor-pointer">
-          <span>💡 Tour</span>
+        <button id="btnOpenTour" title="${t('app.tour_tooltip')}" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 hover:text-white transition cursor-pointer">
+          <span>💡 ${t('app.tour')}</span>
         </button>
+
+        <!-- Language Selector -->
+        <div class="relative">
+          <select id="selectLang" title="Select Language" class="appearance-none px-2.5 py-1.5 pr-6 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-bold text-[#e6edf3] hover:text-[#58a6ff] transition cursor-pointer focus:outline-none focus:border-[#58a6ff]">
+            ${SUPPORTED_LOCALES.map(l => `<option value="${l.code}" ${getLocale() === l.code ? 'selected' : ''}>${l.flag} ${l.label}</option>`).join('')}
+          </select>
+          <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8b949e]">▾</span>
+        </div>
 
         <!-- Unit Toggle Button -->
         <button id="btnToggleUnit" title="Switch to ${state.tempUnit === 'F' ? 'Celsius' : 'Fahrenheit'}" class="px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-bold text-[#58a6ff] hover:text-white transition cursor-pointer">
@@ -566,7 +651,7 @@ function render() {
         </button>
 
         <!-- Refresh Button -->
-        <button id="btnRefresh" title="Refresh Forecast" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition cursor-pointer ${state.loading ? 'animate-spin text-[#58a6ff]' : ''}">
+        <button id="btnRefresh" title="${t('app.refresh')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition cursor-pointer ${state.loading ? 'animate-spin text-[#58a6ff]' : ''}">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
         </button>
       </div>
@@ -580,7 +665,7 @@ function render() {
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div class="flex items-center gap-2 mb-2 flex-wrap">
-              <span class="text-xs uppercase tracking-wider font-bold text-[#8b949e]">TONIGHT'S OBSERVING VERDICT</span>
+              <span class="text-xs uppercase tracking-wider font-bold text-[#8b949e]">${t('verdict.tonight', { date: '' }).split('(')[0].trim().toUpperCase()}</span>
               ${isDarkSkyNow ? `
                 <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#58a6ff]/20 text-[#58a6ff] border border-[#58a6ff]/40 animate-pulse-subtle">
                   🌌 DARK SKY ACTIVE
@@ -588,7 +673,7 @@ function render() {
               ` : ''}
               ${state.forecast ? `
                 <span class="text-xs text-[#8b949e] ml-auto">
-                  ${state.forecast.observingDateLabel}
+                  ${getLocalizedObservingDate(state.forecast)}
                 </span>
               ` : ''}
             </div>
@@ -597,11 +682,11 @@ function render() {
               <span class="text-3xl sm:text-4xl">${state.forecast?.verdictEmoji || '🔭'}</span>
               <div>
                 <h2 class="text-xl sm:text-2xl font-bold text-[#e6edf3]">
-                  ${state.forecast?.verdict || (state.loading ? 'Forecasting skies…' : 'Clear skies expected')}
+                  ${state.forecast ? getLocalizedVerdict(state.forecast.verdict) : (state.loading ? t('app.calculating') : t('verdict.clear'))}
                 </h2>
                 <p class="text-sm text-[#8b949e] mt-0.5">
-                  ${state.forecast?.bestWindow ? `Clearest around <span class="text-white font-semibold">${state.forecast.bestWindow.label}</span> (${state.forecast.bestWindow.cloud}% cloud cover)` : 'Calculating observing window…'}
-                  ${state.forecast ? ` · Avg cloud: ${state.forecast.avgCloud}%` : ''}
+                  ${state.forecast?.bestWindow ? `${t('verdict.best_window')}: <span class="text-white font-semibold">${state.forecast.bestWindow.label}</span> (${state.forecast.bestWindow.cloud}% ${t('verdict.avg_cloud').toLowerCase()})` : t('app.calculating')}
+                  ${state.forecast ? ` · ${t('verdict.avg_cloud')}: ${state.forecast.avgCloud}%` : ''}
                 </p>
               </div>
             </div>
@@ -616,13 +701,13 @@ function render() {
                     ${state.tempUnit === 'F' ? `${state.forecast.currentTempF}°F` : `${state.forecast.currentTempC}°C`}
                   </span>
                   <span class="text-[#8b949e]">
-                    (Overnight Low: <strong class="text-white font-medium">${state.tempUnit === 'F' ? `${state.forecast.minTempF}°F` : `${state.forecast.minTempC}°C`}</strong>)
+                    (Low: <strong class="text-white font-medium">${state.tempUnit === 'F' ? `${state.forecast.minTempF}°F` : `${state.forecast.minTempC}°C`}</strong>)
                   </span>
                 </div>
 
                 <!-- Feels Like Pill -->
                 <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-[#30363d]/60">
-                  <span class="text-[#8b949e]">Feels:</span>
+                  <span class="text-[#8b949e]">${t('weather.feels_like')}:</span>
                   <span class="font-semibold text-[#e6edf3]">
                     ${state.tempUnit === 'F' ? `${state.forecast.feelsLikeF}°F` : `${state.forecast.feelsLikeC}°C`}
                   </span>
@@ -631,14 +716,14 @@ function render() {
                 <!-- Dew / Frost Alert Pill -->
                 <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${state.forecast.dewRisk === 'high' ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : (state.forecast.dewRisk === 'moderate' ? 'bg-sky-500/10 border-sky-500/30 text-sky-300' : 'bg-white/[0.04] border-[#30363d]/60 text-[#8b949e]')}">
                   <span>${state.forecast.minTempC <= 0 && state.forecast.dewRisk === 'high' ? '❄️' : '💧'}</span>
-                  <span class="font-medium">${state.forecast.dewRiskLabel}</span>
-                  <span class="text-[10px] opacity-75 font-mono">(${state.tempUnit === 'F' ? `Dew pt ${state.forecast.dewPointF}°` : `Dew pt ${state.forecast.dewPointC}°`})</span>
+                  <span class="font-medium">${getLocalizedDewRisk(state.forecast)}</span>
+                  <span class="text-[10px] opacity-75 font-mono">(${t('weather.dew_point')} ${state.tempUnit === 'F' ? `${state.forecast.dewPointF}°` : `${state.forecast.dewPointC}°`})</span>
                 </div>
 
                 <!-- Wind Pill -->
                 <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-[#30363d]/60 text-[#8b949e]">
                   <span>💨</span>
-                  <span>Wind: <strong class="text-white font-medium">${state.tempUnit === 'F' ? `${state.forecast.windSpeedMph} mph` : `${state.forecast.windSpeedKmh} km/h`}</strong></span>
+                  <span>${t('weather.wind')}: <strong class="text-white font-medium">${state.tempUnit === 'F' ? `${state.forecast.windSpeedMph} mph` : `${state.forecast.windSpeedKmh} km/h`}</strong></span>
                 </div>
               </div>
             ` : ''}
@@ -709,7 +794,7 @@ function render() {
           <div>
             <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d] flex-wrap gap-2">
               <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
-                <span>🪐</span> SOLAR SYSTEM TARGETS
+                <span>🪐</span> ${t('planets.title').toUpperCase()}
               </h3>
               <div class="flex items-center gap-2">
                 <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20" title="Targets in amber text are up all night or well-positioned in the evening sky">
@@ -739,28 +824,28 @@ function render() {
                     tabindex="0"
                     data-planet="${p.key}"
                     class="btnPlanetCard flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-[#30363d]/50 hover:border-amber-400/40 transition cursor-pointer group"
-                    title="Click to view 10° starfield centered on ${p.name}"
+                    title="${t('planets.view_starfield')} (${t('planets.' + p.key) || p.name})"
                   >
                     <div class="flex items-center gap-3">
                       <span class="text-xl ${isPrime ? 'text-amber-400' : 'text-[#e6edf3]'} font-bold w-6 text-center group-hover:scale-110 transition-transform">${p.symbol}</span>
                       <div>
                         <div class="flex items-center gap-2">
-                          <span class="font-bold text-sm text-[#e6edf3] group-hover:text-amber-300 transition-colors">${p.name}</span>
+                          <span class="font-bold text-sm text-[#e6edf3] group-hover:text-amber-300 transition-colors">${t('planets.' + p.key) || p.name}</span>
                           <!-- Plain-text Constellation badge -->
                           <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
                             ${p.constellation}
                           </span>
                         </div>
                         <span class="text-xs font-medium ${isPrime ? 'text-amber-400' : 'text-[#8b949e]'}">
-                          ${p.status}
+                          ${formatLocalizedPlanetStatus(p)}
                         </span>
                       </div>
                     </div>
 
                     <div class="flex items-center gap-3">
                       <div class="text-right text-xs text-[#8b949e]">
-                        ${p.set ? `<div>Set ${formatTime(p.set)}</div>` : ''}
-                        ${p.rise ? `<div>Rise ${formatTime(p.rise)}</div>` : ''}
+                        ${p.set ? `<div>${t('planets.set')} ${formatTime(p.set)}</div>` : ''}
+                        ${p.rise ? `<div>${t('planets.rise')} ${formatTime(p.rise)}</div>` : ''}
                       </div>
                       <div class="flex items-center gap-1 text-[#8b949e] group-hover:text-amber-400 transition-colors pl-1">
                         <span class="text-[11px] font-bold hidden sm:inline opacity-70 group-hover:opacity-100 transition-opacity">10° Field</span>
@@ -781,14 +866,14 @@ function render() {
           <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg">
             <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d]">
               <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
-                <span>🌙</span> MOON PHASE & ILLUMINATION
+                <span>🌙</span> ${t('moon.title').toUpperCase()}
               </h3>
               <div class="flex items-center gap-2">
                 <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 text-[#58a6ff] border border-[#58a6ff]/30">
-                  ${state.moon?.phaseDirection || 'Waxing'}
+                  ${getLocalizedMoonDirection(state.moon?.phaseDirection)}
                 </span>
                 <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-400 border border-amber-400/30">
-                  ${state.moon?.illum || 0}% Illuminated
+                  ${t('moon.illum', { pct: state.moon?.illum || 0 })}
                 </span>
               </div>
             </div>
@@ -798,9 +883,9 @@ function render() {
               <div class="flex items-center gap-4">
                 <canvas id="moonCanvas" width="180" height="180" class="w-20 h-20 sm:w-24 sm:h-24 shrink-0 drop-shadow-[0_0_14px_rgba(251,191,36,0.3)]"></canvas>
                 <div>
-                  <h4 class="text-lg font-bold text-[#e6edf3]">${state.moon?.name || 'Waxing Moon'}</h4>
+                  <h4 class="text-lg font-bold text-[#e6edf3]">${getLocalizedMoonPhase(state.moon?.name)}</h4>
                   <p class="text-xs text-[#8b949e] mt-0.5">
-                    Age: <span class="text-white font-medium">${state.moon?.age.toFixed(1) || '0'} days</span> · ${state.moon?.phaseDirection || 'Waxing'}
+                    Age: <span class="text-white font-medium">${state.moon?.age.toFixed(1) || '0'} days</span> · ${getLocalizedMoonDirection(state.moon?.phaseDirection)}
                   </p>
                   <p class="text-xs text-[#8b949e] mt-0.5">
                     Altitude: <span class="${(state.moon?.isUp ?? false) ? 'text-emerald-400' : 'text-[#8b949e]'} font-medium">
@@ -833,19 +918,19 @@ function render() {
             <!-- Rise / Set / Next Dates Grid -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3 pt-3 border-t border-[#30363d]/60 text-xs">
               <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Next Rise</span>
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.rises')}</span>
                 <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.rise || null)}</span>
               </div>
               <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Next Set</span>
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.sets')}</span>
                 <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.set || null)}</span>
               </div>
               <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Next New</span>
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.next_new')}</span>
                 <span class="text-sm font-bold text-[#58a6ff]">${formatShortDate(state.moon?.nextNew || null)}</span>
               </div>
               <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Next Full</span>
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.next_full')}</span>
                 <span class="text-sm font-bold text-amber-300">${formatShortDate(state.moon?.nextFull || null)}</span>
               </div>
             </div>
@@ -855,34 +940,34 @@ function render() {
           <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg flex-1">
             <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d]">
               <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
-                <span>☀️</span> SOLAR TWILIGHT TIMELINE
+                <span>☀️</span> ${t('sun.title').toUpperCase()}
               </h3>
               <span class="text-xs text-[#8b949e]">Local Solar Times</span>
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
               <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Sunset (-0.8°)</span>
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('sun.sunset')} (-0.8°)</span>
                 <span class="text-sm font-bold text-amber-300">${formatTime(state.sunEvents?.sunset || null)}</span>
               </div>
               <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Civil Dusk (-6°)</span>
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('sun.civil_dusk')} (-6°)</span>
                 <span class="text-sm font-bold text-sky-300">${formatTime(state.sunEvents?.civilDusk || null)}</span>
               </div>
               <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Nautical Dusk (-12°)</span>
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('sun.nautical_dusk')} (-12°)</span>
                 <span class="text-sm font-bold text-indigo-300">${formatTime(state.sunEvents?.nauticalDusk || null)}</span>
               </div>
               <div class="p-2.5 rounded-xl bg-[#58a6ff]/10 border border-[#58a6ff]/40">
-                <span class="text-[#58a6ff] block text-[10px] uppercase font-bold">🌌 Astro Dusk (-18°)</span>
+                <span class="text-[#58a6ff] block text-[10px] uppercase font-bold">🌌 ${t('sun.astro_dusk')} (-18°)</span>
                 <span class="text-sm font-bold text-[#58a6ff]">${formatTime(state.sunEvents?.astroDusk || null)}</span>
               </div>
               <div class="p-2.5 rounded-xl bg-[#58a6ff]/10 border border-[#58a6ff]/40">
-                <span class="text-[#58a6ff] block text-[10px] uppercase font-bold">🌅 Astro Dawn (-18°)</span>
+                <span class="text-[#58a6ff] block text-[10px] uppercase font-bold">🌅 ${t('sun.astro_dawn')} (-18°)</span>
                 <span class="text-sm font-bold text-[#58a6ff]">${formatTime(state.sunEvents?.astroDawn || null)}</span>
               </div>
               <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">Sunrise (-0.8°)</span>
+                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('sun.sunrise')} (-0.8°)</span>
                 <span class="text-sm font-bold text-amber-300">${formatTime(state.sunEvents?.sunrise || null)}</span>
               </div>
             </div>
@@ -894,7 +979,7 @@ function render() {
 
     <!-- Footer -->
     <footer class="pt-6 border-t border-[#30363d] flex flex-col sm:flex-row items-center justify-between text-xs text-[#8b949e] gap-2">
-      <div>SkyOracle <span class="font-mono text-[#58a6ff]">v${APP_VERSION}</span> · Offline NOAA/Meeus Astronomy + Open-Meteo Telemetry</div>
+      <div>SkyOracle <span class="font-mono text-[#58a6ff]">v${APP_VERSION}</span> · ${t('app.powered_by')}</div>
       <div class="flex items-center gap-3">
         <span>No API Keys Needed</span>
         <span>·</span>
@@ -923,7 +1008,7 @@ function renderSearchResultsList(results: GeocodingResult[]): string {
   if (!results.length) return '';
   return `
     <div class="flex flex-col gap-1 max-h-56 overflow-y-auto">
-      <span class="text-[11px] font-bold uppercase tracking-wider text-[#8b949e] px-1">Search Results</span>
+      <span class="text-[11px] font-bold uppercase tracking-wider text-[#8b949e] px-1">${t('search.results')}</span>
       ${results.map(r => `
         <button
           type="button"
@@ -953,63 +1038,66 @@ interface TourSlide {
   highlights: { emoji: string; label: string }[];
 }
 
-const TOUR_SLIDES: TourSlide[] = [
-  {
-    badge: '🔭 FEATURE 1 OF 4',
-    title: 'Interactive 10° Starfield Eyepiece',
-    tagline: 'High-precision telescopic starfield for Moon, Sun & planets',
-    icon: '🔭',
-    accentColor: '#38bdf8',
-    description: 'Tap any planet, the Moon, or Sun on the dashboard to launch its live, interactive telescopic starfield. Zoom continuously between 5° (binoculars / finder), 10°, 20°, 30°, and 45° (naked eye), or toggle between a circular eyepiece and a square camera sensor.',
-    highlights: [
-      { emoji: '◯', label: '5°–45° Field of View' },
-      { emoji: '✨', label: 'Zodiac Constellation Lines' },
-      { emoji: '🏷️', label: 'Bayer & Flamsteed Star Names' }
-    ]
-  },
-  {
-    badge: '👁️ FEATURE 2 OF 4',
-    title: 'Natural Perspective & Level Horizon',
-    tagline: 'Matches what you see looking up into the night sky',
-    icon: '👁️',
-    accentColor: '#10b981',
-    description: 'Natural mode keeps the Earth\'s horizon level across the bottom with true 16-point compass facing azimuth (e.g. WSW 245°). If an object dips below the horizon, the ground dims and coordinates turn red. Switch instantly between Natural, North-Up (star atlases), and South-Up (Newtonian reflectors).',
-    highlights: [
-      { emoji: '━━━', label: 'Level Horizon Line' },
-      { emoji: '🧭', label: 'Compass Facing Azimuth' },
-      { emoji: '📐', label: 'Telescope Orientations' }
-    ]
-  },
-  {
-    badge: '🕒 FEATURE 3 OF 4',
-    title: 'Time Scrubber & Horizon Crossings',
-    tagline: 'Simulate sunrise, sunset, moonrise, or planetary sets with 36-second fluidity',
-    icon: '🕒',
-    accentColor: '#f59e0b',
-    description: 'Drag the amber slider to scrub ±1 hour with silky 60fps real-time updates, or step by ±2 hours. When an object has an upcoming rise or set event, tap the 🌇 Set or 🌅 Rise quick button to lock it right on the green horizon line (0.0° Alt) and watch it cross in real time!',
-    highlights: [
-      { emoji: '●', label: '2-Hour Continuous Scrubber' },
-      { emoji: '🌇', label: '1-Tap Rise / Set Jumps' },
-      { emoji: '⚡', label: 'Instant 60fps Ephemeris' }
-    ]
-  },
-  {
-    badge: '📏 FEATURE 4 OF 4',
-    title: 'Tap-to-Inspect & Celestial Ruler',
-    tagline: 'Identify stars, companion planets, and measure separations',
-    icon: '📏',
-    accentColor: '#a855f7',
-    description: 'Tap any star or companion body in the field. Sky Oracle draws a live cyan distance ruler connecting your center target to the star, displaying exact angular separation in degrees or arcminutes, true position angle bearing, and apparent magnitude.',
-    highlights: [
-      { emoji: '⭐', label: 'Star Identification' },
-      { emoji: '📏', label: 'Angular Distance & Arcmin' },
-      { emoji: '🧭', label: 'Position Angle Bearing' }
-    ]
-  }
-];
+function getTourSlides(): TourSlide[] {
+  return [
+    {
+      badge: '🔭 1 / 4',
+      title: t('tour.welcome_title'),
+      tagline: 'High-precision telescopic starfield for Moon, Sun & planets',
+      icon: '🔭',
+      accentColor: '#38bdf8',
+      description: t('tour.welcome_desc'),
+      highlights: [
+        { emoji: '◯', label: t('starfield.circular_fov') },
+        { emoji: '✨', label: t('modal.constellation') },
+        { emoji: '🏷️', label: t('modal.altitude') }
+      ]
+    },
+    {
+      badge: '🌅 2 / 4',
+      title: t('tour.twilight_title'),
+      tagline: 'Precision Civil, Nautical, and Astronomical twilight tracking',
+      icon: '🌅',
+      accentColor: '#10b981',
+      description: t('tour.twilight_desc'),
+      highlights: [
+        { emoji: '━━━', label: t('starfield.horizon') },
+        { emoji: '🌌', label: t('sun.astro_dusk') },
+        { emoji: '📐', label: t('sun.true_night') }
+      ]
+    },
+    {
+      badge: '💧 3 / 4',
+      title: t('tour.weather_title'),
+      tagline: 'Hyperlocal cloud cover and dew point monitoring',
+      icon: '💧',
+      accentColor: '#f59e0b',
+      description: t('tour.weather_desc'),
+      highlights: [
+        { emoji: '●', label: t('weather.temp') },
+        { emoji: '💧', label: t('weather.dew_point') },
+        { emoji: '💨', label: t('weather.wind') }
+      ]
+    },
+    {
+      badge: '🔒 4 / 4',
+      title: t('tour.offline_title'),
+      tagline: '100% offline ephemeris with zero tracking',
+      icon: '🔒',
+      accentColor: '#a855f7',
+      description: t('tour.offline_desc'),
+      highlights: [
+        { emoji: '⭐', label: t('planets.title') },
+        { emoji: '🌙', label: t('moon.title') },
+        { emoji: '🛡️', label: t('app.offline') }
+      ]
+    }
+  ];
+}
 
 function renderTourModal(): string {
-  const slide = TOUR_SLIDES[state.tourSlideIndex] || TOUR_SLIDES[0];
+  const slides = getTourSlides();
+  const slide = slides[state.tourSlideIndex] || slides[0];
 
   return `
     <div id="tourModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
@@ -1018,7 +1106,7 @@ function renderTourModal(): string {
         <div class="flex items-center justify-between p-3.5 sm:p-4 border-b border-[#30363d] bg-black/25">
           <div class="flex items-center gap-2">
             <span class="text-xl">💡</span>
-            <h3 class="text-base sm:text-lg font-bold text-[#e6edf3]">Sky Oracle Feature Tour</h3>
+            <h3 class="text-base sm:text-lg font-bold text-[#e6edf3]">SkyOracle Feature Tour</h3>
           </div>
           <button id="btnCloseTourModal" class="p-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" aria-label="Close tour">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -1032,7 +1120,7 @@ function renderTourModal(): string {
               ${slide.badge}
             </span>
             <div class="flex items-center gap-1.5">
-              ${TOUR_SLIDES.map((_, i) => `
+              ${slides.map((_, i) => `
                 <button
                   type="button"
                   class="btnTourDot w-2.5 h-2.5 rounded-full transition cursor-pointer ${i === state.tourSlideIndex ? 'bg-amber-400 scale-125' : 'bg-white/20 hover:bg-white/40'}"
@@ -1075,20 +1163,20 @@ function renderTourModal(): string {
             class="px-3 py-1.5 rounded-xl border border-[#30363d] text-xs font-semibold text-[#8b949e] hover:text-white hover:bg-white/5 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
             ${state.tourSlideIndex === 0 ? 'disabled' : ''}
           >
-            ◀ Previous
+            ${t('tour.back')}
           </button>
 
           <span class="text-xs text-[#8b949e] font-mono">
-            ${state.tourSlideIndex + 1} of ${TOUR_SLIDES.length}
+            ${state.tourSlideIndex + 1} of ${slides.length}
           </span>
 
-          ${state.tourSlideIndex < TOUR_SLIDES.length - 1 ? `
+          ${state.tourSlideIndex < slides.length - 1 ? `
             <button
               id="btnTourNext"
               type="button"
               class="px-4 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-500/40 text-xs font-semibold text-sky-200 transition cursor-pointer"
             >
-              Next ▶
+              ${t('tour.next')}
             </button>
           ` : `
             <button
@@ -1096,7 +1184,7 @@ function renderTourModal(): string {
               type="button"
               class="px-4 py-1.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/50 text-xs font-bold text-amber-200 transition cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.3)]"
             >
-              Got It — Let's Stargaze! 🔭
+              ${t('tour.get_started')}
             </button>
           `}
         </div>
@@ -1113,9 +1201,9 @@ function renderSearchModal(): string {
       <div class="bg-[#161b22] border border-[#30363d] rounded-2xl w-full max-w-lg shadow-2xl p-5 flex flex-col gap-4">
         <div class="flex items-center justify-between pb-3 border-b border-[#30363d]">
           <h3 class="text-base font-bold text-[#e6edf3] flex items-center gap-2">
-            <span>📍</span> Change Stargazing Location
+            <span>📍</span> ${t('search.title')}
           </h3>
-          <button id="btnCloseSearch" class="p-1 rounded-lg text-[#8b949e] hover:text-white transition cursor-pointer" aria-label="Close">
+          <button id="btnCloseSearch" class="p-1 rounded-lg text-[#8b949e] hover:text-white transition cursor-pointer" aria-label="${t('search.close')}">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
@@ -1125,7 +1213,7 @@ function renderSearchModal(): string {
           <input
             id="inputCitySearch"
             type="text"
-            placeholder="Search city or location (e.g. Flagstaff, Denver, Tokyo)…"
+            placeholder="${t('search.placeholder')}"
             value="${state.searchQuery}"
             class="w-full px-4 py-2.5 rounded-xl bg-[#0d1117] border border-[#30363d] text-sm text-[#e6edf3] placeholder-[#8b949e] focus:outline-none focus:border-[#58a6ff] transition"
             autocomplete="off"
@@ -1143,7 +1231,7 @@ function renderSearchModal(): string {
 
         <!-- Recents List -->
         <div class="flex flex-col gap-2 pt-2 border-t border-[#30363d]/60">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-[#8b949e]">Recent Locations</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-[#8b949e]">${t('search.recent')}</span>
           <div class="flex flex-wrap gap-2">
             ${recents.map(r => `
               <button
@@ -1252,7 +1340,7 @@ function renderPlanetModal(): string {
               class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldShowLines ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 hover:bg-sky-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
               title="Toggle zodiac constellation stick lines"
             >
-              <span>${state.starfieldShowLines ? '✨ Lines' : '✨ Lines Off'}</span>
+              <span>${state.starfieldShowLines ? `✨ ${t('starfield.lines')}` : `✨ ${t('starfield.lines_off')}`}</span>
             </button>
 
             <!-- Star Names Toggle Button -->
@@ -1261,7 +1349,7 @@ function renderPlanetModal(): string {
               class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldShowLabels ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
               title="Toggle star names and Bayer/Flamsteed designations in field of view"
             >
-              <span>${state.starfieldShowLabels ? '🏷️ Names' : '🏷️ Off'}</span>
+              <span>${state.starfieldShowLabels ? `🏷️ ${t('starfield.names')}` : `🏷️ ${t('starfield.names_off')}`}</span>
             </button>
 
             <!-- Aperture Toggle Button (Circular Eyepiece / Square Sensor) -->
@@ -1270,7 +1358,7 @@ function renderPlanetModal(): string {
               class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldAperture === 'circular' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
               title="Toggle field of view between circular eyepiece and square sensor frame"
             >
-              <span>${state.starfieldAperture === 'circular' ? `◯ Eyepiece (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `▢ Sensor (${fovDeg}°)`}</span>
+              <span>${state.starfieldAperture === 'circular' ? `◯ ${t('starfield.eyepiece')} (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `▢ ${t('starfield.sensor')} (${fovDeg}°)`}</span>
             </button>
 
             <!-- Orientation Toggle Button (Natural / North-Up / South-Up) -->
@@ -1291,14 +1379,14 @@ function renderPlanetModal(): string {
               </svg>
               <span>${
                 state.starfieldOrientation === 'natural'
-                  ? '👁️ Natural'
+                  ? `👁️ ${t('starfield.orient_natural').split('(')[0].trim()}`
                   : state.starfieldOrientation === 'southUp'
-                  ? '🧭 South Up'
-                  : '🧭 North Up'
+                  ? `🧭 ${t('starfield.orient_south_up').split('(')[0].trim()}`
+                  : `🧭 ${t('starfield.orient_north_up').split('(')[0].trim()}`
               }</span>
             </button>
 
-            <button id="btnClosePlanetModal" class="p-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" aria-label="Close starfield modal">
+            <button id="btnClosePlanetModal" class="p-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" aria-label="${t('modal.close')}">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
           </div>
@@ -1315,7 +1403,7 @@ function renderPlanetModal(): string {
                 <div class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 border border-indigo-500/30 flex flex-wrap items-center justify-between gap-2 text-xs">
                   <div class="flex items-center gap-2 flex-wrap">
                     <span class="text-sm">✨</span>
-                    <span class="font-bold text-indigo-200">In Field:</span>
+                    <span class="font-bold text-indigo-200">${t('modal.in_field')}</span>
                     ${bodiesInField.map(b => `
                       <span class="px-2 py-0.5 rounded-lg bg-indigo-500/25 text-indigo-100 border border-indigo-500/40 flex items-center gap-1 font-semibold">
                         <span>${b.symbol}</span>
@@ -1335,7 +1423,7 @@ function renderPlanetModal(): string {
                           data-planet="${b.key}"
                           title="Center starfield on ${b.name}"
                         >
-                          <span>Center on ${b.name}</span>
+                          <span>${t('modal.center_on', { name: b.name })}</span>
                           <span>➔</span>
                         </button>
                       `).join('')}
@@ -1371,24 +1459,24 @@ function renderPlanetModal(): string {
               <!-- Coordinates & Telemetry Chip Bar -->
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 bg-black/30 rounded-xl border border-[#30363d]/60 text-xs">
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Right Ascension</span>
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('modal.ra')}</span>
                   <span class="font-bold text-[#e6edf3] text-sm">${formatRa(coords.ra)}</span>
                   <span class="text-[10px] text-[#8b949e] block font-mono">(${coords.ra.toFixed(2)}°)</span>
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Declination</span>
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('modal.dec')}</span>
                   <span class="font-bold text-[#e6edf3] text-sm">${formatDec(coords.dec)}</span>
                   <span class="text-[10px] text-[#8b949e] block font-mono">(${coords.dec >= 0 ? '+' : ''}${coords.dec.toFixed(2)}°)</span>
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Local Horizon</span>
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('starfield.horizon')}</span>
                   <span id="chipPlanetAlt" class="font-bold ${isAboveHorizon ? 'text-emerald-400' : 'text-rose-400'} text-sm">${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° Alt</span>
                   <span id="chipPlanetAz" class="text-[10px] text-sky-300 block font-mono font-medium">Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass}</span>
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Field of View</span>
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('starfield.title')}</span>
                   <span class="font-bold text-amber-300 text-sm">${state.starfieldAperture === 'circular' ? `${fovDeg}° ◯ (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `${fovDeg}° ▢ Sensor`}</span>
-                  <span class="text-[10px] text-[#8b949e] block">${state.starfieldAperture === 'circular' ? 'Eyepiece (Mag ≤ 6.0)' : 'Sensor (Mag ≤ 6.0)'}</span>
+                  <span class="text-[10px] text-[#8b949e] block">${state.starfieldAperture === 'circular' ? `${t('starfield.eyepiece')} (Mag ≤ 6.0)` : `${t('starfield.sensor')} (Mag ≤ 6.0)`}</span>
                 </div>
               </div>
 
@@ -1399,7 +1487,7 @@ function renderPlanetModal(): string {
                   <div class="flex items-center gap-1.5 flex-wrap">
                     <span class="text-[11px] font-bold text-[#8b949e] uppercase tracking-wider flex items-center gap-1">
                       <span>🕒</span>
-                      <span>Time:</span>
+                      <span>${t('starfield.time')}:</span>
                     </span>
                     <span id="starfieldTimeDisplay" class="font-mono font-semibold text-xs ${state.starfieldTimeOffsetHours === 0 ? 'text-[#e6edf3]' : 'text-amber-300'}">
                       ${formatTime(effectiveDate)}
@@ -1413,15 +1501,15 @@ function renderPlanetModal(): string {
                       class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition cursor-pointer ${state.starfieldTimeOffsetHours === 0 ? 'hidden' : ''}"
                       title="Reset to live current time"
                     >
-                      Reset to Now
+                      ${t('starfield.reset_now')}
                     </button>
                   </div>
 
                   <!-- Quick Time Presets & Planetary Rise/Set Jumpers -->
                   <div class="flex items-center gap-1 flex-wrap">
-                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${state.starfieldTimeOffsetHours === 0 ? 'bg-emerald-500/25 text-emerald-200 border-emerald-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}" data-time-preset="now">Now</button>
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${state.starfieldTimeOffsetHours === 0 ? 'bg-emerald-500/25 text-emerald-200 border-emerald-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}" data-time-preset="now">${t('starfield.preset_now')}</button>
 
-                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dusk" title="End of evening twilight (Astro Dusk tonight)">Dusk</button>
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dusk" title="End of evening twilight (Astro Dusk tonight)">${t('starfield.preset_dusk')}</button>
 
                     ${p.set && pSetDiffH !== null && pSetDiffH >= -6 && pSetDiffH <= 18 ? `
                       <button
@@ -1429,7 +1517,7 @@ function renderPlanetModal(): string {
                         data-time-preset="planet-set"
                         title="Simulate ${p.name} setting on the horizon (${formatTime(p.set)})"
                       >
-                        🌇 Set (${formatTime(p.set)})
+                        🌇 ${t('starfield.preset_set')} (${formatTime(p.set)})
                       </button>
                     ` : ''}
 
@@ -1439,7 +1527,7 @@ function renderPlanetModal(): string {
                         data-time-preset="planet-rise"
                         title="Simulate ${p.name} rising on the horizon (${formatTime(p.rise)})"
                       >
-                        🌅 Rise (${formatTime(p.rise)})
+                        🌅 ${t('starfield.preset_rise')} (${formatTime(p.rise)})
                       </button>
                     ` : ''}
 
@@ -1447,7 +1535,7 @@ function renderPlanetModal(): string {
 
                     <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="2am" title="2:00 AM local night observing">2 AM</button>
 
-                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dawn" title="Morning twilight (Astro Dawn)">Dawn</button>
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dawn" title="Morning twilight (Astro Dawn)">${t('starfield.preset_dawn')}</button>
                   </div>
                 </div>
 
@@ -1560,7 +1648,7 @@ function renderPlanetModal(): string {
                     state.starfieldFovDeg === 30 ? '🔭 30° Wide Sky Scan' :
                     '👀 45° Naked Eye Central View'}
                 </span>
-                <span class="text-[10px] text-[#8b949e]">Tap any star to inspect & measure</span>
+                <span class="text-[10px] text-[#8b949e]">${t('modal.tap_hint')}</span>
               </div>
             </div>
 
@@ -1584,7 +1672,7 @@ function renderPlanetModal(): string {
 
                   <div class="grid grid-cols-2 gap-2 text-xs">
                     <div class="p-2 rounded-xl bg-black/40 border border-white/5">
-                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Angular Separation</span>
+                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('starfield.angular_separation')}</span>
                       <span class="font-bold text-sky-300 text-sm font-mono">
                         ${state.starfieldSelectedTarget.separationDeg < 1.0
                           ? `${(state.starfieldSelectedTarget.separationDeg * 60).toFixed(1)}' (${(state.starfieldSelectedTarget.separationDeg * 3600).toFixed(0)}")`
@@ -1595,7 +1683,7 @@ function renderPlanetModal(): string {
                     </div>
 
                     <div class="p-2 rounded-xl bg-black/40 border border-white/5">
-                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Bearing / Position Angle</span>
+                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('starfield.bearing')}</span>
                       <span class="font-bold text-sky-300 text-sm font-mono">
                         ${state.starfieldSelectedTarget.bearingDeg.toFixed(0)}° (${state.starfieldSelectedTarget.bearingCompass})
                       </span>
@@ -1603,7 +1691,7 @@ function renderPlanetModal(): string {
                     </div>
 
                     <div class="p-2 rounded-xl bg-black/40 border border-white/5">
-                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Apparent Magnitude</span>
+                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('modal.magnitude')}</span>
                       <span class="font-bold text-[#e6edf3] text-sm font-mono">
                         ${state.starfieldSelectedTarget.mag !== undefined
                           ? `${state.starfieldSelectedTarget.mag >= 0 ? '+' : ''}${state.starfieldSelectedTarget.mag.toFixed(2)}`
@@ -1750,7 +1838,7 @@ function attachEventHandlers() {
   });
 
   document.getElementById('btnTourNext')?.addEventListener('click', () => {
-    if (state.tourSlideIndex < TOUR_SLIDES.length - 1) {
+    if (state.tourSlideIndex < getTourSlides().length - 1) {
       state.tourSlideIndex++;
       render();
     }
@@ -1759,11 +1847,17 @@ function attachEventHandlers() {
   document.querySelectorAll<HTMLElement>('.btnTourDot').forEach(btn => {
     btn.addEventListener('click', () => {
       const slideIdx = parseInt(btn.getAttribute('data-slide') || '0', 10);
-      if (!isNaN(slideIdx) && slideIdx >= 0 && slideIdx < TOUR_SLIDES.length) {
+      if (!isNaN(slideIdx) && slideIdx >= 0 && slideIdx < getTourSlides().length) {
         state.tourSlideIndex = slideIdx;
         render();
       }
     });
+  });
+
+  // Language Selector
+  const selectLang = document.getElementById('selectLang') as HTMLSelectElement | null;
+  selectLang?.addEventListener('change', () => {
+    setLocale(selectLang.value as Locale);
   });
 
   // Geolocate
@@ -2136,7 +2230,7 @@ window.addEventListener('keydown', (e) => {
       render();
     }
   } else if (state.tourModalOpen) {
-    if (e.key === 'ArrowRight' && state.tourSlideIndex < TOUR_SLIDES.length - 1) {
+    if (e.key === 'ArrowRight' && state.tourSlideIndex < getTourSlides().length - 1) {
       state.tourSlideIndex++;
       render();
     } else if (e.key === 'ArrowLeft' && state.tourSlideIndex > 0) {
@@ -2153,5 +2247,9 @@ window.addEventListener('resize', () => {
 });
 
 // ── App Startup ─────────────────────────────────────────────────────────────
+
+onLocaleChange(() => {
+  render();
+});
 
 refreshAll();

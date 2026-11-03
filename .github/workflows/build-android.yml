@@ -79,8 +79,8 @@ jobs:
           SkyOracle — Google Play Android Bundle Build
           ==================================================
           Package ID: com.lapsedacademics.skyoracle
-          Version Name: 1.0.17
-          Version Code: 1
+          Version Name: 1.0.18
+          Version Code: 5
           Web App URL: https://aacero.github.io/sky-oracle/
           Signing Key Alias: android
           Upload Keystore SHA-256 Fingerprint:
@@ -102,6 +102,45 @@ jobs:
       - name: Scaffold & Update Android Project
         run: |
           npx -y @bubblewrap/cli update --skipVersionUpgrade --manifest ./android/twa-manifest.json
+
+      - name: Apply Android 15 Edge-to-Edge Compatibility
+        run: |
+          PKG_ID=$(node -p "require('./android/twa-manifest.json').packageId")
+          PKG_PATH=$(echo "$PKG_ID" | tr '.' '/')
+          PKG_DIR="app/src/main/java/$PKG_PATH"
+          mkdir -p "$PKG_DIR"
+
+          # Create custom LauncherActivity invoking EdgeToEdge.enable(this)
+          cat << EOF > "$PKG_DIR/LauncherActivity.java"
+          package $PKG_ID;
+
+          import android.os.Bundle;
+          import androidx.activity.EdgeToEdge;
+
+          public class LauncherActivity extends com.google.androidbrowserhelper.trusted.LauncherActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  EdgeToEdge.enable(this);
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          EOF
+
+          # Point AndroidManifest.xml to local LauncherActivity and remove deprecated status/nav bar color parameters
+          MANIFEST="app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST" ]; then
+            sed -i 's/android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"/android:name=".LauncherActivity"/g' "$MANIFEST"
+            sed -i '/android.support.customtabs.trusted.STATUS_BAR_COLOR/d' "$MANIFEST"
+            sed -i '/android.support.customtabs.trusted.NAVIGATION_BAR_COLOR/d' "$MANIFEST"
+          fi
+
+          # Ensure androidx.activity dependency is present in app/build.gradle
+          GRADLE="app/build.gradle"
+          if [ -f "$GRADLE" ]; then
+            if ! grep -q "androidx.activity:activity" "$GRADLE"; then
+              sed -i "/dependencies {/a \    implementation 'androidx.activity:activity:1.9.3'" "$GRADLE"
+            fi
+          fi
 
       - name: Build Android App Bundle (.aab) & APK
         run: |
