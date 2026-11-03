@@ -47,7 +47,7 @@ jobs:
       - name: Setup Signing Keystore
         id: keystore
         run: |
-          KEY_PASS="skytonight_upload_key"
+          KEY_PASS="skyoracle_upload_key"
           if [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
             KEY_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
           fi
@@ -65,7 +65,7 @@ jobs:
               -validity 10000 \
               -storepass "$KEY_PASS" \
               -keypass "$KEY_PASS" \
-              -dname "CN=Sky Tonight, OU=Lapsed Academics, O=Lapsed Academics, L=Jacksonville, ST=Florida, C=US"
+              -dname "CN=SkyOracle, OU=Lapsed Academics, O=Lapsed Academics, L=Jacksonville, ST=Florida, C=US"
           fi
 
           cp ./android.keystore android/android.keystore
@@ -78,25 +78,25 @@ jobs:
           ==================================================
           SkyOracle — Google Play Android Bundle Build
           ==================================================
-          Package ID: com.lapsedacademics.skytonight
+          Package ID: com.lapsedacademics.skyoracle
           Version Name: 1.0.17
-          Version Code: 4
-          Web App URL: https://aacero.github.io/sky-tonight/
+          Version Code: 1
+          Web App URL: https://aacero.github.io/sky-oracle/
           Signing Key Alias: android
           Upload Keystore SHA-256 Fingerprint:
           $SHA256_FP
 
           Google Play Console Upload Steps:
           1. Download 'app-release-bundle.aab' from this workflow run.
-          2. Open Google Play Console -> SkyOracle -> Testing -> Internal testing (or Production).
+          2. Open Google Play Console -> SkyOracle -> Testing -> Closed testing (or Internal testing).
           3. Click 'Create new release', upload 'app-release-bundle.aab', and click Save.
           4. Google Play App Signing will generate your final app distribution key.
           ==================================================
           EOF
 
           echo "### 🚀 Android Build Information" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package ID**: \`com.lapsedacademics.skytonight\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Target PWA**: https://aacero.github.io/sky-tonight/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package ID**: \`com.lapsedacademics.skyoracle\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target PWA**: https://aacero.github.io/sky-oracle/" >> $GITHUB_STEP_SUMMARY
           echo "- **Upload Keystore SHA-256**: \`$SHA256_FP\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Scaffold & Update Android Project
@@ -105,7 +105,7 @@ jobs:
 
       - name: Build Android App Bundle (.aab) & APK
         run: |
-          KEY_PASS="skytonight_upload_key"
+          KEY_PASS="skyoracle_upload_key"
           if [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
             KEY_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
           fi

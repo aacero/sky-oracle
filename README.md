@@ -6,9 +6,9 @@ Provides dynamic dark-sky observing forecasts, NOAA/Meeus solar twilight timelin
 
 <div align="center">
 
-[![Add to Obtainium](https://raw.githubusercontent.com/ImranR98/apps.obtainium.imranr.dev/main/assets/graphics/badge_obtainium.png)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.lapsedacademics.skytonight%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Faacero%2Fsky-oracle%22%2C%22author%22%3A%22aacero%22%2C%22name%22%3A%22SkyOracle%22%7D)
+[![Add to Obtainium](https://raw.githubusercontent.com/ImranR98/apps.obtainium.imranr.dev/main/assets/graphics/badge_obtainium.png)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.lapsedacademics.skyoracle%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Faacero%2Fsky-oracle%22%2C%22author%22%3A%22aacero%22%2C%22name%22%3A%22SkyOracle%22%7D)
 [![Download APK](https://img.shields.io/badge/Download-APK-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/aacero/sky-oracle/releases/latest)
-[![Launch Web App](https://img.shields.io/badge/Web_PWA-Launch-blueviolet?style=for-the-badge&logo=pwa&logoColor=white)](https://aacero.github.io/sky-tonight/)
+[![Launch Web App](https://img.shields.io/badge/Web_PWA-Launch-blueviolet?style=for-the-badge&logo=pwa&logoColor=white)](https://aacero.github.io/sky-oracle/)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/aacero/sky-oracle)](https://github.com/aacero/sky-oracle/releases)
@@ -22,7 +22,7 @@ Provides dynamic dark-sky observing forecasts, NOAA/Meeus solar twilight timelin
 
 ### 1. Obtainium (Recommended for FOSS & Auto-Updates)
 If you use [Obtainium](https://github.com/ImranR98/Obtainium) on Android:
-- **1-Tap Add**: Tap the **[Add to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.lapsedacademics.skytonight%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Faacero%2Fsky-oracle%22%2C%22author%22%3A%22aacero%22%2C%22name%22%3A%22SkyOracle%22%7D)** badge above on your Android phone or tablet.
+- **1-Tap Add**: Tap the **[Add to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.lapsedacademics.skyoracle%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Faacero%2Fsky-oracle%22%2C%22author%22%3A%22aacero%22%2C%22name%22%3A%22SkyOracle%22%7D)** badge above on your Android phone or tablet.
 - **Manual Add**: In Obtainium, tap **Add App**, paste `https://github.com/aacero/sky-oracle`, and tap **Add**. Obtainium will automatically track releases and notify you of updates.
 
 ### 2. Komi Store
@@ -33,7 +33,7 @@ Download the latest signed APK directly from our **[Releases](https://github.com
 - **Latest Build**: [`SkyOracle-v1.0.1.apk`](https://github.com/aacero/sky-oracle/releases/download/v1.0.1/SkyOracle-v1.0.1.apk) (SHA-256: `07f57905e43a48a6f6e8119aa998c46d6007f41a386ec03e3d3028b83dda6521`)
 
 ### 4. Progressive Web App (PWA)
-Open **[aacero.github.io/sky-tonight/](https://aacero.github.io/sky-tonight/)** in any modern mobile or desktop browser (Chrome, Firefox, Safari, Edge) and tap **"Install"** or **"Add to Home Screen"**.
+Open **[aacero.github.io/sky-oracle/](https://aacero.github.io/sky-oracle/)** in any modern mobile or desktop browser (Chrome, Firefox, Safari, Edge) and tap **"Install"** or **"Add to Home Screen"**.
 
 ---
 
@@ -130,7 +130,7 @@ For detailed architectural lineage and instructions on keeping this application 
 Once hosted on an HTTPS domain (e.g. GitHub Pages):
 ```bash
 npm i -g @bubblewrap/cli
-bubblewrap init --manifest https://<your-username>.github.io/sky-tonight/manifest.json
+bubblewrap init --manifest https://<your-username>.github.io/sky-oracle/manifest.json
 bubblewrap build
 ```
 This generates a signed Android `.apk` / `.aab` ready for sideloading or publishing to Google Play.

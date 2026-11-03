@@ -20,7 +20,7 @@ async function capture() {
   // 1. Phone Top (1080 x 1920 - exact 9:16, max:min <= 2:1 for Play Console)
   console.log('Capturing Phone Screenshot 1 (Overview)...');
   await page.setViewport({ width: 360, height: 640, deviceScaleFactor: 3 });
-  await page.goto('https://aacero.github.io/sky-tonight/', { waitUntil: 'networkidle2' });
+  await page.goto('https://aacero.github.io/sky-oracle/', { waitUntil: 'networkidle2' });
   await page.waitForSelector('#moonCanvas');
   // Wait a moment for canvas and animations to render cleanly
   await new Promise(r => setTimeout(r, 1500));
@@ -68,14 +68,14 @@ async function capture() {
   // 3. Tablet 7-inch (1200 x 1920 portrait)
   console.log('Capturing Tablet 7-inch Screenshot...');
   await page.setViewport({ width: 600, height: 960, deviceScaleFactor: 2 });
-  await page.goto('https://aacero.github.io/sky-tonight/', { waitUntil: 'networkidle2' });
+  await page.goto('https://aacero.github.io/sky-oracle/', { waitUntil: 'networkidle2' });
   await new Promise(r => setTimeout(r, 1000));
   await page.screenshot({ path: path.join(outDir, 'screenshot-tablet-7in.png') });
 
   // 4. Tablet 10-inch (1920 x 1200 landscape)
   console.log('Capturing Tablet 10-inch Screenshot (Landscape)...');
   await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1.5 });
-  await page.goto('https://aacero.github.io/sky-tonight/', { waitUntil: 'networkidle2' });
+  await page.goto('https://aacero.github.io/sky-oracle/', { waitUntil: 'networkidle2' });
   await new Promise(r => setTimeout(r, 1000));
   await page.screenshot({ path: path.join(outDir, 'screenshot-tablet-10in.png') });
 

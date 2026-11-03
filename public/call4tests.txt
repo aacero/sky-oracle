@@ -8,7 +8,7 @@ I will gladly test your app back, provide feedback, and keep it installed for th
 
 **How to join:**
 1. Join the Google Group: skyoracle-testers@googlegroups.com
-2. Opt-in on the Web: https://play.google.com/apps/testing/com.lapsedacademics.skytonight
-3. Download on Android: https://play.google.com/store/apps/details?id=com.lapsedacademics.skytonight
+2. Opt-in on the Web: https://play.google.com/apps/testing/com.lapsedacademics.skyoracle
+3. Download on Android: https://play.google.com/store/apps/details?id=com.lapsedacademics.skyoracle
 
 Drop your Google Group and app links in the comments below with a screenshot or confirmation, and I'll return the favor right away!

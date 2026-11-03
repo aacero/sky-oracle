@@ -1,5 +1,5 @@
 {
-  "packageId": "com.lapsedacademics.skytonight",
+  "packageId": "com.lapsedacademics.skyoracle",
   "host": "aacero.github.io",
   "name": "SkyOracle: Stargazing Forecast",
   "launcherName": "SkyOracle",
@@ -12,18 +12,18 @@
   "navigationDividerColorDark": "#30363d",
   "backgroundColor": "#0d1117",
   "enableNotifications": true,
-  "startUrl": "/sky-tonight/",
-  "iconUrl": "https://aacero.github.io/sky-tonight/icon-512.png",
-  "maskableIconUrl": "https://aacero.github.io/sky-tonight/icon-512.png",
+  "startUrl": "/sky-oracle/",
+  "iconUrl": "https://aacero.github.io/sky-oracle/icon-512.png",
+  "maskableIconUrl": "https://aacero.github.io/sky-oracle/icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionCode": 4,
+  "appVersionCode": 1,
   "appVersion": "1.0.17",
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://aacero.github.io/sky-tonight/manifest.json",
+  "webManifestUrl": "https://aacero.github.io/sky-oracle/manifest.json",
   "fallbackType": "customtabs",
   "features": {
     "locationDelegation": {
