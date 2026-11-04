@@ -63,7 +63,7 @@ import {
   MeteorCardData
 } from './core/meteors.ts';
 
-export const APP_VERSION = '1.0.18';
+export const APP_VERSION = '1.0.19';
 
 // ── Application State ───────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ This document tracks prioritized future features, architectural enhancements, an
 
 ---
 
-## 1. Internationalization (i18n) [Implemented in v1.0.18]
+## 1. Internationalization (i18n) [Implemented in v1.0.18 & v1.0.19]
 
 ### Objective
 Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical terminology, and forecast narratives without exceeding the $\le 50\text{ kB}$ gzip bundle budget.
@@ -12,25 +12,31 @@ Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical 
 ### Architecture
 - **Zero Runtime Dependencies**: Lightweight, type-safe dictionary lookup (`src/core/i18n.ts`) mapping semantic string keys to localized translations with dynamic parameter interpolation (`{pct}%`, `{time}`, `{date}`).
 - **Auto-Detection & Persistence**: Automatically detects device language via `navigator.language`, with an in-app language picker persisting user preference in `localStorage`.
-- **Active Locales (v1.0.18)**:
+- **Active Locales (v1.0.19)**:
   - `en` (English - default)
   - `es` (Spanish)
   - `pt` (Portuguese / Brazil & Portugal)
   - `de` (German)
   - `fr` (French)
-- **Upcoming Locales**:
-  - `ja` (Japanese - planned for next iteration)
-
-### Localization Scope
-1. **Dashboard & Weather**: Observing verdict descriptions, hourly cloud tracks, dew point alerts, and twilight names.
-2. **Solar System Targets**: Planet visibility statuses (*"Up all night"*, *"Evening viewable"*, etc.), rise/set labels, and IAU constellation names.
-3. **Lunar & Solar Ephemeris**: Moon phase names (*"Waxing Crescent"*, *"Full Moon"*), illumination percentages, and solar safety hazard warnings.
-4. **Interactive 10° Starfield**: HUD telemetry, aperture modes (*"Circular FOV"* vs. *"Square Sensor Frame"*), orientation indicators (*"Natural"*, *"North-Up"*, *"South-Up"*), time scrubber presets (*"Now"*, *"Dusk"*, *"Dawn"*, *"Rise"*, *"Set"*), and celestial ruler units (*"sep"*, *"PA"*).
-5. **Onboarding Tour**: 4-slide feature carousel titles, taglines, highlights, and descriptions.
+  - `it` (Italian)
+  - `ja` (Japanese)
 
 ---
 
-## 2. Android 15 Edge-to-Edge & API Compatibility [Resolved in v1.0.18]
+## 2. Observing Window & Celestial Enhancements [Implemented in v1.0.19]
+
+### Contiguous Observing Window Engine
+- Multi-constraint window selection incorporating astronomical darkness boundaries (Astro Dusk to Astro Dawn), lunar interference penalties (moon illumination $\times$ altitude above horizon), low cloud cover prioritization, and peak solar-midnight tiebreakers.
+- Dedicated continuous Moon Altitude line track below the observing window chart, featuring a $0^\circ$ horizon reference line, subtle muted dashed styling when below horizon, and glowing gold path when above horizon.
+
+### Meteor Showers & Interactive Radiant Starfield
+- Major annual meteor shower ephemeris engine tracking active dates, peak dates, ZHR rates, moon phase interference, velocity, and parent comets.
+- Dedicated Meteor Shower dashboard card positioned below Sun & Twilight ephemeris.
+- Interactive $10^\circ$ eyepiece starfield visualization for meteor radiants with custom glowing cyan reticle, diverging streak accents, constellation stick lines, and anchor stars.
+
+---
+
+## 3. Android 15 Edge-to-Edge & API Compatibility [Resolved in v1.0.18 & v1.0.19]
 
 ### Warnings Diagnosed from Google Play Console
 1. **Warning 1 (Mandatory Edge-to-Edge in Android 15 / SDK 35)**:
