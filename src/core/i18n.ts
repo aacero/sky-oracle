@@ -211,6 +211,9 @@ const en: TranslationDictionary = {
   'meteors.also_active': "Also active tonight",
   'meteors.next_major': "Next major shower",
   'meteors.none_active': "No major annual meteor showers active tonight. Background sporadic rate is ~3–5 meteors/hr in clear dark skies.",
+  'meteors.view_radiant': "10° Field",
+  'meteors.view_radiant_title': "View shower radiant in 10° starfield eyepiece",
+  'meteors.radiant_label': "Meteor Shower Radiant",
 };
 
 const es: TranslationDictionary = {
@@ -397,6 +400,9 @@ const es: TranslationDictionary = {
   'meteors.also_active': "También activas esta noche",
   'meteors.next_major': "Próxima lluvia importante",
   'meteors.none_active': "No hay lluvias de meteoros importantes activas esta noche. Tasa esporádica habitual de ~3–5 meteoros/h con cielo oscuro.",
+  'meteors.view_radiant': "Campo 10°",
+  'meteors.view_radiant_title': "Ver radiante en el ocular de 10°",
+  'meteors.radiant_label': "Radiante de lluvia de meteoros",
 };
 
 const pt: TranslationDictionary = {
@@ -583,6 +589,9 @@ const pt: TranslationDictionary = {
   'meteors.also_active': "Também ativas esta noite",
   'meteors.next_major': "Próxima chuva principal",
   'meteors.none_active': "Nenhuma chuva principal ativa esta noite. Taxa esporádica média de ~3–5 meteoros/h em céu limpo e escuro.",
+  'meteors.view_radiant': "Campo 10°",
+  'meteors.view_radiant_title': "Ver radiante na ocular de 10°",
+  'meteors.radiant_label': "Radiante de chuva de meteoros",
 };
 
 const de: TranslationDictionary = {
@@ -769,6 +778,9 @@ const de: TranslationDictionary = {
   'meteors.also_active': "Heute Nacht ebenfalls aktiv",
   'meteors.next_major': "Nächster großer Schauer",
   'meteors.none_active': "Zurzeit keine großen Meteorschauer aktiv. Sporadische Hintergrundrate liegt bei ca. 3–5 Meteoren/h unter dunklem Himmel.",
+  'meteors.view_radiant': "10°-Sichtfeld",
+  'meteors.view_radiant_title': "Radiant im 10°-Okular-Sternfeld anzeigen",
+  'meteors.radiant_label': "Meteorschauer-Radiant",
 };
 
 const fr: TranslationDictionary = {
@@ -955,6 +967,9 @@ const fr: TranslationDictionary = {
   'meteors.also_active': "Également actives cette nuit",
   'meteors.next_major': "Prochaine pluie majeure",
   'meteors.none_active': "Aucun essaim météoritique majeur actif cette nuit. Taux sporadique moyen de ~3–5 météores/h sous ciel sombre.",
+  'meteors.view_radiant': "Champ 10°",
+  'meteors.view_radiant_title': "Voir le radiant dans l'oculaire de 10°",
+  'meteors.radiant_label': "Radiant d'étoiles filantes",
 };
 
 const it: TranslationDictionary = {
@@ -1122,6 +1137,9 @@ const it: TranslationDictionary = {
   'meteors.also_active': "Attivi anche stanotte",
   'meteors.next_major': "Prossimo sciame principale",
   'meteors.none_active': "Nessuno sciame meteorico principale attivo stanotte. Tasso sporadico di fondo pari a circa 3–5 meteore/ora con cielo scuro.",
+  'meteors.view_radiant': "Campo 10°",
+  'meteors.view_radiant_title': "Visualizza radiante nel campo a 10°",
+  'meteors.radiant_label': "Radiante sciame meteorico",
 };
 
 const ja: TranslationDictionary = {
@@ -1289,6 +1307,9 @@ const ja: TranslationDictionary = {
   'meteors.also_active': "今夜活動中の他の流星群",
   'meteors.next_major': "次の主要な流星群",
   'meteors.none_active': "現在活動中の主要な流星群はありません。暗い夜空では1時間あたり約3〜5個の散在流星が観測できます。",
+  'meteors.view_radiant': "10°視野",
+  'meteors.view_radiant_title': "10°星空接眼レンズで放射点を表示",
+  'meteors.radiant_label': "流星群放射点",
 };
 
 const DICTIONARIES: Record<Locale, TranslationDictionary> = {

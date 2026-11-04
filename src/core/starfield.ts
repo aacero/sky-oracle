@@ -1342,9 +1342,9 @@ export function renderStarfield(
 
   // 7. Draw Target Planet at Exact Center
   const pStyle = PLANET_COLORS[planet.key] || {
-    fill: '#fde68a',
-    stroke: '#eab308',
-    glow: 'rgba(253, 230, 138, 0.4)',
+    fill: planet.key.startsWith('radiant_') ? '#38bdf8' : '#fde68a',
+    stroke: planet.key.startsWith('radiant_') ? '#0284c7' : '#eab308',
+    glow: planet.key.startsWith('radiant_') ? 'rgba(56, 189, 248, 0.45)' : 'rgba(253, 230, 138, 0.4)',
     name: planet.name
   };
 
@@ -1457,6 +1457,77 @@ export function renderStarfield(
     ctx.strokeText(sunLabelText, cx + sunRadius + 8, cy - 4);
     ctx.fillStyle = isPlanetBelow ? '#cbd5e1' : '#ffffff';
     ctx.fillText(sunLabelText, cx + sunRadius + 8, cy - 4);
+    ctx.restore();
+
+  } else if (planet.key.startsWith('radiant_')) {
+    // Meteor Shower Radiant Reticle & Focal Center
+    // 1. Soft outer cyan glow
+    const rGlow = ctx.createRadialGradient(cx, cy, 2, cx, cy, 28);
+    rGlow.addColorStop(0, isPlanetBelow ? 'rgba(148, 163, 184, 0.35)' : 'rgba(56, 189, 248, 0.55)');
+    rGlow.addColorStop(0.5, isPlanetBelow ? 'rgba(148, 163, 184, 0.12)' : 'rgba(56, 189, 248, 0.18)');
+    rGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = rGlow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Dashed radiant focal circle
+    ctx.strokeStyle = isPlanetBelow ? '#94a3b8' : '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 3. 4 Crosshair ticks pointing outward
+    ctx.strokeStyle = isPlanetBelow ? '#94a3b8' : '#38bdf8';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy - 21);
+    ctx.moveTo(cx, cy + 14); ctx.lineTo(cx, cy + 21);
+    ctx.moveTo(cx - 14, cy); ctx.lineTo(cx - 21, cy);
+    ctx.moveTo(cx + 14, cy); ctx.lineTo(cx + 21, cy);
+    ctx.stroke();
+
+    // 4. Diverging meteor streak accents radiating away
+    const streakGrad = ctx.createLinearGradient(cx + 7, cy - 7, cx + 24, cy - 24);
+    streakGrad.addColorStop(0, isPlanetBelow ? 'rgba(148, 163, 184, 0.6)' : 'rgba(56, 189, 248, 0.85)');
+    streakGrad.addColorStop(1, 'transparent');
+    ctx.strokeStyle = streakGrad;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx + 8, cy - 8); ctx.lineTo(cx + 24, cy - 24);
+    ctx.stroke();
+
+    const streakGrad2 = ctx.createLinearGradient(cx - 7, cy - 7, cx - 22, cy - 22);
+    streakGrad2.addColorStop(0, isPlanetBelow ? 'rgba(148, 163, 184, 0.6)' : 'rgba(56, 189, 248, 0.85)');
+    streakGrad2.addColorStop(1, 'transparent');
+    ctx.strokeStyle = streakGrad2;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy - 8); ctx.lineTo(cx - 22, cy - 22);
+    ctx.stroke();
+
+    // 5. Solid center dot with bright white core
+    ctx.fillStyle = isPlanetBelow ? '#94a3b8' : '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 6. Label beside Radiant
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
+    ctx.lineWidth = 3.5;
+    const rLabelText = `${planet.symbol} ${planet.name.replace(/ Radiant$/, '')}${isPlanetBelow ? ' (Below)' : ''}`;
+    ctx.strokeText(rLabelText, cx + 18, cy - 8);
+    ctx.fillStyle = isPlanetBelow ? '#cbd5e1' : '#38bdf8';
+    ctx.fillText(rLabelText, cx + 18, cy - 8);
+
     ctx.restore();
 
   } else {

@@ -58,6 +58,8 @@ import {
 
 import {
   getMeteorShowerData,
+  createRadiantPlanetInfo,
+  MAJOR_METEOR_SHOWERS,
   MeteorCardData
 } from './core/meteors.ts';
 
@@ -305,10 +307,53 @@ function getTargetEffectiveCoordinates(p: PlanetInfo, obsDate: Date): { ra: numb
   return { ra: p.ra, dec: p.dec };
 }
 
-function getAllSolarTargets(st: AppState): PlanetInfo[] {
+function getSolarSystemTargets(st: AppState): PlanetInfo[] {
   const moonObj = calculateMoonPlanetInfo(st.currentDate, st.location.lat, st.location.lon, st.moon);
   const sunObj = calculateSunPlanetInfo(st.currentDate, st.location.lat, st.location.lon, st.sunEvents);
   return [moonObj, ...st.planets, sunObj];
+}
+
+function getAllSolarTargets(st: AppState): PlanetInfo[] {
+  const solar = getSolarSystemTargets(st);
+  const radiantTargets: PlanetInfo[] = [];
+
+  if (st.meteors) {
+    if (st.meteors.primaryShower) {
+      radiantTargets.push(
+        createRadiantPlanetInfo(st.meteors.primaryShower.shower, st.currentDate, st.location.lat, st.location.lon, st.meteors.primaryShower)
+      );
+    }
+    for (const os of st.meteors.otherActiveShowers) {
+      radiantTargets.push(
+        createRadiantPlanetInfo(os.shower, st.currentDate, st.location.lat, st.location.lon, os)
+      );
+    }
+    if (st.meteors.nextUpcomingShower && !radiantTargets.some(r => r.key === `radiant_${st.meteors?.nextUpcomingShower?.shower.id}`)) {
+      radiantTargets.push(
+        createRadiantPlanetInfo(st.meteors.nextUpcomingShower.shower, st.currentDate, st.location.lat, st.location.lon, null)
+      );
+    }
+  }
+
+  return [...solar, ...radiantTargets];
+}
+
+function openMeteorRadiantStarfield(showerId: string) {
+  const allTargets = getAllSolarTargets(state);
+  let target = allTargets.find(t => t.key === `radiant_${showerId}`);
+  if (!target) {
+    const shower = MAJOR_METEOR_SHOWERS.find(s => s.id === showerId);
+    if (shower) {
+      target = createRadiantPlanetInfo(shower, state.currentDate, state.location.lat, state.location.lon);
+    }
+  }
+  if (target) {
+    state.selectedPlanet = target;
+    state.starfieldTimeOffsetHours = 0;
+    state.starfieldTimeAnchorHours = 0;
+    state.starfieldSelectedTarget = null;
+    render();
+  }
 }
 
 function getOtherSolarBodies(excludePlanetKey: string, obsDate: Date = state.currentDate): OtherSolarBody[] {
@@ -905,14 +950,20 @@ function render() {
                           <filter id="moonGlowTrack" x="-20%" y="-20%" width="140%" height="140%">
                             <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#fde047" flood-opacity="0.6"/>
                           </filter>
+                          <clipPath id="aboveHorizonClip">
+                            <rect x="0" y="0" width="1000" height="65" />
+                          </clipPath>
                         </defs>
 
                         <!-- Dashed Horizon Line (0° altitude) -->
                         <line x1="0" y1="65" x2="1000" y2="65" stroke="#484f58" stroke-dasharray="4 4" stroke-width="1.2" opacity="0.8" />
                         <text x="6" y="61" font-size="8" fill="#8b949e" font-family="ui-monospace, monospace" font-weight="600" opacity="0.8">0° HORIZON</text>
 
-                        <!-- Smooth Continuous Curve -->
-                        <path d="${curvePath}" fill="none" stroke="#fde047" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#moonGlowTrack)"/>
+                        <!-- Dimmed Below-Horizon Track (subtle muted dashed line) -->
+                        <path d="${curvePath}" fill="none" stroke="#6e7681" stroke-width="1.8" stroke-dasharray="3 3" opacity="0.4"/>
+
+                        <!-- Bright Glowing Above-Horizon Track -->
+                        <path d="${curvePath}" fill="none" stroke="#fde047" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#moonGlowTrack)" clip-path="url(#aboveHorizonClip)"/>
                       </svg>
                     </div>
                   </div>
@@ -957,7 +1008,7 @@ function render() {
             </div>
 
             <div class="flex flex-col gap-2.5">
-              ${getAllSolarTargets(state).map(p => {
+              ${getSolarSystemTargets(state).map(p => {
                 const isPrime = p.status.includes('Up all night') || p.status.includes('Evening') || (p.key === 'moon' && (state.moon?.isUp ?? false));
                 return `
                   <div
@@ -1179,14 +1230,35 @@ function renderMeteorShowerCard(): string {
               ${t('meteors.quiet_season')}
             </span>
           `}
+          ${primary ? `
+            <button
+              type="button"
+              class="btnMeteorRadiant px-2.5 py-1 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 hover:border-sky-500/50 text-[11px] font-bold text-sky-300 hover:text-white transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+              data-shower="${primary.shower.id}"
+              title="${t('meteors.view_radiant_title')}"
+            >
+              <span>🔭</span>
+              <span>${t('meteors.view_radiant')}</span>
+            </button>
+          ` : (next ? `
+            <button
+              type="button"
+              class="btnMeteorRadiant px-2 py-0.5 rounded-lg bg-white/5 hover:bg-sky-500/20 border border-[#30363d] hover:border-sky-500/40 text-[11px] font-medium text-[#8b949e] hover:text-sky-300 transition cursor-pointer flex items-center gap-1.5"
+              data-shower="${next.shower.id}"
+              title="${t('meteors.view_radiant_title')}"
+            >
+              <span>🔭</span>
+              <span>${t('meteors.view_radiant')}</span>
+            </button>
+          ` : '')}
         </div>
       </div>
 
       ${primary ? `
         <!-- Shower Details -->
-        <div>
+        <div class="cursor-pointer group/details btnMeteorRadiant" data-shower="${primary.shower.id}" title="${t('meteors.view_radiant_title')}">
           <div class="flex items-center justify-between flex-wrap gap-2">
-            <h4 class="text-lg font-bold text-[#e6edf3] flex items-center gap-2">
+            <h4 class="text-lg font-bold text-[#e6edf3] group-hover/details:text-sky-300 transition-colors flex items-center gap-2">
               <span>${primary.shower.name}</span>
               <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
                 ${primary.shower.constellation}
@@ -1211,9 +1283,16 @@ function renderMeteorShowerCard(): string {
           </div>
 
           <!-- Radiant Peak -->
-          <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-            <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('meteors.radiant')}</span>
-            <span class="text-sm font-bold text-[#56d4dd]">${primary.peakRadiantAltitudeTonight > 0 ? `${primary.peakRadiantAltitudeTonight}° max` : 'Below 0°'}</span>
+          <div
+            class="btnMeteorRadiant p-2.5 rounded-xl bg-white/[0.02] hover:bg-sky-500/10 border border-[#30363d]/40 hover:border-sky-500/40 transition cursor-pointer group"
+            data-shower="${primary.shower.id}"
+            title="${t('meteors.view_radiant_title')}"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('meteors.radiant')}</span>
+              <span class="text-[10px] text-sky-400 group-hover:text-sky-300 font-semibold flex items-center gap-0.5">🔭 10°</span>
+            </div>
+            <span class="text-sm font-bold text-[#56d4dd] group-hover:text-white transition-colors">${primary.peakRadiantAltitudeTonight > 0 ? `${primary.peakRadiantAltitudeTonight}° max` : 'Below 0°'}</span>
             <span class="text-[10px] text-[#8b949e] block mt-0.5 truncate" title="${primary.bestViewingNote}">${primary.bestViewingNote}</span>
           </div>
 
@@ -1240,17 +1319,24 @@ function renderMeteorShowerCard(): string {
             <span class="text-[11px] font-medium">${t('meteors.also_active')}:</span>
             <div class="flex items-center gap-1.5 flex-wrap">
               ${others.map(os => `
-                <span class="text-[10.5px] px-2 py-0.5 rounded-md bg-white/[0.03] border border-[#30363d]/50 text-[#cbd5e1]">
+                <button
+                  type="button"
+                  class="btnMeteorRadiant text-[10.5px] px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-sky-500/15 border border-[#30363d]/50 hover:border-sky-500/40 text-[#cbd5e1] hover:text-sky-200 transition cursor-pointer flex items-center gap-1"
+                  data-shower="${os.shower.id}"
+                  title="${t('meteors.view_radiant_title')} (${os.shower.name})"
+                >
                   <strong class="text-white">${os.shower.name}</strong> (~${os.estimatedZhrTonight}/h · Peak ${formatShortDate(os.peakDate)})
-                </span>
+                  <span class="text-sky-400">🔭</span>
+                </button>
               `).join('')}
             </div>
           </div>
         ` : (next ? `
-          <div class="mt-3 pt-2.5 border-t border-[#30363d]/40 flex items-center justify-between text-xs text-[#8b949e]">
+          <div class="btnMeteorRadiant mt-3 pt-2.5 border-t border-[#30363d]/40 flex items-center justify-between text-xs text-[#8b949e] cursor-pointer hover:text-white group" data-shower="${next.shower.id}" title="${t('meteors.view_radiant_title')} (${next.shower.name})">
             <span class="text-[11px]">${t('meteors.next_major')}:</span>
-            <span class="text-[11px] text-[#58a6ff] font-medium">
-              ${next.shower.name} (ZHR ~${next.shower.peakZhr}) in ${next.daysUntilPeak} days (${formatShortDate(next.peakDate)})
+            <span class="text-[11px] text-[#58a6ff] group-hover:text-sky-300 font-medium flex items-center gap-1">
+              <span>${next.shower.name} (ZHR ~${next.shower.peakZhr}) in ${next.daysUntilPeak} days (${formatShortDate(next.peakDate)})</span>
+              <span>🔭</span>
             </span>
           </div>
         ` : '')}
@@ -1259,9 +1345,16 @@ function renderMeteorShowerCard(): string {
         <div class="py-2 text-xs text-[#8b949e]">
           <p class="mb-2 leading-relaxed">${t('meteors.none_active')}</p>
           ${next ? `
-            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40 flex items-center justify-between flex-wrap gap-2">
-              <span>${t('meteors.next_major')}: <strong class="text-white">${next.shower.name}</strong> (~${next.shower.peakZhr}/hr)</span>
-              <span class="text-[#58a6ff] font-semibold">${next.daysUntilPeak} days away (${formatShortDate(next.peakDate)})</span>
+            <div
+              class="btnMeteorRadiant p-2.5 rounded-xl bg-white/[0.02] hover:bg-sky-500/10 border border-[#30363d]/40 hover:border-sky-500/40 transition cursor-pointer flex items-center justify-between flex-wrap gap-2 group"
+              data-shower="${next.shower.id}"
+              title="${t('meteors.view_radiant_title')} (${next.shower.name})"
+            >
+              <span>${t('meteors.next_major')}: <strong class="text-white group-hover:text-sky-300 transition-colors">${next.shower.name}</strong> (~${next.shower.peakZhr}/hr)</span>
+              <span class="text-[#58a6ff] font-semibold flex items-center gap-1">
+                <span>${next.daysUntilPeak} days away (${formatShortDate(next.peakDate)})</span>
+                <span>🔭</span>
+              </span>
             </div>
           ` : ''}
         </div>
@@ -1521,8 +1614,14 @@ function renderPlanetModal(): string {
   const p = state.selectedPlanet;
   if (!p) return '';
 
-  const isPrime = p.status.includes('Up all night') || p.status.includes('Evening');
-  const pColors = PLANET_COLORS[p.key] || { fill: '#fed7aa', stroke: '#fb923c', glow: '', name: p.name };
+  const isRadiant = p.key.startsWith('radiant_');
+  const isPrime = p.status.includes('Up all night') || p.status.includes('Evening') || p.status.includes('Peak') || p.status.includes('Active');
+  const pColors = PLANET_COLORS[p.key] || {
+    fill: isRadiant ? '#38bdf8' : '#fed7aa',
+    stroke: isRadiant ? '#0284c7' : '#fb923c',
+    glow: isRadiant ? 'rgba(56, 189, 248, 0.45)' : '',
+    name: p.name
+  };
 
   const effectiveDate = getStarfieldEffectiveDate();
   const coords = getTargetEffectiveCoordinates(p, effectiveDate);
@@ -1588,6 +1687,11 @@ function renderPlanetModal(): string {
                 <span class="px-2 py-0.5 rounded text-xs font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
                   ${p.constellation}
                 </span>
+                ${isRadiant ? `
+                  <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                    ${t('meteors.radiant_label')}
+                  </span>
+                ` : ''}
                 <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isPrime ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30' : 'bg-slate-700/30 text-slate-300 border border-slate-700/50'}">
                   ${p.status}
                 </span>
@@ -2009,7 +2113,10 @@ function renderPlanetModal(): string {
                     : 'Standard sky view (<span class="font-semibold text-[#e6edf3]">North up, East left</span>). '
                   }
                   Green line marks the <span class="font-semibold text-emerald-400">local horizon</span>.
-                  Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad target</span>.
+                  ${isRadiant
+                    ? 'Cyan reticle marks the <span class="font-semibold text-sky-400">meteor shower radiant</span> (point in the sky where meteors appear to originate). '
+                    : 'Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad target</span>. '
+                  }
                   ${state.starfieldAperture === 'circular'
                     ? `Showing <span class="font-semibold text-indigo-300">${fovDeg}° circular eyepiece</span> (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° radius).`
                     : `Showing <span class="font-semibold text-indigo-300">${fovDeg}°×${fovDeg}° sensor frame</span>.`
@@ -2222,6 +2329,24 @@ function attachEventHandlers() {
         state.starfieldTimeAnchorHours = 0;
         state.starfieldSelectedTarget = null;
         render();
+      }
+    });
+
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        btn.click();
+      }
+    });
+  });
+
+  // Meteor Shower Radiant Click -> 10° Starfield Modal
+  document.querySelectorAll<HTMLElement>('.btnMeteorRadiant').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const showerId = btn.getAttribute('data-shower');
+      if (showerId) {
+        openMeteorRadiantStarfield(showerId);
       }
     });
 

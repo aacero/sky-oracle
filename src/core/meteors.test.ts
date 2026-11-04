@@ -3,8 +3,11 @@ import {
   MAJOR_METEOR_SHOWERS,
   getShowerDates,
   calculateRadiantAltitude,
-  getMeteorShowerData
+  getMeteorShowerData,
+  createRadiantPlanetInfo
 } from './meteors.ts';
+import { ZODIAC_STARS } from './zodiacStars.ts';
+import { angularSeparationDeg } from './starfield.ts';
 
 describe('Meteor Shower Engine', () => {
   it('contains all 11 major annual meteor showers', () => {
@@ -83,5 +86,41 @@ describe('Meteor Shower Engine', () => {
     // Case 3: Moderate crescent moon up
     const crescentMoon = getMeteorShowerData(nov4, 29.9, -81.3, 40, true);
     expect(crescentMoon.primaryShower?.moonImpact.level).toBe('moderate');
+  });
+
+  it('creates valid PlanetInfo for meteor radiants', () => {
+    const nov4 = new Date('2026-11-04T22:00:00Z');
+    const taurids = MAJOR_METEOR_SHOWERS.find(s => s.id === 'southern_taurids')!;
+    const info = createRadiantPlanetInfo(taurids, nov4, 40.71, -74.01);
+
+    expect(info.key).toBe('radiant_southern_taurids');
+    expect(info.name).toBe('Southern Taurids Radiant');
+    expect(info.symbol).toBe('☄️');
+    expect(info.ra).toBe(52);
+    expect(info.dec).toBe(15);
+    expect(info.constellation).toBe('Taurus');
+    expect(info.rise).not.toBeNull();
+    expect(info.set).not.toBeNull();
+
+    // Circumpolar test (Perseids at high northern latitude 60°N)
+    const perseids = MAJOR_METEOR_SHOWERS.find(s => s.id === 'perseids')!;
+    const circumpolarInfo = createRadiantPlanetInfo(perseids, nov4, 60.0, 10.0);
+    expect(circumpolarInfo.status).toContain('Circumpolar');
+    expect(circumpolarInfo.rise).toBeNull();
+    expect(circumpolarInfo.set).toBeNull();
+  });
+
+  it('verifies that all 11 major meteor radiants have starfield coverage (stars within 10°)', () => {
+    for (const shower of MAJOR_METEOR_SHOWERS) {
+      const nearbyStars = ZODIAC_STARS.filter(star => {
+        const sep = angularSeparationDeg(shower.radiant.ra, shower.radiant.dec, star[0], star[1]);
+        return sep <= 10.0;
+      });
+      // Every shower must have at least 10 stars within its 10° eyepiece cone!
+      expect(
+        nearbyStars.length,
+        `Shower ${shower.name} (RA ${shower.radiant.ra}, Dec ${shower.radiant.dec}) must have starfield coverage`
+      ).toBeGreaterThanOrEqual(10);
+    }
   });
 });

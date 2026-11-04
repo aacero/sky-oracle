@@ -96,5 +96,33 @@ export const ZODIAC_CONSTELLATION_LINES: ConstellationSegment[] = [
 
   // ── Pisces (Fishes) ──
   { ra1: 30.51, dec1: 2.76, ra2: 22.87, dec2: 15.35, constellation: 'Pisces' },   // Alrescha -> Alpherg (North cord)
-  { ra1: 30.51, dec1: 2.76, ra2: 345.97, dec2: 3.82, constellation: 'Pisces' }    // Alrescha -> Fumalsamakah (West cord)
+  { ra1: 30.51, dec1: 2.76, ra2: 345.97, dec2: 3.82, constellation: 'Pisces' },   // Alrescha -> Fumalsamakah (West cord)
+
+  // ── Perseus (Hero - Perseids radiant field) ──
+  { ra1: 51.08, dec1: 49.86, ra2: 44.53, dec2: 53.51, constellation: 'Perseus' }, // Mirfak -> γ Per
+  { ra1: 44.53, dec1: 53.51, ra2: 43.27, dec2: 55.90, constellation: 'Perseus' }, // γ Per -> Miram
+  { ra1: 51.08, dec1: 49.86, ra2: 55.73, dec2: 47.79, constellation: 'Perseus' }, // Mirfak -> δ Per
+  { ra1: 51.08, dec1: 49.86, ra2: 47.01, dec2: 49.61, constellation: 'Perseus' }, // Mirfak -> ι Per
+
+  // ── Lyra (Harp - Lyrids radiant field) ──
+  { ra1: 279.23, dec1: 38.78, ra2: 281.20, dec2: 37.60, constellation: 'Lyra' }, // Vega -> ζ1 Lyr
+  { ra1: 281.20, dec1: 37.60, ra2: 282.52, dec2: 33.36, constellation: 'Lyra' }, // ζ1 Lyr -> Sheliak
+  { ra1: 282.52, dec1: 33.36, ra2: 284.74, dec2: 32.69, constellation: 'Lyra' }, // Sheliak -> Sulafat
+  { ra1: 284.74, dec1: 32.69, ra2: 283.63, dec2: 36.90, constellation: 'Lyra' }, // Sulafat -> δ2 Lyr
+  { ra1: 283.63, dec1: 36.90, ra2: 281.20, dec2: 37.60, constellation: 'Lyra' }, // δ2 Lyr -> ζ1 Lyr
+  { ra1: 279.23, dec1: 38.78, ra2: 281.08, dec2: 39.67, constellation: 'Lyra' }, // Vega -> ε1 Lyr
+
+  // ── Boötes (Herdsman - Quadrantids radiant field) ──
+  { ra1: 225.48, dec1: 40.39, ra2: 225.96, dec2: 47.65, constellation: 'Boötes' }, // Nekkar -> 44 Boo
+  { ra1: 225.96, dec1: 47.65, ra2: 227.02, dec2: 49.25, constellation: 'Boötes' }, // 44 Boo -> 46 Boo
+  { ra1: 227.02, dec1: 49.25, ra2: 226.79, dec2: 52.36, constellation: 'Boötes' }, // 46 Boo -> 45 Boo
+  { ra1: 225.96, dec1: 47.65, ra2: 214.39, dec2: 46.09, constellation: 'Boötes' }, // 44 Boo -> λ Boo
+  { ra1: 214.39, dec1: 46.09, ra2: 214.61, dec2: 51.85, constellation: 'Boötes' }, // λ Boo -> θ Boo
+
+  // ── Ursa Minor (Little Dipper - Ursids radiant field) ──
+  { ra1: 222.68, dec1: 74.16, ra2: 230.18, dec2: 71.83, constellation: 'Ursa Minor' }, // Kochab -> Pherkad
+  { ra1: 230.18, dec1: 71.83, ra2: 244.38, dec2: 75.76, constellation: 'Ursa Minor' }, // Pherkad -> η UMi
+  { ra1: 244.38, dec1: 75.76, ra2: 236.00, dec2: 77.79, constellation: 'Ursa Minor' }, // η UMi -> ζ UMi
+  { ra1: 236.00, dec1: 77.79, ra2: 222.68, dec2: 74.16, constellation: 'Ursa Minor' }, // ζ UMi -> Kochab
+  { ra1: 222.68, dec1: 74.16, ra2: 213.43, dec2: 75.38, constellation: 'Ursa Minor' }  // Kochab -> 5 UMi
 ];

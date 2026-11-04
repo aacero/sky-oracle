@@ -6,6 +6,9 @@
  * 100% offline, zero external dependencies.
  */
 
+import type { PlanetInfo } from './astronomy.ts';
+import { formatTime } from './astronomy.ts';
+
 export interface MeteorShower {
   id: string;
   name: string;
@@ -379,5 +382,85 @@ export function getMeteorShowerData(
     primaryShower: activeSummaries[0] || null,
     otherActiveShowers: activeSummaries.slice(1),
     nextUpcomingShower: nextUpcoming
+  };
+}
+
+/**
+ * Create a PlanetInfo-compatible target representing a meteor shower radiant
+ * for 10° eyepiece starfield projection, time scrubbing, and local horizon tracking.
+ */
+export function createRadiantPlanetInfo(
+  shower: MeteorShower,
+  date: Date,
+  latitude: number,
+  longitude: number,
+  summary?: MeteorShowerSummary | null
+): PlanetInfo {
+  const d2r = Math.PI / 180;
+  const r2d = 180 / Math.PI;
+
+  const latR = latitude * d2r;
+  const decR = shower.radiant.dec * d2r;
+  const h0 = -0.5667 * d2r;
+
+  const cosH0 = (Math.sin(h0) - Math.sin(latR) * Math.sin(decR)) / (Math.cos(latR) * Math.cos(decR));
+
+  const jd0 = Math.floor(date.getTime() / 86400000 + 2440587.5 - 0.5) + 0.5;
+  const T = (jd0 - 2451545.0) / 36525.0;
+  let theta0 = 280.46061837 + 360.98564736629 * (jd0 - 2451545.0) + 0.000387933 * T * T;
+  theta0 = (theta0 % 360 + 360) % 360;
+
+  const ut0 = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+
+  let rise: Date | null = null;
+  let set: Date | null = null;
+  let stat = "";
+
+  if (cosH0 > 1) {
+    stat = "Below horizon";
+  } else if (cosH0 < -1) {
+    stat = "Circumpolar";
+  } else {
+    const H0 = Math.acos(cosH0) * r2d;
+    const m0 = ((shower.radiant.ra - longitude - theta0) % 360 + 360) % 360 / 360;
+    const m1 = (m0 - H0 / 360 + 1) % 1;
+    const m2 = (m0 + H0 / 360) % 1;
+
+    rise = new Date(ut0.getTime() + m1 * 86400000);
+    set = new Date(ut0.getTime() + m2 * 86400000);
+
+    const rH = rise.getHours();
+    const sH = set.getHours();
+    if (rH >= 17 && rH <= 22 && (sH >= 4 && sH <= 9)) {
+      stat = "Up all night";
+    } else if (sH >= 18 && sH <= 23) {
+      stat = "Evening · sets " + formatTime(set);
+    } else if (rH >= 1 && rH <= 6) {
+      stat = "Morning · rises " + formatTime(rise);
+    } else {
+      stat = "Sets " + formatTime(set);
+    }
+  }
+
+  let finalStatus = stat;
+  if (summary) {
+    if (summary.isPeakTonight) {
+      finalStatus = `Peak Tonight · ZHR ~${summary.estimatedZhrTonight} · ${stat}`;
+    } else if (summary.isActive) {
+      finalStatus = `Active · ~${summary.estimatedZhrTonight}/h · ${stat}`;
+    }
+  }
+
+  return {
+    key: `radiant_${shower.id}`,
+    name: `${shower.name} Radiant`,
+    symbol: '☄️',
+    rise,
+    set,
+    status: finalStatus,
+    constellation: shower.constellation,
+    ecLon: 0,
+    ra: shower.radiant.ra,
+    dec: shower.radiant.dec
   };
 }
