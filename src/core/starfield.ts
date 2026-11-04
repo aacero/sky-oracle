@@ -490,7 +490,7 @@ export function getBodiesInField(
   aperture: 'circular' | 'square' = 'circular'
 ): InFieldBody[] {
   // Clamp FOV between 3° (maximum zoom-in) and 45° (maximum zoom-out)
-  const clampedFov = Math.max(3.0, Math.min(45.0, fovDeg));
+  const clampedFov = Math.max(3.0, Math.min(60.0, fovDeg));
   const d2r = Math.PI / 180;
   const limitX = Math.tan((clampedFov / 2) * d2r);
   const limitY = Math.tan((clampedFov / 2) * d2r);
@@ -609,7 +609,7 @@ export function getStarsInField(
   aperture: 'circular' | 'square' = 'circular'
 ): ProjectedStar[] {
   // Clamp FOV between 3° (maximum zoom-in) and 45° (maximum zoom-out)
-  const clampedFov = Math.max(3.0, Math.min(45.0, fovDeg));
+  const clampedFov = Math.max(3.0, Math.min(60.0, fovDeg));
   const d2r = Math.PI / 180;
   const limitR = Math.tan((clampedFov / 2) * d2r);
   const limitX = limitR;
@@ -804,7 +804,7 @@ export function renderStarfield(
   sunSeparationDeg?: number;
 } {
   // Clamp FOV between 3° (max zoom-in) and 45° (max zoom-out)
-  const fovDeg = Math.max(3.0, Math.min(45.0, options.fovDeg ?? 10.0));
+  const fovDeg = Math.max(3.0, Math.min(60.0, options.fovDeg ?? 10.0));
   const maxMag = options.maxMag ?? 6.0;
   const showLabels = options.showLabels ?? true;
   const showReticle = options.showReticle ?? true;
@@ -1756,11 +1756,14 @@ export function renderStarfield(
   ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
   ctx.lineWidth = 3;
+  const isRadiant = planet.key.startsWith('radiant_');
   const radiusDeg = fovDeg / 2;
   const radiusText = radiusDeg.toFixed(1).replace(/\.0$/, '');
-  const fovText = `${fovDeg.toFixed(0)}° ${aperture === 'circular' ? `FOV (${radiusText}° r)` : `× ${fovDeg.toFixed(0)}° Frame`}`;
+  const fovText = isRadiant
+    ? `${fovDeg.toFixed(0)}° Naked Eye`
+    : `${fovDeg.toFixed(0)}° ${aperture === 'circular' ? `FOV (${radiusText}° r)` : `× ${fovDeg.toFixed(0)}° Frame`}`;
   ctx.strokeText(fovText, 10, 10);
-  ctx.fillStyle = '#e2e8f0';
+  ctx.fillStyle = isRadiant ? '#38bdf8' : '#e2e8f0';
   ctx.fillText(fovText, 10, 10);
 
   ctx.font = 'bold 10px monospace';
@@ -1807,8 +1810,8 @@ export function renderStarfield(
     }
   }
 
-  // Bottom-left: scale bar (1° or 5° adaptive based on zoom)
-  const scaleBarDeg = fovDeg >= 25 ? 5 : 1;
+  // Bottom-left: scale bar (1°, 5° or 10° adaptive based on zoom)
+  const scaleBarDeg = fovDeg >= 40 ? 10 : fovDeg >= 25 ? 5 : 1;
   const barLen = Math.tan(scaleBarDeg * d2r) * scaleX;
   const barY = cssHeight - 16;
   const barX = 14;
@@ -1828,9 +1831,12 @@ export function renderStarfield(
   ctx.font = 'bold 10px monospace';
   ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
   ctx.lineWidth = 3;
-  ctx.strokeText(`${scaleBarDeg}°`, barX + barLen / 2, barY - 5);
+  const scaleText = isRadiant && scaleBarDeg === 10
+    ? (t('starfield.scale_fist') || '10° (Fist width)')
+    : `${scaleBarDeg}°`;
+  ctx.strokeText(scaleText, barX + barLen / 2, barY - 5);
   ctx.fillStyle = '#cbd5e1';
-  ctx.fillText(`${scaleBarDeg}°`, barX + barLen / 2, barY - 5);
+  ctx.fillText(scaleText, barX + barLen / 2, barY - 5);
 
   // Bottom-right: Star count
   ctx.textAlign = 'right';

@@ -211,9 +211,13 @@ const en: TranslationDictionary = {
   'meteors.also_active': "Also active tonight",
   'meteors.next_major': "Next major shower",
   'meteors.none_active': "No major annual meteor showers active tonight. Background sporadic rate is ~3–5 meteors/hr in clear dark skies.",
-  'meteors.view_radiant': "10° Field",
-  'meteors.view_radiant_title': "View shower radiant in 10° starfield eyepiece",
+  'meteors.view_radiant': "Radiant Sky",
+  'meteors.view_radiant_title': "View shower radiant in 50° naked eye sky window",
   'meteors.radiant_label': "Meteor Shower Radiant",
+  'starfield.naked_eye_window': "{fov}° Naked Eye Sky Window",
+  'starfield.naked_eye_window_short': "Naked Eye Sky Window",
+  'starfield.scale_fist': "10° (Fist at arm's length)",
+  'starfield.naked_eye_short': "Naked Eye Window",
 };
 
 const es: TranslationDictionary = {
@@ -400,9 +404,13 @@ const es: TranslationDictionary = {
   'meteors.also_active': "También activas esta noche",
   'meteors.next_major': "Próxima lluvia importante",
   'meteors.none_active': "No hay lluvias de meteoros importantes activas esta noche. Tasa esporádica habitual de ~3–5 meteoros/h con cielo oscuro.",
-  'meteors.view_radiant': "Campo 10°",
-  'meteors.view_radiant_title': "Ver radiante en el ocular de 10°",
+  'meteors.view_radiant': "Cielo Radiante",
+  'meteors.view_radiant_title': "Ver radiante en ventana a simple vista de 50°",
   'meteors.radiant_label': "Radiante de lluvia de meteoros",
+  'starfield.naked_eye_window': "Ventana a simple vista de {fov}°",
+  'starfield.naked_eye_window_short': "Ventana a Simple Vista",
+  'starfield.scale_fist': "10° (Puño a brazo extendido)",
+  'starfield.naked_eye_short': "Ventana a Simple Vista",
 };
 
 const pt: TranslationDictionary = {
@@ -589,9 +597,13 @@ const pt: TranslationDictionary = {
   'meteors.also_active': "Também ativas esta noite",
   'meteors.next_major': "Próxima chuva principal",
   'meteors.none_active': "Nenhuma chuva principal ativa esta noite. Taxa esporádica média de ~3–5 meteoros/h em céu limpo e escuro.",
-  'meteors.view_radiant': "Campo 10°",
-  'meteors.view_radiant_title': "Ver radiante na ocular de 10°",
+  'meteors.view_radiant': "Céu Radiante",
+  'meteors.view_radiant_title': "Ver radiante na janela a olho nu de 50°",
   'meteors.radiant_label': "Radiante de chuva de meteoros",
+  'starfield.naked_eye_window': "Janela a olho nu de {fov}°",
+  'starfield.naked_eye_window_short': "Janela a Olho Nu",
+  'starfield.scale_fist': "10° (Punho a braço estendido)",
+  'starfield.naked_eye_short': "Janela a Olho Nu",
 };
 
 const de: TranslationDictionary = {
@@ -778,9 +790,13 @@ const de: TranslationDictionary = {
   'meteors.also_active': "Heute Nacht ebenfalls aktiv",
   'meteors.next_major': "Nächster großer Schauer",
   'meteors.none_active': "Zurzeit keine großen Meteorschauer aktiv. Sporadische Hintergrundrate liegt bei ca. 3–5 Meteoren/h unter dunklem Himmel.",
-  'meteors.view_radiant': "10°-Sichtfeld",
-  'meteors.view_radiant_title': "Radiant im 10°-Okular-Sternfeld anzeigen",
+  'meteors.view_radiant': "Radiant-Himmel",
+  'meteors.view_radiant_title': "Radianten im 50°-Freisicht-Himmelsfenster anzeigen",
   'meteors.radiant_label': "Meteorschauer-Radiant",
+  'starfield.naked_eye_window': "{fov}° Freisicht-Himmelsfenster",
+  'starfield.naked_eye_window_short': "Freisicht-Himmelsfenster",
+  'starfield.scale_fist': "10° (Faust bei ausgestrecktem Arm)",
+  'starfield.naked_eye_short': "Freisichtfenster",
 };
 
 const fr: TranslationDictionary = {
@@ -967,9 +983,13 @@ const fr: TranslationDictionary = {
   'meteors.also_active': "Également actives cette nuit",
   'meteors.next_major': "Prochaine pluie majeure",
   'meteors.none_active': "Aucun essaim météoritique majeur actif cette nuit. Taux sporadique moyen de ~3–5 météores/h sous ciel sombre.",
-  'meteors.view_radiant': "Champ 10°",
-  'meteors.view_radiant_title': "Voir le radiant dans l'oculaire de 10°",
+  'meteors.view_radiant': "Ciel Radiant",
+  'meteors.view_radiant_title': "Voir le radiant dans une fenêtre à l'œil nu de 50°",
   'meteors.radiant_label': "Radiant d'étoiles filantes",
+  'starfield.naked_eye_window': "Fenêtre à l'œil nu de {fov}°",
+  'starfield.naked_eye_window_short': "Fenêtre à l'Œil Nu",
+  'starfield.scale_fist': "10° (Poing à bout de bras)",
+  'starfield.naked_eye_short': "Fenêtre à l'Œil Nu",
 };
 
 const it: TranslationDictionary = {
@@ -1137,9 +1157,13 @@ const it: TranslationDictionary = {
   'meteors.also_active': "Attivi anche stanotte",
   'meteors.next_major': "Prossimo sciame principale",
   'meteors.none_active': "Nessuno sciame meteorico principale attivo stanotte. Tasso sporadico di fondo pari a circa 3–5 meteore/ora con cielo scuro.",
-  'meteors.view_radiant': "Campo 10°",
-  'meteors.view_radiant_title': "Visualizza radiante nel campo a 10°",
+  'meteors.view_radiant': "Cielo Radiante",
+  'meteors.view_radiant_title': "Visualizza radiante nella finestra a occhio nudo da 50°",
   'meteors.radiant_label': "Radiante sciame meteorico",
+  'starfield.naked_eye_window': "Finestra a occhio nudo da {fov}°",
+  'starfield.naked_eye_window_short': "Finestra a Occhio Nudo",
+  'starfield.scale_fist': "10° (Pugno a braccio teso)",
+  'starfield.naked_eye_short': "Finestra a Occhio Nudo",
 };
 
 const ja: TranslationDictionary = {
@@ -1307,9 +1331,13 @@ const ja: TranslationDictionary = {
   'meteors.also_active': "今夜活動中の他の流星群",
   'meteors.next_major': "次の主要な流星群",
   'meteors.none_active': "現在活動中の主要な流星群はありません。暗い夜空では1時間あたり約3〜5個の散在流星が観測できます。",
-  'meteors.view_radiant': "10°視野",
-  'meteors.view_radiant_title': "10°星空接眼レンズで放射点を表示",
+  'meteors.view_radiant': "放射点空",
+  'meteors.view_radiant_title': "50°肉眼スカイウィンドウで放射点を表示",
   'meteors.radiant_label': "流星群放射点",
+  'starfield.naked_eye_window': "{fov}° 肉眼スカイウィンドウ",
+  'starfield.naked_eye_window_short': "肉眼スカイウィンドウ",
+  'starfield.scale_fist': "10°（腕を伸ばした拳の幅）",
+  'starfield.naked_eye_short': "肉眼ウィンドウ",
 };
 
 const DICTIONARIES: Record<Locale, TranslationDictionary> = {

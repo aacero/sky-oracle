@@ -4,7 +4,7 @@ This document tracks prioritized future features, architectural enhancements, an
 
 ---
 
-## 1. Internationalization (i18n) [Implemented in v1.0.18 & v1.0.19]
+## 1. Internationalization (i18n) [Implemented in v1.0.18, v1.0.19 & v1.0.20]
 
 ### Objective
 Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical terminology, and forecast narratives without exceeding the $\le 50\text{ kB}$ gzip bundle budget.
@@ -12,7 +12,7 @@ Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical 
 ### Architecture
 - **Zero Runtime Dependencies**: Lightweight, type-safe dictionary lookup (`src/core/i18n.ts`) mapping semantic string keys to localized translations with dynamic parameter interpolation (`{pct}%`, `{time}`, `{date}`).
 - **Auto-Detection & Persistence**: Automatically detects device language via `navigator.language`, with an in-app language picker persisting user preference in `localStorage`.
-- **Active Locales (v1.0.19)**:
+- **Active Locales (v1.0.20)**:
   - `en` (English - default)
   - `es` (Spanish)
   - `pt` (Portuguese / Brazil & Portugal)
@@ -23,16 +23,20 @@ Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical 
 
 ---
 
-## 2. Observing Window & Celestial Enhancements [Implemented in v1.0.19]
+## 2. Observing Window & Celestial Enhancements [Implemented in v1.0.19 & v1.0.20]
 
 ### Contiguous Observing Window Engine
 - Multi-constraint window selection incorporating astronomical darkness boundaries (Astro Dusk to Astro Dawn), lunar interference penalties (moon illumination $\times$ altitude above horizon), low cloud cover prioritization, and peak solar-midnight tiebreakers.
 - Dedicated continuous Moon Altitude line track below the observing window chart, featuring a $0^\circ$ horizon reference line, subtle muted dashed styling when below horizon, and glowing gold path when above horizon.
 
-### Meteor Showers & Interactive Radiant Starfield
+### Meteor Showers & 50° Naked-Eye Radiant Starfield (v1.0.20)
 - Major annual meteor shower ephemeris engine tracking active dates, peak dates, ZHR rates, moon phase interference, velocity, and parent comets.
 - Dedicated Meteor Shower dashboard card positioned below Sun & Twilight ephemeris.
-- Interactive $10^\circ$ eyepiece starfield visualization for meteor radiants with custom glowing cyan reticle, diverging streak accents, constellation stick lines, and anchor stars.
+- Interactive $50^\circ$ naked-eye sky window modal for meteor radiants, replacing telescopic eyepiece controls with:
+  - Full constellation stick figures and bright anchor stars for Cassiopeia, Cygnus Northern Cross, Hercules Keystone, Big Dipper, Boötes, and Ursa Minor/Polaris.
+  - $10^\circ$ "Fist width" angular scale bar.
+  - Custom radiant reticle with radiating streak markers.
+  - Practical naked-eye observing guidance (recline and look $30^\circ\text{–}60^\circ$ away from the radiant into the darkest part of the sky).
 
 ---
 
@@ -55,7 +59,7 @@ Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical 
 
 ---
 
-## 3. Upcoming Enhancements
+## 4. Upcoming Enhancements
 
-- **Japanese (`ja`) Localization**: Add Japanese language dictionary and locale option.
-- **Deep-Sky Object (DSO) Catalog Expansion**: Add Messier objects (M31, M42, M45) to the 10° interactive starfield telescope view.
+- **Deep-Sky Object (DSO) Catalog Expansion**: Add Messier objects (M31, M42, M45) to the interactive starfield telescope view.
+- **Meteor Shower Peak Alerts**: Browser notification reminders for peak nights of major showers.

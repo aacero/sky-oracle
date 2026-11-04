@@ -63,7 +63,7 @@ import {
   MeteorCardData
 } from './core/meteors.ts';
 
-export const APP_VERSION = '1.0.19';
+export const APP_VERSION = '1.0.20';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -349,6 +349,8 @@ function openMeteorRadiantStarfield(showerId: string) {
   }
   if (target) {
     state.selectedPlanet = target;
+    state.starfieldFovDeg = 50;
+    state.starfieldAperture = 'circular';
     state.starfieldTimeOffsetHours = 0;
     state.starfieldTimeAnchorHours = 0;
     state.starfieldSelectedTarget = null;
@@ -1237,7 +1239,7 @@ function renderMeteorShowerCard(): string {
               data-shower="${primary.shower.id}"
               title="${t('meteors.view_radiant_title')}"
             >
-              <span>🔭</span>
+              <span>☄️</span>
               <span>${t('meteors.view_radiant')}</span>
             </button>
           ` : (next ? `
@@ -1247,7 +1249,7 @@ function renderMeteorShowerCard(): string {
               data-shower="${next.shower.id}"
               title="${t('meteors.view_radiant_title')}"
             >
-              <span>🔭</span>
+              <span>☄️</span>
               <span>${t('meteors.view_radiant')}</span>
             </button>
           ` : '')}
@@ -1699,7 +1701,7 @@ function renderPlanetModal(): string {
                   Alt: ${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° · Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass} (${isAboveHorizon ? 'Above' : 'Below'})
                 </span>
               </div>
-              <p class="text-xs text-[#8b949e] mt-0.5">${state.starfieldAperture === 'circular' ? `${fovDeg}° Circular Eyepiece (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° Radius)` : `${fovDeg}° × ${fovDeg}° Sensor Frame`}</p>
+              <p class="text-xs ${isRadiant ? 'text-sky-300/90 font-medium' : 'text-[#8b949e]'} mt-0.5">${isRadiant ? `${t('starfield.naked_eye_window', { fov: fovDeg.toFixed(0) })} · ${p.constellation}` : (state.starfieldAperture === 'circular' ? `${fovDeg}° Circular Eyepiece (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° Radius)` : `${fovDeg}° × ${fovDeg}° Sensor Frame`)}</p>
             </div>
           </div>
 
@@ -1722,14 +1724,25 @@ function renderPlanetModal(): string {
               <span>${state.starfieldShowLabels ? `🏷️ ${t('starfield.names')}` : `🏷️ ${t('starfield.names_off')}`}</span>
             </button>
 
-            <!-- Aperture Toggle Button (Circular Eyepiece / Square Sensor) -->
-            <button
-              id="btnToggleAperture"
-              class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldAperture === 'circular' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
-              title="Toggle field of view between circular eyepiece and square sensor frame"
-            >
-              <span>${state.starfieldAperture === 'circular' ? `◯ ${t('starfield.eyepiece')} (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `▢ ${t('starfield.sensor')} (${fovDeg}°)`}</span>
-            </button>
+            ${isRadiant ? `
+              <!-- Naked Eye Window Indicator Badge -->
+              <div
+                class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border bg-sky-500/10 text-sky-300 border-sky-500/30"
+                title="Single 50° naked-eye window for meteor observing"
+              >
+                <span>👀</span>
+                <span>${fovDeg}° ${t('starfield.naked_eye_short')}</span>
+              </div>
+            ` : `
+              <!-- Aperture Toggle Button (Circular Eyepiece / Square Sensor) -->
+              <button
+                id="btnToggleAperture"
+                class="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${state.starfieldAperture === 'circular' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30' : 'bg-white/5 text-[#8b949e] border-[#30363d] hover:text-[#e6edf3] hover:bg-white/10'}"
+                title="Toggle field of view between circular eyepiece and square sensor frame"
+              >
+                <span>${state.starfieldAperture === 'circular' ? `◯ ${t('starfield.eyepiece')} (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `▢ ${t('starfield.sensor')} (${fovDeg}°)`}</span>
+              </button>
+            `}
 
             <!-- Orientation Toggle Button (Natural / North-Up / South-Up) -->
             <button
@@ -1844,9 +1857,9 @@ function renderPlanetModal(): string {
                   <span id="chipPlanetAz" class="text-[10px] text-sky-300 block font-mono font-medium">Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass}</span>
                 </div>
                 <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('starfield.title')}</span>
-                  <span class="font-bold text-amber-300 text-sm">${state.starfieldAperture === 'circular' ? `${fovDeg}° ◯ (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `${fovDeg}° ▢ Sensor`}</span>
-                  <span class="text-[10px] text-[#8b949e] block">${state.starfieldAperture === 'circular' ? `${t('starfield.eyepiece')} (Mag ≤ 6.0)` : `${t('starfield.sensor')} (Mag ≤ 6.0)`}</span>
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${isRadiant ? t('meteors.radiant_label') : t('starfield.title')}</span>
+                  <span class="font-bold ${isRadiant ? 'text-sky-300' : 'text-amber-300'} text-sm">${isRadiant ? `${fovDeg}° Naked Eye` : (state.starfieldAperture === 'circular' ? `${fovDeg}° ◯ (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `${fovDeg}° ▢ Sensor`)}</span>
+                  <span class="text-[10px] text-[#8b949e] block">${isRadiant ? 'Constellation Window' : (state.starfieldAperture === 'circular' ? `${t('starfield.eyepiece')} (Mag ≤ 6.0)` : `${t('starfield.sensor')} (Mag ≤ 6.0)`)}</span>
                 </div>
               </div>
 
@@ -1961,65 +1974,78 @@ function renderPlanetModal(): string {
                 ></canvas>
               </div>
 
-              <!-- Zoom In / Out Controls & FOV Presets -->
-              <div class="mt-2.5 flex items-center justify-between w-full max-w-[360px] px-1 text-xs gap-2">
-                <div class="flex items-center gap-1.5">
-                  <span class="text-[11px] font-bold text-[#8b949e] uppercase tracking-wider">FOV:</span>
-                  <div class="flex items-center bg-white/5 border border-[#30363d] rounded-xl p-0.5">
-                    <button
-                      id="btnZoomOut"
-                      type="button"
-                      class="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                      ${state.starfieldFovDeg >= 45 ? 'disabled' : ''}
-                      title="Zoom Out (Wider Field of View)"
-                    >
-                      −
-                    </button>
-                    <span class="px-2 font-mono font-bold text-sky-300 text-xs">${state.starfieldFovDeg}°</span>
-                    <button
-                      id="btnZoomIn"
-                      type="button"
-                      class="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                      ${state.starfieldFovDeg <= 5 ? 'disabled' : ''}
-                      title="Zoom In (Narrower Field of View)"
-                    >
-                      +
-                    </button>
+              ${isRadiant ? `
+                <!-- Meteor Shower Radiant Naked Eye Indicator -->
+                <div class="mt-2.5 flex items-center justify-between w-full max-w-[360px] px-1 text-xs gap-2">
+                  <div class="flex items-center gap-1.5">
+                    <span class="px-2.5 py-1 rounded-xl text-xs font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1.5 shadow-sm">
+                      <span>👀</span>
+                      <span>50° ${t('starfield.naked_eye_short')}</span>
+                    </span>
+                  </div>
+                  <span class="text-[11px] text-[#8b949e] font-mono">${t('starfield.scale_fist')}</span>
+                </div>
+              ` : `
+                <!-- Zoom In / Out Controls & FOV Presets -->
+                <div class="mt-2.5 flex items-center justify-between w-full max-w-[360px] px-1 text-xs gap-2">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[11px] font-bold text-[#8b949e] uppercase tracking-wider">FOV:</span>
+                    <div class="flex items-center bg-white/5 border border-[#30363d] rounded-xl p-0.5">
+                      <button
+                        id="btnZoomOut"
+                        type="button"
+                        class="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        ${state.starfieldFovDeg >= 45 ? 'disabled' : ''}
+                        title="Zoom Out (Wider Field of View)"
+                      >
+                        −
+                      </button>
+                      <span class="px-2 font-mono font-bold text-sky-300 text-xs">${state.starfieldFovDeg}°</span>
+                      <button
+                        id="btnZoomIn"
+                        type="button"
+                        class="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold text-[#e6edf3] hover:bg-white/10 active:scale-95 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        ${state.starfieldFovDeg <= 5 ? 'disabled' : ''}
+                        title="Zoom In (Narrower Field of View)"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Quick FOV Presets with Optical Instrument Tooltips -->
+                  <div class="flex items-center gap-1 flex-wrap justify-end">
+                    ${[
+                      { deg: 5, label: '5°', title: '5° Finder / 10×50 Binoculars' },
+                      { deg: 10, label: '10°', title: '10° 7×50 Binoculars' },
+                      { deg: 20, label: '20°', title: '20° Wide Finder / Telrad' },
+                      { deg: 30, label: '30°', title: '30° Sky Scan' },
+                      { deg: 45, label: '45°', title: '45° Naked Eye View' }
+                    ].map(opt => `
+                      <button
+                        type="button"
+                        class="btnFovPreset px-2 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${state.starfieldFovDeg === opt.deg ? 'bg-sky-500/25 text-sky-200 border-sky-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}"
+                        data-fov="${opt.deg}"
+                        title="${opt.title}"
+                      >
+                        ${opt.label}
+                      </button>
+                    `).join('')}
                   </div>
                 </div>
 
-                <!-- Quick FOV Presets with Optical Instrument Tooltips -->
-                <div class="flex items-center gap-1 flex-wrap justify-end">
-                  ${[
-                    { deg: 5, label: '5°', title: '5° Finder / 10×50 Binoculars' },
-                    { deg: 10, label: '10°', title: '10° 7×50 Binoculars' },
-                    { deg: 20, label: '20°', title: '20° Wide Finder / Telrad' },
-                    { deg: 30, label: '30°', title: '30° Sky Scan' },
-                    { deg: 45, label: '45°', title: '45° Naked Eye View' }
-                  ].map(opt => `
-                    <button
-                      type="button"
-                      class="btnFovPreset px-2 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${state.starfieldFovDeg === opt.deg ? 'bg-sky-500/25 text-sky-200 border-sky-500/40' : 'bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10'}"
-                      data-fov="${opt.deg}"
-                      title="${opt.title}"
-                    >
-                      ${opt.label}
-                    </button>
-                  `).join('')}
+                <!-- Active Optical Profile & Tap hint -->
+                <div class="w-full max-w-[360px] px-1 mt-1 text-[11px] text-[#8b949e] flex items-center justify-between">
+                  <span class="text-sky-300/80 font-mono">
+                    ${state.starfieldFovDeg === 5 ? '🔭 5° Finder / 10×50' :
+                      state.starfieldFovDeg === 10 ? '🔭 10° 7×50 Binoculars' :
+                      state.starfieldFovDeg === 20 ? '🔭 20° Wide Finder / Telrad' :
+                      state.starfieldFovDeg === 30 ? '🔭 30° Wide Sky Scan' :
+                      '👀 45° Naked Eye Central View'}
+                  </span>
+                  <span class="text-[10px] text-[#8b949e]">${t('modal.tap_hint')}</span>
                 </div>
-              </div>
-
-              <!-- Active Optical Profile & Tap hint -->
-              <div class="w-full max-w-[360px] px-1 mt-1 text-[11px] text-[#8b949e] flex items-center justify-between">
-                <span class="text-sky-300/80 font-mono">
-                  ${state.starfieldFovDeg === 5 ? '🔭 5° Finder / 10×50' :
-                    state.starfieldFovDeg === 10 ? '🔭 10° 7×50 Binoculars' :
-                    state.starfieldFovDeg === 20 ? '🔭 20° Wide Finder / Telrad' :
-                    state.starfieldFovDeg === 30 ? '🔭 30° Wide Sky Scan' :
-                    '👀 45° Naked Eye Central View'}
-                </span>
-                <span class="text-[10px] text-[#8b949e]">${t('modal.tap_hint')}</span>
-              </div>
+              `}
             </div>
 
             <!-- 3. Details Area: Target Inspector Card & Guidance Caption -->
@@ -2117,9 +2143,11 @@ function renderPlanetModal(): string {
                     ? 'Cyan reticle marks the <span class="font-semibold text-sky-400">meteor shower radiant</span> (point in the sky where meteors appear to originate). '
                     : 'Dashed circle is a <span class="font-semibold text-sky-400">1° Telrad target</span>. '
                   }
-                  ${state.starfieldAperture === 'circular'
-                    ? `Showing <span class="font-semibold text-indigo-300">${fovDeg}° circular eyepiece</span> (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° radius).`
-                    : `Showing <span class="font-semibold text-indigo-300">${fovDeg}°×${fovDeg}° sensor frame</span>.`
+                  ${isRadiant
+                    ? `Showing <span class="font-semibold text-sky-300">${fovDeg}° naked eye constellation sky</span>. Meteors radiate outward across the sky from this point. For best viewing, recline and look 30°–60° away from the radiant into dark skies.`
+                    : (state.starfieldAperture === 'circular'
+                      ? `Showing <span class="font-semibold text-indigo-300">${fovDeg}° circular eyepiece</span> (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° radius).`
+                      : `Showing <span class="font-semibold text-indigo-300">${fovDeg}°×${fovDeg}° sensor frame</span>.`)
                   }
                   ${bodiesInField.length > 0
                     ? `<span class="block mt-1 font-semibold text-indigo-300">In field: ${bodiesInField.map(b => `${b.symbol} ${b.name}`).join(', ')}</span>`

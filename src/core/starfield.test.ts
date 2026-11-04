@@ -445,11 +445,11 @@ describe('Starfield & Ephemeris Projection Engine', () => {
       expect(names).toContain('83 Vir'); // The star 1.36° from Venus
     });
 
-    it('strictly clamps FOV between 3° and 45° to safeguard against distortion and runaway rendering', () => {
-      // Calling with 120° FOV should clamp to 45°
+    it('strictly clamps FOV between 3° and 60° to safeguard against distortion and runaway rendering', () => {
+      // Calling with 120° FOV should clamp to 60°
       const clampedStars = getStarsInField(205.074, -17.104, 120.0, 6.0, 360, 360);
-      const exact45Stars = getStarsInField(205.074, -17.104, 45.0, 6.0, 360, 360);
-      expect(clampedStars.length).toBe(exact45Stars.length);
+      const exact60Stars = getStarsInField(205.074, -17.104, 60.0, 6.0, 360, 360);
+      expect(clampedStars.length).toBe(exact60Stars.length);
 
       // Calling with 1° FOV should clamp to 3°
       const clampedMin = getStarsInField(205.074, -17.104, 1.0, 6.0, 360, 360);
