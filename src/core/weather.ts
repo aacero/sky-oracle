@@ -33,6 +33,7 @@ export interface ObservingHour {
   sunAlt?: number;
   moonAlt?: number;
   moonIllum?: number;
+  moonGlyph?: string;
   inBestBlock?: boolean;
   isPeakHour?: boolean;
 }
@@ -427,7 +428,8 @@ export function parseCloudPayload(
         score,
         sunAlt,
         moonAlt,
-        moonIllum
+        moonIllum,
+        moonGlyph: moonInfo.glyph
       });
     }
   }
@@ -491,7 +493,8 @@ export function parseCloudPayload(
         score,
         sunAlt,
         moonAlt,
-        moonIllum
+        moonIllum,
+        moonGlyph: moonInfo.glyph
       });
     }
   }

@@ -754,7 +754,7 @@ function render() {
             <h3 class="text-xs font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-1.5">
               <span>🔭 OBSERVING WINDOW (${state.forecast?.hourlyWindow[0]?.label || '7 PM'} – ${state.forecast?.hourlyWindow[state.forecast?.hourlyWindow.length - 1]?.label || '6 AM'})</span>
             </h3>
-            <span class="text-[11px] text-[#8b949e] hidden sm:inline">Taller bar = Clearer sky · 🟩 = Best Window · ⭐ = Peak Hour · Highlight = Dark Sky</span>
+            <span class="text-[11px] text-[#8b949e] hidden sm:inline">🟩 = Best Window · ⭐ = Peak Hour · 🌙 Moon Altitude Row</span>
           </div>
 
           ${state.forecast?.hourlyWindow && state.forecast.hourlyWindow.length > 0 ? `
@@ -763,7 +763,7 @@ function render() {
                 const isPeak = h.isPeakHour || (state.forecast?.bestWindow?.peakHour?.hr === h.hr);
                 const inBlock = h.inBestBlock || isPeak;
                 return `
-                  <div class="flex flex-col items-center gap-1 group relative cursor-pointer" title="${h.label}: ${h.cloud}% clouds${h.score !== undefined ? `, Score: ${h.score}/100` : ''}${isPeak ? ' [★ Peak Hour]' : (inBlock ? ' [In Best Window]' : '')}${h.isDarkSky ? ' [True Dark Sky]' : ''}, ${state.tempUnit === 'F' ? `${h.tempF}°F (feels ${h.feelsLikeF}°F)` : `${h.tempC}°C (feels ${h.feelsLikeC}°C)`}, wind ${state.tempUnit === 'F' ? `${h.windSpeedMph} mph` : `${h.windSpeedKmh} km/h`}">
+                  <div class="flex flex-col items-center gap-1 group relative cursor-pointer" title="${h.label}: ${h.cloud}% clouds${h.score !== undefined ? `, Score: ${h.score}/100` : ''}${isPeak ? ' [★ Peak Hour]' : (inBlock ? ' [In Best Window]' : '')}${h.isDarkSky ? ' [True Dark Sky]' : ''}, ${state.tempUnit === 'F' ? `${h.tempF}°F (feels ${h.feelsLikeF}°F)` : `${h.tempC}°C (feels ${h.feelsLikeC}°C)`}, wind ${state.tempUnit === 'F' ? `${h.windSpeedMph} mph` : `${h.windSpeedKmh} km/h`}${h.moonAlt !== undefined ? `, Moon: ${h.moonAlt > 0 ? `${h.moonGlyph || '🌙'} ${h.moonAlt}° (${h.moonIllum || 0}%)` : `Below horizon (${h.moonAlt}°)`}` : ''}">
                     <!-- Cloud % / Clear text -->
                     <span class="text-[10px] sm:text-xs font-semibold ${isPeak ? 'text-amber-300 font-bold' : (inBlock ? 'text-emerald-300 font-semibold' : (h.cloud <= 20 ? 'text-emerald-400' : (h.cloud <= 55 ? 'text-[#58a6ff]' : 'text-[#8b949e]')))}">
                       ${isPeak ? '★ ' : ''}${h.cloud <= 5 ? '0%' : `${h.cloud}%`}
@@ -793,6 +793,18 @@ function render() {
                     <span class="text-[10px] sm:text-[11px] font-mono font-medium ${h.tempC <= 0 ? 'text-sky-300' : 'text-[#8b949e]'}">
                       ${state.tempUnit === 'F' ? `${h.tempF}°` : `${h.tempC}°`}
                     </span>
+
+                    <!-- Moon Altitude & Phase Pill -->
+                    ${h.moonAlt !== undefined && h.moonAlt > 0 ? `
+                      <div class="flex items-center justify-center gap-0.5 text-[8.5px] sm:text-[9.5px] font-mono leading-none text-amber-200/90 bg-amber-400/[0.08] border border-amber-400/25 px-0.5 py-0.5 rounded shadow-sm w-full max-w-[28px]" title="Moon ${h.moonGlyph || '🌙'}: ${h.moonIllum || 0}% illuminated at ${h.moonAlt}° altitude">
+                        <span class="text-[8px] sm:text-[9px] leading-none">${h.moonGlyph || '🌙'}</span>
+                        <span class="font-medium">${Math.round(h.moonAlt)}°</span>
+                      </div>
+                    ` : `
+                      <div class="flex items-center justify-center text-[9px] sm:text-[10px] font-mono text-[#484f58] py-0.5 w-full max-w-[28px]" title="Moon below horizon (${h.moonAlt !== undefined ? `${Math.round(h.moonAlt)}°` : 'down'})">
+                        <span class="opacity-40">—</span>
+                      </div>
+                    `}
                   </div>
                 `;
               }).join('')}
