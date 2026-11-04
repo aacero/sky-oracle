@@ -11,6 +11,7 @@ import {
   calculateMoonPlanetInfo,
   calculateSunPlanetInfo,
   getConstellation,
+  formatTime,
   formatHour,
   formatHourCompact,
   formatShortDate
@@ -181,16 +182,29 @@ describe('Astronomy Engine', () => {
   });
 
   describe('Formatting Helpers', () => {
-    it('formats standard and compact hours', () => {
-      expect(formatHour(0)).toBe('12 AM');
-      expect(formatHour(7)).toBe('7 AM');
-      expect(formatHour(12)).toBe('12 PM');
-      expect(formatHour(21)).toBe('9 PM');
+    it('formats times in 24h format with zero padding', () => {
+      const d1 = new Date(Date.UTC(2026, 9, 26, 4, 5));
+      expect(formatTime(d1, 'UTC')).toBe('04:05');
 
-      expect(formatHourCompact(0)).toBe('12a');
-      expect(formatHourCompact(7)).toBe('7a');
-      expect(formatHourCompact(12)).toBe('12p');
-      expect(formatHourCompact(21)).toBe('9p');
+      const d2 = new Date(Date.UTC(2026, 9, 26, 19, 45));
+      expect(formatTime(d2, 'UTC')).toBe('19:45');
+
+      const d3 = new Date(Date.UTC(2026, 9, 26, 0, 0));
+      expect(formatTime(d3, 'UTC')).toBe('00:00');
+
+      expect(formatTime(null)).toBe('—');
+    });
+
+    it('formats standard and compact hours in 24h format', () => {
+      expect(formatHour(0)).toBe('00:00');
+      expect(formatHour(7)).toBe('07:00');
+      expect(formatHour(12)).toBe('12:00');
+      expect(formatHour(21)).toBe('21:00');
+
+      expect(formatHourCompact(0)).toBe('00h');
+      expect(formatHourCompact(7)).toBe('07h');
+      expect(formatHourCompact(12)).toBe('12h');
+      expect(formatHourCompact(21)).toBe('21h');
     });
   });
 

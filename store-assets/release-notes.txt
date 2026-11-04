@@ -1,5 +1,6 @@
-What's new in v1.0.20:
-• 50° Naked-Eye Meteor Shower Radiant Sky Window with recognizable constellation asterisms (Cassiopeia, Cygnus, Hercules Keystone, Big Dipper, Polaris) and 10° fist scale
-• Meteor Shower Dashboard card with peak dates, ZHR rates, and lunar interference
+What's new in v1.0.21:
+• Universal 24-hour time formatting (HH:mm, e.g. 19:42, 02:15, 00:00) across all solar, lunar, planetary, and meteor ephemeris tables
+• Constant 5-character time widths stabilizing tabular column alignments
+• 50° Naked-Eye Meteor Shower Radiant Sky Window with constellation asterisms and 10° fist scale
 • Contiguous best observing window calculation & continuous Moon altitude track with below-horizon dimming
-• Full 7-language support: English, Spanish, Portuguese, German, French, Italian, and Japanese
+• Full 7-language support

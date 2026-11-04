@@ -23,7 +23,7 @@ Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical 
 
 ---
 
-## 2. Observing Window & Celestial Enhancements [Implemented in v1.0.19 & v1.0.20]
+## 2. Observing Window & Celestial Enhancements [Implemented in v1.0.19, v1.0.20 & v1.0.21]
 
 ### Contiguous Observing Window Engine
 - Multi-constraint window selection incorporating astronomical darkness boundaries (Astro Dusk to Astro Dawn), lunar interference penalties (moon illumination $\times$ altitude above horizon), low cloud cover prioritization, and peak solar-midnight tiebreakers.
@@ -37,6 +37,11 @@ Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical 
   - $10^\circ$ "Fist width" angular scale bar.
   - Custom radiant reticle with radiating streak markers.
   - Practical naked-eye observing guidance (recline and look $30^\circ\text{–}60^\circ$ away from the radiant into the darkest part of the sky).
+
+### Universal 24-Hour Time Formatting (v1.0.21)
+- Standardized all time representations across the application to 24-hour astronomical format (`HH:mm` e.g., `19:42`, `02:15`, `00:00`).
+- Constant 5-character string lengths stabilize column alignment across twilight, lunar, and planetary ephemeris tables without UI jitter.
+- Hourly observing timeline displays `HH:00` (e.g. `19:00`, `20:00`) on desktop and `HHh` (e.g. `19h`, `20h`) on compact mobile views to cleanly distinguish hour timestamps from temperature values.
 
 ---
 

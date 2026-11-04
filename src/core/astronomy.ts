@@ -659,20 +659,16 @@ export function calculateSunPlanetInfo(
 export function formatTime(d: Date | null, timeZone?: string): string {
   if (!d || isNaN(d.getTime())) return "—";
   try {
-    return new Intl.DateTimeFormat('en-US', {
-      hour: 'numeric',
+    return new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true,
+      hourCycle: 'h23',
       timeZone
     }).format(d);
   } catch {
-    let hr = d.getHours();
-    const min = d.getMinutes();
-    const ampm = hr >= 12 ? 'PM' : 'AM';
-    hr = hr % 12;
-    hr = hr ? hr : 12;
-    const minStr = min < 10 ? '0' + min : String(min);
-    return `${hr}:${minStr} ${ampm}`;
+    const hr = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${hr}:${min}`;
   }
 }
 
@@ -693,15 +689,11 @@ export function formatShortDate(d: Date | null, timeZone?: string): string {
 }
 
 export function formatHour(hr: number): string {
-  if (hr === 0) return "12 AM";
-  if (hr < 12) return `${hr} AM`;
-  if (hr === 12) return "12 PM";
-  return `${hr - 12} PM`;
+  const h = ((hr % 24) + 24) % 24;
+  return `${String(h).padStart(2, '0')}:00`;
 }
 
 export function formatHourCompact(hr: number): string {
-  if (hr === 0) return "12a";
-  if (hr < 12) return `${hr}a`;
-  if (hr === 12) return "12p";
-  return `${hr - 12}p`;
+  const h = ((hr % 24) + 24) % 24;
+  return `${String(h).padStart(2, '0')}h`;
 }

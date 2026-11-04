@@ -63,7 +63,7 @@ import {
   MeteorCardData
 } from './core/meteors.ts';
 
-export const APP_VERSION = '1.0.20';
+export const APP_VERSION = '1.0.21';
 
 // ── Application State ───────────────────────────────────────────────────────
 
@@ -851,7 +851,7 @@ function render() {
         <div class="mt-6 pt-5 border-t border-[#30363d]">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-xs font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-1.5">
-              <span>🔭 OBSERVING WINDOW (${state.forecast?.hourlyWindow[0]?.label || '7 PM'} – ${state.forecast?.hourlyWindow[state.forecast?.hourlyWindow.length - 1]?.label || '6 AM'})</span>
+              <span>🔭 OBSERVING WINDOW (${state.forecast?.hourlyWindow[0]?.label || '19:00'} – ${state.forecast?.hourlyWindow[state.forecast?.hourlyWindow.length - 1]?.label || '06:00'})</span>
             </h3>
             <span class="text-[11px] text-[#8b949e] hidden sm:inline">🟩 = Best Window · ⭐ = Peak Hour</span>
           </div>
@@ -1914,9 +1914,9 @@ function renderPlanetModal(): string {
                       </button>
                     ` : ''}
 
-                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="10pm" title="10:00 PM local evening observing">10 PM</button>
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="10pm" title="22:00 local evening observing">22:00</button>
 
-                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="2am" title="2:00 AM local night observing">2 AM</button>
+                    <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="2am" title="02:00 local night observing">02:00</button>
 
                     <button class="btnTimePreset px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer bg-white/[0.03] text-[#8b949e] border-[#30363d]/70 hover:text-white hover:bg-white/10" data-time-preset="dawn" title="Morning twilight (Astro Dawn)">${t('starfield.preset_dawn')}</button>
                   </div>

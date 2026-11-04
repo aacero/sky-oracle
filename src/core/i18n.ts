@@ -1423,9 +1423,18 @@ export function formatLocalizedDate(date: Date, options?: Intl.DateTimeFormatOpt
 }
 
 /**
- * Format hours & minutes in the active locale's natural conventions
+ * Format hours & minutes in 24-hour time convention (HH:mm)
  */
 export function formatLocalizedTime(date: Date): string {
-  const lang = currentLocale === 'en' ? 'en-US' : (currentLocale === 'ja' ? 'ja-JP' : (currentLocale === 'it' ? 'it-IT' : currentLocale));
-  return new Intl.DateTimeFormat(lang, { hour: 'numeric', minute: '2-digit' }).format(date);
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).format(date);
+  } catch {
+    const hr = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${hr}:${min}`;
+  }
 }

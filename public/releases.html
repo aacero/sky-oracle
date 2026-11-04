@@ -64,13 +64,32 @@
           <p class="meta" style="margin: 0.25rem 0 0 0;">SkyOracle: Stargazing Forecast & Ephemeris</p>
         </div>
         <div style="display: flex; gap: 0.5rem;">
-          <span class="badge badge-green">v1.0.20 Active</span>
+          <span class="badge badge-green">v1.0.21 Active</span>
           <a href="./" class="badge">Back to App 🔭</a>
         </div>
       </div>
 
-      <!-- Release v1.0.20 -->
+      <!-- Release v1.0.21 -->
       <div class="release-card" style="border-left: 4px solid #34d399;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <h2 style="margin: 0; border: none; padding: 0;">Version 1.0.21 (Build 8)</h2>
+          <span class="meta">November 2026</span>
+        </div>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-top: 0.25rem;">
+          Universal 24-hour time formatting across all ephemeris tables, observing charts, and interactive starfield scrubbers.
+        </p>
+
+        <h3>🕒 Universal 24-Hour Time (HH:mm)</h3>
+        <ul>
+          <li><strong>Zero-Padded Constant Width:</strong> All times are rendered in standard 24-hour astronomical format (<code>HH:mm</code> e.g., <code>19:42</code>, <code>02:15</code>, <code>00:00</code>), ensuring constant 5-character string lengths that stabilize column alignment and eliminate text jitter.</li>
+          <li><strong>Full Ephemeris Coverage:</strong> Applies across Solar Twilights (Sunset, Civil/Nautical/Astronomical Dusk & Dawn, Sunrise), Moon rise/set, Planet rise/set & status cards, and Meteor Shower radiant ephemeris.</li>
+          <li><strong>Clean Observing Charts:</strong> The hourly observing window timeline displays zero-padded full hours on desktop (<code>19:00</code>, <code>20:00</code>, <code>00:00</code>) and unambiguous compact hour labels on mobile (<code>19h</code>, <code>20h</code>, <code>00h</code>) preventing confusion with temperature readings.</li>
+          <li><strong>Starfield Time Scrubber:</strong> Simulation presets updated to <code>22:00</code> and <code>02:00</code> with live scrubbed timestamps formatted in 24h clock.</li>
+        </ul>
+      </div>
+
+      <!-- Release v1.0.20 -->
+      <div class="release-card" style="margin-top: 1.5rem;">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <h2 style="margin: 0; border: none; padding: 0;">Version 1.0.20 (Build 7)</h2>
           <span class="meta">November 2026</span>
