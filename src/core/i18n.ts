@@ -61,6 +61,8 @@ const en: TranslationDictionary = {
   'verdict.avg_cloud': 'Avg Cloud Cover',
   'verdict.best_window': 'Best Window',
   'verdict.all_night': 'All night',
+  'verdict.peak': 'Peak',
+  'verdict.hours': 'hrs',
 
   // Weather & Atmosphere
   'weather.title': 'Atmospheric Conditions',
@@ -231,6 +233,8 @@ const es: TranslationDictionary = {
   'verdict.avg_cloud': 'Nubosidad Promedio',
   'verdict.best_window': 'Mejor Ventana',
   'verdict.all_night': 'Toda la noche',
+  'verdict.peak': 'Pico',
+  'verdict.hours': 'h',
 
   // Weather & Atmosphere
   'weather.title': 'Condiciones Atmosféricas',
@@ -401,6 +405,8 @@ const pt: TranslationDictionary = {
   'verdict.avg_cloud': 'Média de Nuvens',
   'verdict.best_window': 'Melhor Janela',
   'verdict.all_night': 'A noite toda',
+  'verdict.peak': 'Pico',
+  'verdict.hours': 'h',
 
   // Weather & Atmosphere
   'weather.title': 'Condições Atmosféricas',
@@ -571,6 +577,8 @@ const de: TranslationDictionary = {
   'verdict.avg_cloud': 'Mittlere Bewölkung',
   'verdict.best_window': 'Bestes Zeitfenster',
   'verdict.all_night': 'Die ganze Nacht',
+  'verdict.peak': 'Höhepunkt',
+  'verdict.hours': 'Std',
 
   // Weather & Atmosphere
   'weather.title': 'Atmosphärische Bedingungen',
@@ -741,6 +749,8 @@ const fr: TranslationDictionary = {
   'verdict.avg_cloud': 'Couverture Nuageuse Moyenne',
   'verdict.best_window': 'Meilleur Créneau',
   'verdict.all_night': 'Toute la nuit',
+  'verdict.peak': 'Pic',
+  'verdict.hours': 'h',
 
   // Weather & Atmosphere
   'weather.title': 'Conditions Atmosphériques',

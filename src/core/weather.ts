@@ -5,7 +5,14 @@
  * Extracts dynamic dark-sky observing window (post-sunset through pre-sunrise).
  */
 
-import { calculateSunEvents, formatHour, formatHourCompact } from './astronomy.ts';
+import {
+  calculateSunEvents,
+  formatHour,
+  formatHourCompact,
+  solarAltitude,
+  lunarAltitude,
+  calculateMoonInfo
+} from './astronomy.ts';
 
 export interface ObservingHour {
   hr: number;
@@ -22,12 +29,33 @@ export interface ObservingHour {
   label: string;
   labelCompact: string;
   isDarkSky: boolean;
+  score?: number;
+  sunAlt?: number;
+  moonAlt?: number;
+  moonIllum?: number;
+  inBestBlock?: boolean;
+  isPeakHour?: boolean;
+}
+
+export interface BestObservingWindow {
+  startHour: number;
+  endHour: number;
+  startLabel: string;
+  endLabel: string;
+  durationHours: number;
+  avgCloud: number;
+  avgScore: number;
+  peakHour: ObservingHour;
+  // Backwards compatibility properties (matching previous ObservingHour interface usage)
+  hr: number;
+  cloud: number;
+  label: string;
 }
 
 export interface ObservingForecast {
   hourlyWindow: ObservingHour[];
   avgCloud: number;
-  bestWindow: ObservingHour | null;
+  bestWindow: BestObservingWindow | null;
   currentTempC: number;
   currentTempF: number;
   minTempC: number;
@@ -61,6 +89,194 @@ export interface GeocodingResult {
 
 function pad2(num: number): string {
   return num < 10 ? '0' + num : String(num);
+}
+
+export function calculateHourStargazingScore(
+  cloud: number,
+  sunAlt: number,
+  moonAlt: number,
+  moonIllum: number,
+  tempC: number,
+  dewPointC: number,
+  windSpeedMph: number,
+  utcItemMs: number,
+  solarMidnightMs: number = 0
+): number {
+  // 1. Cloud Cover Score (0 - 100)
+  let cloudScore = 0;
+  if (cloud <= 10) cloudScore = 100 - cloud * 0.5;
+  else if (cloud <= 35) cloudScore = 95 - (cloud - 10) * 1.5;
+  else if (cloud <= 65) cloudScore = 57.5 - (cloud - 35) * 1.3;
+  else cloudScore = Math.max(0, 18.5 - (cloud - 65) * 0.5);
+
+  // 2. Solar Altitude / Darkness Factor
+  // True astronomical darkness: sunAlt <= -18° (multiplier 1.0)
+  // Astronomical twilight: -18° < sunAlt <= -12° (multiplier 0.55 - 1.0)
+  // Nautical twilight: -12° < sunAlt <= -6° (multiplier 0.15 - 0.55)
+  // Civil twilight / Daylight: sunAlt > -6° (multiplier 0.02)
+  let darknessFactor = 1.0;
+  if (sunAlt <= -18) {
+    darknessFactor = 1.0;
+  } else if (sunAlt <= -12) {
+    darknessFactor = 0.55 + 0.45 * (-12 - sunAlt) / 6;
+  } else if (sunAlt <= -6) {
+    darknessFactor = 0.15 + 0.35 * (-6 - sunAlt) / 6;
+  } else {
+    darknessFactor = 0.02;
+  }
+
+  // 3. Lunar Interference (Moon Altitude & Phase Illumination)
+  let lunarFactor = 1.0;
+  if (moonAlt > 0) {
+    const illumFrac = Math.max(0, Math.min(1, moonIllum / 100));
+    const altFrac = Math.sin(Math.max(0, Math.min(90, moonAlt)) * Math.PI / 180);
+    lunarFactor = Math.max(0.4, 1.0 - 0.55 * (illumFrac * altFrac));
+  }
+
+  // 4. Dew & Wind Stability
+  let bonus = 0;
+  const dewDepression = tempC - dewPointC;
+  if (dewDepression >= 3.5) bonus += 2.5;
+  else if (dewDepression <= 1.5) bonus -= 4;
+
+  if (windSpeedMph <= 8) bonus += 2;
+  else if (windSpeedMph >= 18) bonus -= 4;
+
+  // 5. Deep Midnight / Nadir Tie-Breaker
+  if (solarMidnightMs > 0) {
+    const hoursFromMidnight = Math.abs(utcItemMs - solarMidnightMs) / 3600000;
+    bonus += Math.max(0, 4 - hoursFromMidnight * 0.8);
+  }
+
+  const base = cloudScore * darknessFactor * lunarFactor;
+  return Math.max(0, Math.min(100, Math.round((base + bonus) * 10) / 10));
+}
+
+export function findBestObservingWindow(
+  hours: ObservingHour[],
+  solarMidnightMs: number = 0
+): BestObservingWindow | null {
+  if (!hours || hours.length === 0) return null;
+
+  const getContiguousBlocks = (predicate: (h: ObservingHour) => boolean): ObservingHour[][] => {
+    const blocks: ObservingHour[][] = [];
+    let current: ObservingHour[] = [];
+    for (const h of hours) {
+      if (predicate(h)) {
+        current.push(h);
+      } else {
+        if (current.length > 0) {
+          blocks.push(current);
+          current = [];
+        }
+      }
+    }
+    if (current.length > 0) blocks.push(current);
+    return blocks;
+  };
+
+  // Tier 1: Pristine Dark Sky Window
+  // - Astronomical darkness: sunAlt <= -14° (or isDarkSky)
+  // - Cloud cover <= 30%
+  // - Moon is down or non-interfering: moonAlt <= 5° or moonIllum <= 35%
+  let blocks = getContiguousBlocks(h => {
+    const sunOk = (h.sunAlt !== undefined ? h.sunAlt <= -14 : h.isDarkSky);
+    const cloudOk = h.cloud <= 30;
+    const moonOk = h.moonAlt === undefined || h.moonAlt <= 5 || (h.moonIllum !== undefined && h.moonIllum <= 35);
+    return sunOk && cloudOk && moonOk;
+  });
+
+  // Tier 2: Good Dark Sky Window (allow moon up if clouds are clear)
+  if (blocks.length === 0) {
+    blocks = getContiguousBlocks(h => {
+      const sunOk = (h.sunAlt !== undefined ? h.sunAlt <= -12 : h.isDarkSky);
+      const cloudOk = h.cloud <= 40;
+      return sunOk && cloudOk;
+    });
+  }
+
+  // Tier 3: Workable Window (partly cloudy or polar summer twilight)
+  if (blocks.length === 0) {
+    const minCloud = Math.min(...hours.map(h => h.cloud));
+    const relaxedCloud = Math.min(80, minCloud + 25);
+    blocks = getContiguousBlocks(h => {
+      const sunOk = h.sunAlt !== undefined ? h.sunAlt <= -6 : true;
+      const cloudOk = h.cloud <= relaxedCloud;
+      return sunOk && cloudOk;
+    });
+  }
+
+  // Fallback: entire hourly window
+  if (blocks.length === 0) {
+    blocks = [hours];
+  }
+
+  // Rank candidate blocks
+  const ranked = blocks.map(block => {
+    const duration = block.length;
+    const avgScore = Math.round(block.reduce((sum, h) => sum + (h.score ?? 50), 0) / duration);
+    const avgCloud = Math.round(block.reduce((sum, h) => sum + h.cloud, 0) / duration);
+
+    // Peak hour within block: highest score, tie-breaker lowest cloud and deepest solar altitude
+    const peakHour = block.reduce((best, h) => {
+      if (!best) return h;
+      const hScore = h.score ?? 0;
+      const bestScore = best.score ?? 0;
+      if (hScore > bestScore) return h;
+      if (hScore < bestScore) return best;
+      if (h.cloud < best.cloud) return h;
+      if (h.cloud > best.cloud) return best;
+      if (solarMidnightMs > 0 && h.sunAlt !== undefined && best.sunAlt !== undefined) {
+        if (h.sunAlt < best.sunAlt) return h;
+      }
+      return best;
+    }, block[0]);
+
+    // Rank metric: average score with logarithmic duration bonus (rewards continuous sessions)
+    const durationMultiplier = 1 + Math.log2(Math.max(1, duration)) * 0.15;
+    const rankMetric = avgScore * durationMultiplier;
+
+    return {
+      block,
+      startHour: block[0].hr,
+      endHour: block[block.length - 1].hr,
+      startLabel: block[0].label,
+      endLabel: block[block.length - 1].label,
+      durationHours: duration,
+      avgCloud,
+      avgScore,
+      peakHour,
+      rankMetric
+    };
+  });
+
+  ranked.sort((a, b) => b.rankMetric - a.rankMetric);
+  const best = ranked[0];
+
+  // Mark inBestBlock and isPeakHour on the hours array
+  const bestBlockSet = new Set(best.block);
+  for (const h of hours) {
+    h.inBestBlock = bestBlockSet.has(h);
+    h.isPeakHour = h.hr === best.peakHour.hr;
+  }
+
+  const label = best.durationHours === 1
+    ? best.startLabel
+    : `${best.startLabel} – ${best.endLabel}`;
+
+  return {
+    startHour: best.startHour,
+    endHour: best.endHour,
+    startLabel: best.startLabel,
+    endLabel: best.endLabel,
+    durationHours: best.durationHours,
+    avgCloud: best.avgCloud,
+    avgScore: best.avgScore,
+    peakHour: best.peakHour,
+    hr: best.peakHour.hr,
+    cloud: best.peakHour.cloud,
+    label
+  };
 }
 
 export async function fetchCloudForecast(
@@ -123,6 +339,10 @@ export function parseCloudPayload(
 
   // Determine local twilight events
   const sun = calculateSunEvents(eveDate, lat, lon);
+  const solarMidnightMs = (sun && sun.sunset && sun.sunrise)
+    ? (sun.sunset.getTime() + sun.sunrise.getTime()) / 2
+    : 0;
+
   let startHr = 19;
   let endHr = 6;
 
@@ -154,6 +374,12 @@ export function parseCloudPayload(
         ? (utcItemMs >= sun.astroDusk.getTime() && utcItemMs <= sun.astroDawn.getTime())
         : false;
 
+      const itemDateObj = new Date(utcItemMs);
+      const sunAlt = Math.round(solarAltitude(itemDateObj, lat, lon) * 10) / 10;
+      const moonAlt = Math.round(lunarAltitude(itemDateObj, lat, lon) * 10) / 10;
+      const moonInfo = calculateMoonInfo(itemDateObj, lat, lon);
+      const moonIllum = moonInfo.illum;
+
       const cloud = clouds[k] ?? 0;
       const rawTempC = temps[k] !== undefined ? temps[k] : 15;
       const tempC = Math.round(rawTempC);
@@ -171,6 +397,18 @@ export function parseCloudPayload(
       const windSpeedKmh = Math.round(rawWindKmh);
       const windSpeedMph = Math.round(rawWindKmh * 0.621371);
 
+      const score = calculateHourStargazingScore(
+        cloud,
+        sunAlt,
+        moonAlt,
+        moonIllum,
+        tempC,
+        dewPointC,
+        windSpeedMph,
+        utcItemMs,
+        solarMidnightMs
+      );
+
       win.push({
         hr,
         cloud,
@@ -185,7 +423,11 @@ export function parseCloudPayload(
         windSpeedKmh,
         label: formatHour(hr),
         labelCompact: formatHourCompact(hr),
-        isDarkSky
+        isDarkSky,
+        score,
+        sunAlt,
+        moonAlt,
+        moonIllum
       });
     }
   }
@@ -194,6 +436,14 @@ export function parseCloudPayload(
     // Fallback: take next 8 hours if alignment fails
     for (let k = 0; k < Math.min(8, times.length); k++) {
       const hr = parseInt(times[k].slice(11, 13), 10);
+      const fallbackEpochMs = refDate.getTime() + k * 3600000;
+      const fallbackDate = new Date(fallbackEpochMs);
+      const sunAlt = Math.round(solarAltitude(fallbackDate, lat, lon) * 10) / 10;
+      const moonAlt = Math.round(lunarAltitude(fallbackDate, lat, lon) * 10) / 10;
+      const moonInfo = calculateMoonInfo(fallbackDate, lat, lon);
+      const moonIllum = moonInfo.illum;
+      const isDarkSky = sunAlt <= -18;
+
       const cloud = clouds[k] ?? 0;
       const rawTempC = temps[k] !== undefined ? temps[k] : 15;
       const tempC = Math.round(rawTempC);
@@ -211,6 +461,18 @@ export function parseCloudPayload(
       const windSpeedKmh = Math.round(rawWindKmh);
       const windSpeedMph = Math.round(rawWindKmh * 0.621371);
 
+      const score = calculateHourStargazingScore(
+        cloud,
+        sunAlt,
+        moonAlt,
+        moonIllum,
+        tempC,
+        dewPointC,
+        windSpeedMph,
+        fallbackEpochMs,
+        solarMidnightMs
+      );
+
       win.push({
         hr,
         cloud,
@@ -225,14 +487,20 @@ export function parseCloudPayload(
         windSpeedKmh,
         label: formatHour(hr),
         labelCompact: formatHourCompact(hr),
-        isDarkSky: false
+        isDarkSky,
+        score,
+        sunAlt,
+        moonAlt,
+        moonIllum
       });
     }
   }
 
+  // Find best contiguous observing window with astronomical scoring
+  const bestWindow = findBestObservingWindow(win, solarMidnightMs);
+
   // Calculate statistics
   let sum = 0;
-  let best = win[0];
   let minTempC = win[0]?.tempC ?? 15;
   let minTempF = win[0]?.tempF ?? 59;
   let maxTempC = win[0]?.tempC ?? 15;
@@ -241,9 +509,6 @@ export function parseCloudPayload(
 
   for (let m = 0; m < win.length; m++) {
     sum += win[m].cloud;
-    if (win[m].cloud < best.cloud) {
-      best = win[m];
-    }
     if (win[m].tempC < minTempC) {
       minTempC = win[m].tempC;
       minTempF = win[m].tempF;
@@ -312,7 +577,7 @@ export function parseCloudPayload(
   return {
     hourlyWindow: win,
     avgCloud,
-    bestWindow: best,
+    bestWindow,
     currentTempC: currentHour.tempC,
     currentTempF: currentHour.tempF,
     minTempC,

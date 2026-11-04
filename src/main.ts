@@ -697,7 +697,7 @@ function render() {
                   ${state.forecast ? getLocalizedVerdict(state.forecast.verdict) : (state.loading ? t('app.calculating') : t('verdict.clear'))}
                 </h2>
                 <p class="text-sm text-[#8b949e] mt-0.5">
-                  ${state.forecast?.bestWindow ? `${t('verdict.best_window')}: <span class="text-white font-semibold">${state.forecast.bestWindow.label}</span> (${state.forecast.bestWindow.cloud}% ${t('verdict.avg_cloud').toLowerCase()})` : t('app.calculating')}
+                  ${state.forecast?.bestWindow ? `${t('verdict.best_window')}: <span class="text-white font-semibold">${state.forecast.bestWindow.label}</span> ${state.forecast.bestWindow.durationHours > 1 ? `<span class="text-xs text-[#8b949e]">(${state.forecast.bestWindow.durationHours} ${t('verdict.hours')} · ${state.forecast.bestWindow.avgCloud}% ${t('verdict.avg_cloud').toLowerCase()})</span> · ${t('verdict.peak')}: <span class="text-amber-300 font-semibold">${state.forecast.bestWindow.peakHour.label}</span>` : `(${state.forecast.bestWindow.cloud}% ${t('verdict.avg_cloud').toLowerCase()})`}` : t('app.calculating')}
                   ${state.forecast ? ` · ${t('verdict.avg_cloud')}: ${state.forecast.avgCloud}%` : ''}
                 </p>
               </div>
@@ -754,22 +754,29 @@ function render() {
             <h3 class="text-xs font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-1.5">
               <span>🔭 OBSERVING WINDOW (${state.forecast?.hourlyWindow[0]?.label || '7 PM'} – ${state.forecast?.hourlyWindow[state.forecast?.hourlyWindow.length - 1]?.label || '6 AM'})</span>
             </h3>
-            <span class="text-[11px] text-[#8b949e] hidden sm:inline">Taller bar = Clearer sky · Highlight = Astronomical Dark Sky</span>
+            <span class="text-[11px] text-[#8b949e] hidden sm:inline">Taller bar = Clearer sky · 🟩 = Best Window · ⭐ = Peak Hour · Highlight = Dark Sky</span>
           </div>
 
           ${state.forecast?.hourlyWindow && state.forecast.hourlyWindow.length > 0 ? `
             <div class="grid gap-1 sm:gap-2" style="grid-template-columns: repeat(${state.forecast.hourlyWindow.length}, minmax(0, 1fr));">
               ${state.forecast.hourlyWindow.map(h => {
-                const isBest = state.forecast?.bestWindow?.hr === h.hr;
+                const isPeak = h.isPeakHour || (state.forecast?.bestWindow?.peakHour?.hr === h.hr);
+                const inBlock = h.inBestBlock || isPeak;
                 return `
-                  <div class="flex flex-col items-center gap-1 group relative cursor-pointer" title="${h.label}: ${h.cloud}% clouds, ${state.tempUnit === 'F' ? `${h.tempF}°F (feels ${h.feelsLikeF}°F)` : `${h.tempC}°C (feels ${h.feelsLikeC}°C)`}, wind ${state.tempUnit === 'F' ? `${h.windSpeedMph} mph` : `${h.windSpeedKmh} km/h`}${h.isDarkSky ? ' [True Dark Sky]' : ''}">
+                  <div class="flex flex-col items-center gap-1 group relative cursor-pointer" title="${h.label}: ${h.cloud}% clouds${h.score !== undefined ? `, Score: ${h.score}/100` : ''}${isPeak ? ' [★ Peak Hour]' : (inBlock ? ' [In Best Window]' : '')}${h.isDarkSky ? ' [True Dark Sky]' : ''}, ${state.tempUnit === 'F' ? `${h.tempF}°F (feels ${h.feelsLikeF}°F)` : `${h.tempC}°C (feels ${h.feelsLikeC}°C)`}, wind ${state.tempUnit === 'F' ? `${h.windSpeedMph} mph` : `${h.windSpeedKmh} km/h`}">
                     <!-- Cloud % / Clear text -->
-                    <span class="text-[10px] sm:text-xs font-semibold ${isBest ? 'text-amber-400 font-bold' : (h.cloud <= 20 ? 'text-emerald-400' : (h.cloud <= 55 ? 'text-[#58a6ff]' : 'text-[#8b949e]'))}">
-                      ${h.cloud <= 5 ? '0%' : `${h.cloud}%`}
+                    <span class="text-[10px] sm:text-xs font-semibold ${isPeak ? 'text-amber-300 font-bold' : (inBlock ? 'text-emerald-300 font-semibold' : (h.cloud <= 20 ? 'text-emerald-400' : (h.cloud <= 55 ? 'text-[#58a6ff]' : 'text-[#8b949e]')))}">
+                      ${isPeak ? '★ ' : ''}${h.cloud <= 5 ? '0%' : `${h.cloud}%`}
                     </span>
 
                     <!-- Track and Clarity bar -->
-                    <div class="w-full max-w-[28px] h-24 sm:h-28 rounded-md relative flex flex-col justify-end p-0.5 border ${isBest ? 'border-amber-400/60 shadow-[0_0_10px_rgba(251,191,36,0.25)]' : (h.isDarkSky ? 'border-[#58a6ff]/40' : 'border-transparent')} ${h.isDarkSky ? 'bg-[#58a6ff]/10' : 'bg-white/[0.04]'}">
+                    <div class="w-full max-w-[28px] h-24 sm:h-28 rounded-md relative flex flex-col justify-end p-0.5 border ${
+                      isPeak
+                        ? 'border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.35)] ring-1 ring-amber-400/60 bg-amber-400/[0.08]'
+                        : (inBlock
+                            ? 'border-emerald-400/70 shadow-[0_0_8px_rgba(52,211,153,0.2)] bg-emerald-400/[0.06]'
+                            : (h.isDarkSky ? 'border-[#58a6ff]/40 bg-[#58a6ff]/10' : 'border-transparent bg-white/[0.04]'))
+                    }">
                       <div
                         class="w-full rounded-sm transition-all duration-500"
                         style="height: ${Math.max(8, h.clarity)}%; background: ${h.clarity >= 80 ? 'linear-gradient(to top, #059669, #34d399)' : (h.clarity >= 50 ? 'linear-gradient(to top, #2563eb, #60a5fa)' : (h.clarity >= 25 ? 'linear-gradient(to top, #d97706, #fbbf24)' : 'linear-gradient(to top, #dc2626, #f87171)'))};"
@@ -777,7 +784,7 @@ function render() {
                     </div>
 
                     <!-- Hour label -->
-                    <span class="text-[10px] sm:text-xs font-medium ${isBest ? 'text-white font-bold' : 'text-[#8b949e]'}">
+                    <span class="text-[10px] sm:text-xs font-medium ${isPeak ? 'text-amber-300 font-bold' : (inBlock ? 'text-emerald-300 font-semibold' : 'text-[#8b949e]')}">
                       <span class="sm:hidden">${h.labelCompact}</span>
                       <span class="hidden sm:inline">${h.label}</span>
                     </span>
