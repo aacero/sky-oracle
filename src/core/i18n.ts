@@ -28,6 +28,7 @@ const STORAGE_KEY = 'skyoracle_locale';
 type TranslationDictionary = Record<string, string>;
 
 const en: TranslationDictionary = {
+  'moon.altitude_track': "Moon Altitude Track",
 // App Shell & Navigation
   'app.tagline': 'Stargazing forecast, ephemeris & planet guide',
   'app.offline': 'Offline',
@@ -213,6 +214,7 @@ const en: TranslationDictionary = {
 };
 
 const es: TranslationDictionary = {
+  'moon.altitude_track': "Trayectoria de Altitud Lunar",
 // App Shell & Navigation
   'app.tagline': 'Pronóstico astronómico, efemérides y guía planetaria',
   'app.offline': 'Sin conexión',
@@ -398,6 +400,7 @@ const es: TranslationDictionary = {
 };
 
 const pt: TranslationDictionary = {
+  'moon.altitude_track': "Trajetória de Altitude Lunar",
 // App Shell & Navigation
   'app.tagline': 'Previsão astronômica, efemérides e guia planetário',
   'app.offline': 'Offline',
@@ -583,6 +586,7 @@ const pt: TranslationDictionary = {
 };
 
 const de: TranslationDictionary = {
+  'moon.altitude_track': "Mondhöhenverlauf",
 // App Shell & Navigation
   'app.tagline': 'Astronomische Vorhersage, Ephemeriden & Planetenführer',
   'app.offline': 'Offline',
@@ -768,6 +772,7 @@ const de: TranslationDictionary = {
 };
 
 const fr: TranslationDictionary = {
+  'moon.altitude_track': "Trajectoire d'Altitude Lunaire",
 // App Shell & Navigation
   'app.tagline': 'Prévisions astronomiques, éphémérides et guide des planètes',
   'app.offline': 'Hors ligne',
@@ -953,6 +958,7 @@ const fr: TranslationDictionary = {
 };
 
 const it: TranslationDictionary = {
+  'moon.altitude_track': "Traiettoria Altitudine Lunare",
 'app.tagline': "Previsioni per l'osservazione celeste e planetario",
   'app.offline': "Offline",
   'app.detecting_location': "Rilevamento posizione...",
@@ -1119,6 +1125,7 @@ const it: TranslationDictionary = {
 };
 
 const ja: TranslationDictionary = {
+  'moon.altitude_track': "月の高度推移",
 'app.tagline': "天体観測予報＆プラネタリウム",
   'app.offline': "オフライン",
   'app.detecting_location': "現在地を取得中...",
