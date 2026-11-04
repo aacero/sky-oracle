@@ -105,42 +105,39 @@ jobs:
 
       - name: Apply Android 15 Edge-to-Edge Compatibility
         run: |
-          PKG_ID=$(node -p "require('./android/twa-manifest.json').packageId")
-          PKG_PATH=$(echo "$PKG_ID" | tr '.' '/')
-          PKG_DIR="app/src/main/java/$PKG_PATH"
-          mkdir -p "$PKG_DIR"
+          node -e '
+          const fs = require("fs");
 
-          # Create custom LauncherActivity invoking EdgeToEdge.enable(this)
-          cat << EOF > "$PKG_DIR/LauncherActivity.java"
-          package $PKG_ID;
-
-          import android.os.Bundle;
-          import androidx.activity.EdgeToEdge;
-
-          public class LauncherActivity extends com.google.androidbrowserhelper.trusted.LauncherActivity {
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  EdgeToEdge.enable(this);
-                  super.onCreate(savedInstanceState);
+          // 1. Remove deprecated status and navigation bar color parameters from AndroidManifest.xml
+          const manifestPath = "app/src/main/AndroidManifest.xml";
+          if (fs.existsSync(manifestPath)) {
+            let xml = fs.readFileSync(manifestPath, "utf8");
+            xml = xml.replace(/<meta-data\b[^>]*\/>/g, (tag) => {
+              if (/STATUS_BAR_COLOR|NAVIGATION_BAR_COLOR|NAVIGATION_BAR_DIVIDER_COLOR/.test(tag)) {
+                return "";
               }
+              return tag;
+            });
+            fs.writeFileSync(manifestPath, xml);
+            console.log("Cleaned deprecated bar color meta-data from AndroidManifest.xml");
           }
-          EOF
 
-          # Point AndroidManifest.xml to local LauncherActivity and remove deprecated status/nav bar color parameters
-          MANIFEST="app/src/main/AndroidManifest.xml"
-          if [ -f "$MANIFEST" ]; then
-            sed -i 's/android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"/android:name=".LauncherActivity"/g' "$MANIFEST"
-            sed -i '/android.support.customtabs.trusted.STATUS_BAR_COLOR/d' "$MANIFEST"
-            sed -i '/android.support.customtabs.trusted.NAVIGATION_BAR_COLOR/d' "$MANIFEST"
-          fi
-
-          # Ensure androidx.activity dependency is present in app/build.gradle
-          GRADLE="app/build.gradle"
-          if [ -f "$GRADLE" ]; then
-            if ! grep -q "androidx.activity:activity" "$GRADLE"; then
-              sed -i "/dependencies {/a \    implementation 'androidx.activity:activity:1.9.3'" "$GRADLE"
-            fi
-          fi
+          // 2. Enable Android 11+ (API 30+) edge-to-edge window fitting in LauncherActivity.java
+          const pkgId = require("./android/twa-manifest.json").packageId;
+          const pkgPath = pkgId.replace(/\./g, "/");
+          const launcherPath = `app/src/main/java/${pkgPath}/LauncherActivity.java`;
+          if (fs.existsSync(launcherPath)) {
+            let java = fs.readFileSync(launcherPath, "utf8");
+            if (!java.includes("setDecorFitsSystemWindows")) {
+              java = java.replace(
+                "super.onCreate(savedInstanceState);",
+                "super.onCreate(savedInstanceState);\n        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {\n            getWindow().setDecorFitsSystemWindows(false);\n        }"
+              );
+              fs.writeFileSync(launcherPath, java);
+              console.log("Patched LauncherActivity.java with edge-to-edge window fitting.");
+            }
+          }
+          '
 
       - name: Build Android App Bundle (.aab) & APK
         run: |
