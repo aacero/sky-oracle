@@ -600,60 +600,72 @@ function render() {
 
   root.innerHTML = `
     <!-- Top Navigation & Brand Header -->
-    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-[#30363d]">
-      <div class="flex items-center gap-3">
-        <img src="./icon.svg" alt="SkyOracle Logo" class="w-10 h-10 rounded-xl shadow-lg border border-[#30363d]" />
-        <div>
+    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-5 border-b border-[#30363d]">
+      <!-- Brand & Tagline -->
+      <div class="flex items-center gap-3 shrink-0">
+        <img src="./icon.svg" alt="SkyOracle Logo" class="w-10 h-10 rounded-xl shadow-lg border border-[#30363d] shrink-0" />
+        <div class="min-w-0">
           <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-[#e6edf3] flex items-center gap-2">
             SkyOracle
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 text-[#58a6ff] border border-[#58a6ff]/30 font-mono">v${APP_VERSION}</span>
+            <a
+              href="./releases.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="View release notes & changelog"
+              class="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 hover:bg-[#58a6ff]/25 text-[#58a6ff] hover:text-white border border-[#58a6ff]/30 hover:border-[#58a6ff]/60 font-mono transition cursor-pointer inline-flex items-center gap-1"
+            >
+              v${APP_VERSION}
+            </a>
           </h1>
-          <p class="text-xs text-[#8b949e]">${t('app.tagline')}</p>
+          <p class="text-xs text-[#8b949e] truncate max-w-[240px] sm:max-w-[280px] md:max-w-[340px]">${t('app.tagline')}</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 flex-wrap">
-        <!-- Location Picker Button -->
-        <button id="btnOpenSearch" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-sm font-medium transition cursor-pointer">
-          <span class="text-[#58a6ff]">📍</span>
-          <span class="text-[#e6edf3]">${state.location.place}</span>
-          <span class="text-xs text-[#8b949e] font-mono">(${state.location.lat.toFixed(2)}°, ${state.location.lon.toFixed(2)}°)</span>
-        </button>
-
-        <!-- 1-Tap GPS Button -->
-        <button id="btnGeolocate" title="${t('app.use_gps')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#58a6ff] hover:text-white transition cursor-pointer">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-        </button>
-
-        <!-- Install PWA Button (if available) -->
-        ${state.installPrompt ? `
-          <button id="btnInstallPwa" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 text-xs font-semibold transition cursor-pointer">
-            <span>📲 ${t('app.install_app')}</span>
+      <!-- Controls Container: Single clean row on sm+, stacked on mobile -->
+      <div class="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 shrink-0">
+        <!-- Location & GPS Group -->
+        <div class="flex items-center gap-1.5 min-w-0">
+          <button id="btnOpenSearch" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs sm:text-sm font-medium transition cursor-pointer min-w-0 flex-1 xs:flex-initial">
+            <span class="text-[#58a6ff] shrink-0">📍</span>
+            <span class="text-[#e6edf3] truncate max-w-[120px] sm:max-w-[140px] md:max-w-[170px] lg:max-w-[220px]">${state.location.place}</span>
+            <span class="text-[11px] sm:text-xs text-[#8b949e] font-mono shrink-0 hidden xl:inline">(${state.location.lat.toFixed(2)}°, ${state.location.lon.toFixed(2)}°)</span>
           </button>
-        ` : ''}
 
-        <!-- Feature Tour Guide Button -->
-        <button id="btnOpenTour" title="${t('app.tour_tooltip')}" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 hover:text-white transition cursor-pointer">
-          <span>💡 ${t('app.tour')}</span>
-        </button>
-
-        <!-- Language Selector -->
-        <div class="relative">
-          <select id="selectLang" title="Select Language" class="appearance-none px-2.5 py-1.5 pr-6 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-bold text-[#e6edf3] hover:text-[#58a6ff] transition cursor-pointer focus:outline-none focus:border-[#58a6ff]">
-            ${SUPPORTED_LOCALES.map(l => `<option value="${l.code}" ${getLocale() === l.code ? 'selected' : ''}>${l.flag} ${l.label}</option>`).join('')}
-          </select>
-          <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8b949e]">▾</span>
+          <button id="btnGeolocate" title="${t('app.use_gps')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#58a6ff] hover:text-white transition cursor-pointer shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </button>
         </div>
 
-        <!-- Unit Toggle Button -->
-        <button id="btnToggleUnit" title="Switch to ${state.tempUnit === 'F' ? 'Celsius' : 'Fahrenheit'}" class="px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-bold text-[#58a6ff] hover:text-white transition cursor-pointer">
-          °${state.tempUnit}
-        </button>
+        <!-- Utility Toolbar Group (Tour, Lang, Unit, Refresh): Non-wrapping flex group -->
+        <div class="flex items-center justify-between xs:justify-start gap-1.5 shrink-0">
+          ${state.installPrompt ? `
+            <button id="btnInstallPwa" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 text-xs font-semibold transition cursor-pointer shrink-0">
+              <span>📲</span><span class="hidden md:inline">${t('app.install_app')}</span>
+            </button>
+          ` : ''}
 
-        <!-- Refresh Button -->
-        <button id="btnRefresh" title="${t('app.refresh')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition cursor-pointer ${state.loading ? 'animate-spin text-[#58a6ff]' : ''}">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-        </button>
+          <button id="btnOpenTour" title="${t('app.tour_tooltip')}" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 hover:text-white transition cursor-pointer shrink-0">
+            <span>💡</span><span class="hidden md:inline">${t('app.tour')}</span>
+          </button>
+
+          <!-- Language Selector -->
+          <div class="relative shrink-0">
+            <select id="selectLang" title="Select Language" class="appearance-none px-2 py-1.5 pr-5.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-bold text-[#e6edf3] hover:text-[#58a6ff] transition cursor-pointer focus:outline-none focus:border-[#58a6ff]">
+              ${SUPPORTED_LOCALES.map(l => `<option value="${l.code}" ${getLocale() === l.code ? 'selected' : ''}>${l.flag} ${l.label}</option>`).join('')}
+            </select>
+            <span class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8b949e]">▾</span>
+          </div>
+
+          <!-- Unit Toggle Button -->
+          <button id="btnToggleUnit" title="Switch to ${state.tempUnit === 'F' ? 'Celsius' : 'Fahrenheit'}" class="px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-xs font-bold text-[#58a6ff] hover:text-white transition cursor-pointer shrink-0">
+            °${state.tempUnit}
+          </button>
+
+          <!-- Refresh Button -->
+          <button id="btnRefresh" title="${t('app.refresh')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition cursor-pointer shrink-0 ${state.loading ? 'animate-spin text-[#58a6ff]' : ''}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          </button>
+        </div>
       </div>
     </header>
 

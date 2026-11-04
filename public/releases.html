@@ -64,13 +64,43 @@
           <p class="meta" style="margin: 0.25rem 0 0 0;">SkyOracle: Stargazing Forecast & Ephemeris</p>
         </div>
         <div style="display: flex; gap: 0.5rem;">
-          <span class="badge badge-green">v1.0.17 Active</span>
+          <span class="badge badge-green">v1.0.18 Active</span>
           <a href="./" class="badge">Back to App 🔭</a>
         </div>
       </div>
 
-      <!-- Release v1.0.17 -->
+      <!-- Release v1.0.18 -->
       <div class="release-card" style="border-left: 4px solid #34d399;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <h2 style="margin: 0; border: none; padding: 0;">Version 1.0.18 (Build 5)</h2>
+          <span class="meta">November 2026</span>
+        </div>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-top: 0.25rem;">
+          Internationalization (5 languages), Android 15 edge-to-edge support, and header layout stabilization.
+        </p>
+
+        <h3>🌐 Full Internationalization (i18n) Engine</h3>
+        <ul>
+          <li><strong>5-Language Lineup:</strong> Full native translations for English (EN), Spanish (ES), Portuguese (PT), German (DE), and French (FR). Japanese (JA) is scheduled for the upcoming release.</li>
+          <li><strong>Zero Dependencies & 100% Offline:</strong> Ultra-lightweight dictionary engine (~1.2 kB gzip) with dynamic parameter interpolation and persistent device locale detection.</li>
+          <li><strong>Comprehensive Translation:</strong> Localized observing forecasts, hourly cloud tracks, dew point alerts, twilight milestones, moon phases, planetary visibility statuses, and interactive 10° starfield HUD overlays.</li>
+        </ul>
+
+        <h3>📱 Android 15 Edge-to-Edge Compatibility</h3>
+        <ul>
+          <li><strong>Zero Screen Cutout Overlap:</strong> Integrated CSS safe-area insets (<code>env(safe-area-inset-top)</code>, <code>env(safe-area-inset-bottom)</code>) for smooth rendering around device cutouts, camera notches, and gesture navigation bars.</li>
+          <li><strong>Native Backward Compatibility:</strong> Implemented <code>androidx.activity.EdgeToEdge.enable(this)</code> in <code>LauncherActivity.java</code> and migrated away from deprecated window display APIs.</li>
+        </ul>
+
+        <h3>⚡ Header Usability & Release Notes Link</h3>
+        <ul>
+          <li><strong>1-Tap Release Notes:</strong> Tapping the version badge (<code style="color: #58a6ff;">v1.0.18</code>) in the header opens this changelog and release history page directly.</li>
+          <li><strong>Stable Navigation Toolbar:</strong> Restructured top navigation layout to ensure utility and location buttons remain stably anchored across all supported languages and screen widths.</li>
+        </ul>
+      </div>
+
+      <!-- Release v1.0.17 -->
+      <div class="release-card" style="margin-top: 1.5rem;">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <h2 style="margin: 0; border: none; padding: 0;">Version 1.0.17 (Build 4)</h2>
           <span class="meta">November 2026</span>
