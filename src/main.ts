@@ -56,6 +56,11 @@ import {
   Locale
 } from './core/i18n.ts';
 
+import {
+  getMeteorShowerData,
+  MeteorCardData
+} from './core/meteors.ts';
+
 export const APP_VERSION = '1.0.18';
 
 // ── Application State ───────────────────────────────────────────────────────
@@ -68,6 +73,7 @@ interface AppState {
   sunEvents: SunEvents | null;
   moon: MoonInfo | null;
   planets: PlanetInfo[];
+  meteors: MeteorCardData | null;
   selectedPlanet: PlanetInfo | null;
   starfieldOrientation: StarfieldOrientation;
   starfieldAperture: 'circular' | 'square';
@@ -97,6 +103,7 @@ const state: AppState = {
   sunEvents: null,
   moon: null,
   planets: [],
+  meteors: null,
   selectedPlanet: null,
   starfieldOrientation: 'natural',
   starfieldAperture: 'circular',
@@ -146,6 +153,13 @@ async function refreshAll() {
     state.sunEvents = calculateSunEvents(state.currentDate, state.location.lat, state.location.lon);
     state.moon = calculateMoonInfo(state.currentDate, state.location.lat, state.location.lon);
     state.planets = calculateAllPlanets(state.currentDate, state.location.lat, state.location.lon);
+    state.meteors = getMeteorShowerData(
+      state.currentDate,
+      state.location.lat,
+      state.location.lon,
+      state.moon?.illum || 0,
+      state.moon?.isUp || false
+    );
 
     // 2. Fetch cloud cover telemetry from Open-Meteo
     state.forecast = await fetchCloudForecast(state.location.lat, state.location.lon, state.currentDate);
@@ -1071,7 +1085,7 @@ function render() {
           </section>
 
           <!-- Sun & Twilight Events Card -->
-          <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg flex-1">
+          <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg">
             <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d]">
               <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
                 <span>☀️</span> ${t('sun.title').toUpperCase()}
@@ -1107,6 +1121,9 @@ function render() {
             </div>
           </section>
 
+          <!-- Meteor Showers Card -->
+          ${renderMeteorShowerCard()}
+
         </div>
       </div>
     </main>
@@ -1136,6 +1153,128 @@ function render() {
   drawMoonCanvas();
   drawPlanetStarfield();
   attachEventHandlers();
+}
+
+function renderMeteorShowerCard(): string {
+  const m = state.meteors;
+  if (!m) return '';
+
+  const primary = m.primaryShower;
+  const others = m.otherActiveShowers;
+  const next = m.nextUpcomingShower;
+
+  return `
+    <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg">
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d] flex-wrap gap-2">
+        <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
+          <span>☄️</span> ${t('meteors.title').toUpperCase()}
+        </h3>
+        <div class="flex items-center gap-2">
+          ${primary ? (
+            primary.isPeakTonight ? `
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-300 bg-amber-400/15 px-2.5 py-0.5 rounded-full border border-amber-400/30 animate-pulse">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                ${t('meteors.peak_tonight')}
+              </span>
+            ` : `
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 text-[#58a6ff] border border-[#58a6ff]/30">
+                ${t('meteors.active')}
+              </span>
+            `
+          ) : `
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-[#8b949e] border border-[#30363d]/60">
+              ${t('meteors.quiet_season')}
+            </span>
+          `}
+        </div>
+      </div>
+
+      ${primary ? `
+        <!-- Shower Details -->
+        <div>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <h4 class="text-lg font-bold text-[#e6edf3] flex items-center gap-2">
+              <span>${primary.shower.name}</span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
+                ${primary.shower.constellation}
+              </span>
+            </h4>
+            <span class="text-xs font-mono text-[#8b949e]">
+              IAU: <strong class="text-white">${primary.shower.iauCode}</strong> · Peak ${formatShortDate(primary.peakDate)}
+            </span>
+          </div>
+          <p class="text-xs text-[#8b949e] mt-1 leading-relaxed">
+            ${primary.shower.description}
+          </p>
+        </div>
+
+        <!-- 4 Stats Tiles (Matches Moon & Sun cards grid layout) -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3 pt-3 border-t border-[#30363d]/60 text-xs">
+          <!-- Tonight's Rate -->
+          <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+            <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('meteors.rate_tonight')}</span>
+            <span class="text-sm font-bold text-amber-300">~${primary.estimatedZhrTonight} / hr</span>
+            <span class="text-[10px] text-[#8b949e] block mt-0.5">Peak ZHR: ${primary.shower.peakZhr}</span>
+          </div>
+
+          <!-- Radiant Peak -->
+          <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+            <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('meteors.radiant')}</span>
+            <span class="text-sm font-bold text-[#56d4dd]">${primary.peakRadiantAltitudeTonight > 0 ? `${primary.peakRadiantAltitudeTonight}° max` : 'Below 0°'}</span>
+            <span class="text-[10px] text-[#8b949e] block mt-0.5 truncate" title="${primary.bestViewingNote}">${primary.bestViewingNote}</span>
+          </div>
+
+          <!-- Moon Interference -->
+          <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+            <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('meteors.lunar_conditions')}</span>
+            <span class="text-sm font-bold ${primary.moonImpact.level === 'minimal' ? 'text-emerald-400' : (primary.moonImpact.level === 'moderate' ? 'text-[#58a6ff]' : 'text-amber-400')}">
+              ${primary.moonImpact.level === 'minimal' ? 'Dark Sky' : (primary.moonImpact.level === 'moderate' ? 'Moderate' : 'Washout')}
+            </span>
+            <span class="text-[10px] text-[#8b949e] block mt-0.5 truncate" title="${primary.moonImpact.summary}">${primary.moonImpact.summary}</span>
+          </div>
+
+          <!-- Speed & Origin -->
+          <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+            <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('meteors.velocity')}</span>
+            <span class="text-sm font-bold text-white">${primary.shower.velocityKmS} km/s</span>
+            <span class="text-[10px] text-[#8b949e] block mt-0.5 truncate" title="${primary.shower.parentBody}">${primary.shower.parentBody}</span>
+          </div>
+        </div>
+
+        <!-- Secondary Showers strip if any -->
+        ${others.length > 0 ? `
+          <div class="mt-3 pt-2.5 border-t border-[#30363d]/40 flex items-center justify-between text-xs text-[#8b949e] flex-wrap gap-2">
+            <span class="text-[11px] font-medium">${t('meteors.also_active')}:</span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              ${others.map(os => `
+                <span class="text-[10.5px] px-2 py-0.5 rounded-md bg-white/[0.03] border border-[#30363d]/50 text-[#cbd5e1]">
+                  <strong class="text-white">${os.shower.name}</strong> (~${os.estimatedZhrTonight}/h · Peak ${formatShortDate(os.peakDate)})
+                </span>
+              `).join('')}
+            </div>
+          </div>
+        ` : (next ? `
+          <div class="mt-3 pt-2.5 border-t border-[#30363d]/40 flex items-center justify-between text-xs text-[#8b949e]">
+            <span class="text-[11px]">${t('meteors.next_major')}:</span>
+            <span class="text-[11px] text-[#58a6ff] font-medium">
+              ${next.shower.name} (ZHR ~${next.shower.peakZhr}) in ${next.daysUntilPeak} days (${formatShortDate(next.peakDate)})
+            </span>
+          </div>
+        ` : '')}
+      ` : `
+        <!-- Quiet season fallback -->
+        <div class="py-2 text-xs text-[#8b949e]">
+          <p class="mb-2 leading-relaxed">${t('meteors.none_active')}</p>
+          ${next ? `
+            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40 flex items-center justify-between flex-wrap gap-2">
+              <span>${t('meteors.next_major')}: <strong class="text-white">${next.shower.name}</strong> (~${next.shower.peakZhr}/hr)</span>
+              <span class="text-[#58a6ff] font-semibold">${next.daysUntilPeak} days away (${formatShortDate(next.peakDate)})</span>
+            </div>
+          ` : ''}
+        </div>
+      `}
+    </section>
+  `;
 }
 
 function renderSearchResultsList(results: GeocodingResult[]): string {

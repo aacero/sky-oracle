@@ -28,7 +28,7 @@ const STORAGE_KEY = 'skyoracle_locale';
 type TranslationDictionary = Record<string, string>;
 
 const en: TranslationDictionary = {
-  // App Shell & Navigation
+// App Shell & Navigation
   'app.tagline': 'Stargazing forecast, ephemeris & planet guide',
   'app.offline': 'Offline',
   'app.detecting_location': 'Detecting location...',
@@ -197,10 +197,23 @@ const en: TranslationDictionary = {
   'tour.back': '← Back',
   'tour.get_started': 'Get Started 🚀',
   'tour.skip': 'Skip Tour',
+
+  // Meteor Showers
+  'meteors.title': "Meteor Showers",
+  'meteors.peak_tonight': "Peak Tonight",
+  'meteors.active': "Active",
+  'meteors.quiet_season': "Quiet Season",
+  'meteors.rate_tonight': "Tonight's Rate",
+  'meteors.radiant': "Radiant Peak",
+  'meteors.lunar_conditions': "Moon Impact",
+  'meteors.velocity': "Speed & Origin",
+  'meteors.also_active': "Also active tonight",
+  'meteors.next_major': "Next major shower",
+  'meteors.none_active': "No major annual meteor showers active tonight. Background sporadic rate is ~3–5 meteors/hr in clear dark skies.",
 };
 
 const es: TranslationDictionary = {
-  // App Shell & Navigation
+// App Shell & Navigation
   'app.tagline': 'Pronóstico astronómico, efemérides y guía planetaria',
   'app.offline': 'Sin conexión',
   'app.detecting_location': 'Detectando ubicación...',
@@ -369,10 +382,23 @@ const es: TranslationDictionary = {
   'tour.back': '← Atrás',
   'tour.get_started': 'Comenzar 🚀',
   'tour.skip': 'Omitir Guía',
+
+  // Meteor Showers
+  'meteors.title': "Lluvias de Meteoros",
+  'meteors.peak_tonight': "Pico Esta Noche",
+  'meteors.active': "Activa",
+  'meteors.quiet_season': "Temporada Tranquila",
+  'meteors.rate_tonight': "Tasa Esta Noche",
+  'meteors.radiant': "Pico del Radiante",
+  'meteors.lunar_conditions': "Interferencia Lunar",
+  'meteors.velocity': "Velocidad y Origen",
+  'meteors.also_active': "También activas esta noche",
+  'meteors.next_major': "Próxima lluvia importante",
+  'meteors.none_active': "No hay lluvias de meteoros importantes activas esta noche. Tasa esporádica habitual de ~3–5 meteoros/h con cielo oscuro.",
 };
 
 const pt: TranslationDictionary = {
-  // App Shell & Navigation
+// App Shell & Navigation
   'app.tagline': 'Previsão astronômica, efemérides e guia planetário',
   'app.offline': 'Offline',
   'app.detecting_location': 'Detectando localização...',
@@ -541,10 +567,23 @@ const pt: TranslationDictionary = {
   'tour.back': '← Voltar',
   'tour.get_started': 'Começar 🚀',
   'tour.skip': 'Pular Guia',
+
+  // Meteor Showers
+  'meteors.title': "Chuvas de Meteoros",
+  'meteors.peak_tonight': "Pico Esta Noite",
+  'meteors.active': "Ativa",
+  'meteors.quiet_season': "Temporada Calma",
+  'meteors.rate_tonight': "Taxa Esta Noite",
+  'meteors.radiant': "Pico do Radiante",
+  'meteors.lunar_conditions': "Interferência Lunar",
+  'meteors.velocity': "Velocidade e Origem",
+  'meteors.also_active': "Também ativas esta noite",
+  'meteors.next_major': "Próxima chuva principal",
+  'meteors.none_active': "Nenhuma chuva principal ativa esta noite. Taxa esporádica média de ~3–5 meteoros/h em céu limpo e escuro.",
 };
 
 const de: TranslationDictionary = {
-  // App Shell & Navigation
+// App Shell & Navigation
   'app.tagline': 'Astronomische Vorhersage, Ephemeriden & Planetenführer',
   'app.offline': 'Offline',
   'app.detecting_location': 'Standort wird ermittelt...',
@@ -713,10 +752,23 @@ const de: TranslationDictionary = {
   'tour.back': '← Zurück',
   'tour.get_started': 'Loslegen 🚀',
   'tour.skip': 'Tour überspringen',
+
+  // Meteor Showers
+  'meteors.title': "Meteorschauer",
+  'meteors.peak_tonight': "Höhepunkt Heute Nacht",
+  'meteors.active': "Aktiv",
+  'meteors.quiet_season': "Ruhige Saison",
+  'meteors.rate_tonight': "Rate Heute Nacht",
+  'meteors.radiant': "Radiant-Höchststand",
+  'meteors.lunar_conditions': "Mondeinfluss",
+  'meteors.velocity': "Geschwindigkeit & Ursprung",
+  'meteors.also_active': "Heute Nacht ebenfalls aktiv",
+  'meteors.next_major': "Nächster großer Schauer",
+  'meteors.none_active': "Zurzeit keine großen Meteorschauer aktiv. Sporadische Hintergrundrate liegt bei ca. 3–5 Meteoren/h unter dunklem Himmel.",
 };
 
 const fr: TranslationDictionary = {
-  // App Shell & Navigation
+// App Shell & Navigation
   'app.tagline': 'Prévisions astronomiques, éphémérides et guide des planètes',
   'app.offline': 'Hors ligne',
   'app.detecting_location': 'Localisation en cours...',
@@ -885,6 +937,19 @@ const fr: TranslationDictionary = {
   'tour.back': '← Retour',
   'tour.get_started': 'Commencer 🚀',
   'tour.skip': 'Passer le Guide',
+
+  // Meteor Showers
+  'meteors.title': "Pluies d'Étoiles Filantes",
+  'meteors.peak_tonight': "Pic Cette Nuit",
+  'meteors.active': "Active",
+  'meteors.quiet_season': "Saison Calme",
+  'meteors.rate_tonight': "Taux Cette Nuit",
+  'meteors.radiant': "Pic du Radiant",
+  'meteors.lunar_conditions': "Interférence Lunaire",
+  'meteors.velocity': "Vitesse & Origine",
+  'meteors.also_active': "Également actives cette nuit",
+  'meteors.next_major': "Prochaine pluie majeure",
+  'meteors.none_active': "Aucun essaim météoritique majeur actif cette nuit. Taux sporadique moyen de ~3–5 météores/h sous ciel sombre.",
 };
 
 const it: TranslationDictionary = {
@@ -1038,6 +1103,19 @@ const it: TranslationDictionary = {
   'tour.back': "Indietro",
   'tour.get_started': "Inizia",
   'tour.skip': "Salta",
+
+  // Meteor Showers
+  'meteors.title': "Sciami Meteorici",
+  'meteors.peak_tonight': "Picco Questa Notte",
+  'meteors.active': "Attivo",
+  'meteors.quiet_season': "Stagione Calma",
+  'meteors.rate_tonight': "Tasso Questa Notte",
+  'meteors.radiant': "Culmine Radiante",
+  'meteors.lunar_conditions': "Disturbo Lunare",
+  'meteors.velocity': "Velocità e Origine",
+  'meteors.also_active': "Attivi anche stanotte",
+  'meteors.next_major': "Prossimo sciame principale",
+  'meteors.none_active': "Nessuno sciame meteorico principale attivo stanotte. Tasso sporadico di fondo pari a circa 3–5 meteore/ora con cielo scuro.",
 };
 
 const ja: TranslationDictionary = {
@@ -1191,6 +1269,19 @@ const ja: TranslationDictionary = {
   'tour.back': "戻る",
   'tour.get_started': "はじめる",
   'tour.skip': "スキップ",
+
+  // Meteor Showers
+  'meteors.title': "流星群",
+  'meteors.peak_tonight': "今夜極大",
+  'meteors.active': "出現期間中",
+  'meteors.quiet_season': "流星群の端境期",
+  'meteors.rate_tonight': "今夜の予想出現数",
+  'meteors.radiant': "放射点の最高高度",
+  'meteors.lunar_conditions': "月明かりの影響",
+  'meteors.velocity': "速度と母天体",
+  'meteors.also_active': "今夜活動中の他の流星群",
+  'meteors.next_major': "次の主要な流星群",
+  'meteors.none_active': "現在活動中の主要な流星群はありません。暗い夜空では1時間あたり約3〜5個の散在流星が観測できます。",
 };
 
 const DICTIONARIES: Record<Locale, TranslationDictionary> = {
