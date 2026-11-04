@@ -584,6 +584,44 @@ function getLocalizedObservingDate(f?: ObservingForecast | null): string {
   return dayFmt;
 }
 
+/**
+ * Map Moon altitude in degrees to Y coordinate (0-100 scale, with Horizon at 75)
+ */
+function getMoonAltitudeY(alt: number): number {
+  if (alt >= 0) {
+    // 0° is at Y=75, +90° is at Y=10
+    return 75 - (Math.min(90, alt) / 90) * 65;
+  } else {
+    // 0° is at Y=75, -60° is at Y=95
+    return 75 + (Math.min(60, Math.abs(alt)) / 60) * 20;
+  }
+}
+
+/**
+ * Generate a smooth Catmull-Rom cubic Bezier SVG path through the given coordinates
+ */
+function generateSmoothCurvePath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return '';
+  if (points.length === 1) return `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? 0 : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+    // Catmull-Rom to Cubic Bezier conversion
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 // ── UI Rendering ────────────────────────────────────────────────────────────
 
 function render() {
@@ -677,7 +715,7 @@ function render() {
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div class="flex items-center gap-2 mb-2 flex-wrap">
-              <span class="text-xs uppercase tracking-wider font-bold text-[#8b949e]">${t('verdict.tonight', { date: '' }).split('(')[0].trim().toUpperCase()}</span>
+              <span class="text-xs uppercase tracking-wider font-bold text-[#8b949e]">${t('verdict.tonight', { date: '' }).replace(/\s*[\(（][\s\S]*$/, '').trim().toUpperCase()}</span>
               ${isDarkSkyNow ? `
                 <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#58a6ff]/20 text-[#58a6ff] border border-[#58a6ff]/40 animate-pulse-subtle">
                   🌌 DARK SKY ACTIVE
@@ -754,61 +792,126 @@ function render() {
             <h3 class="text-xs font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-1.5">
               <span>🔭 OBSERVING WINDOW (${state.forecast?.hourlyWindow[0]?.label || '7 PM'} – ${state.forecast?.hourlyWindow[state.forecast?.hourlyWindow.length - 1]?.label || '6 AM'})</span>
             </h3>
-            <span class="text-[11px] text-[#8b949e] hidden sm:inline">🟩 = Best Window · ⭐ = Peak Hour · 🌙 Moon Altitude Row</span>
+            <span class="text-[11px] text-[#8b949e] hidden sm:inline">🟩 = Best Window · ⭐ = Peak Hour · <span class="text-amber-300 font-medium">── 🌙 Moon Altitude Track</span></span>
           </div>
 
           ${state.forecast?.hourlyWindow && state.forecast.hourlyWindow.length > 0 ? `
-            <div class="grid gap-1 sm:gap-2" style="grid-template-columns: repeat(${state.forecast.hourlyWindow.length}, minmax(0, 1fr));">
-              ${state.forecast.hourlyWindow.map(h => {
-                const isPeak = h.isPeakHour || (state.forecast?.bestWindow?.peakHour?.hr === h.hr);
-                const inBlock = h.inBestBlock || isPeak;
-                return `
-                  <div class="flex flex-col items-center gap-1 group relative cursor-pointer" title="${h.label}: ${h.cloud}% clouds${h.score !== undefined ? `, Score: ${h.score}/100` : ''}${isPeak ? ' [★ Peak Hour]' : (inBlock ? ' [In Best Window]' : '')}${h.isDarkSky ? ' [True Dark Sky]' : ''}, ${state.tempUnit === 'F' ? `${h.tempF}°F (feels ${h.feelsLikeF}°F)` : `${h.tempC}°C (feels ${h.feelsLikeC}°C)`}, wind ${state.tempUnit === 'F' ? `${h.windSpeedMph} mph` : `${h.windSpeedKmh} km/h`}${h.moonAlt !== undefined ? `, Moon: ${h.moonAlt > 0 ? `${h.moonGlyph || '🌙'} ${h.moonAlt}° (${h.moonIllum || 0}%)` : `Below horizon (${h.moonAlt}°)`}` : ''}">
-                    <!-- Cloud % / Clear text -->
-                    <span class="text-[10px] sm:text-xs font-semibold ${isPeak ? 'text-amber-300 font-bold' : (inBlock ? 'text-emerald-300 font-semibold' : (h.cloud <= 20 ? 'text-emerald-400' : (h.cloud <= 55 ? 'text-[#58a6ff]' : 'text-[#8b949e]')))}">
-                      ${isPeak ? '★ ' : ''}${h.cloud <= 5 ? '0%' : `${h.cloud}%`}
-                    </span>
+            ${(() => {
+              const hw = state.forecast.hourlyWindow;
+              const N = hw.length;
+              const pts = hw.map((h, i) => {
+                const x = ((i + 0.5) / N) * 1000;
+                const alt = h.moonAlt !== undefined ? h.moonAlt : -90;
+                const y = getMoonAltitudeY(alt);
+                return { x, y, alt, h, i };
+              });
+              const curvePath = generateSmoothCurvePath(pts);
 
-                    <!-- Track and Clarity bar -->
-                    <div class="w-full max-w-[28px] h-24 sm:h-28 rounded-md relative flex flex-col justify-end p-0.5 border ${
-                      isPeak
-                        ? 'border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.35)] ring-1 ring-amber-400/60 bg-amber-400/[0.08]'
-                        : (inBlock
-                            ? 'border-emerald-400/70 shadow-[0_0_8px_rgba(52,211,153,0.2)] bg-emerald-400/[0.06]'
-                            : (h.isDarkSky ? 'border-[#58a6ff]/40 bg-[#58a6ff]/10' : 'border-transparent bg-white/[0.04]'))
-                    }">
-                      <div
-                        class="w-full rounded-sm transition-all duration-500"
-                        style="height: ${Math.max(8, h.clarity)}%; background: ${h.clarity >= 80 ? 'linear-gradient(to top, #059669, #34d399)' : (h.clarity >= 50 ? 'linear-gradient(to top, #2563eb, #60a5fa)' : (h.clarity >= 25 ? 'linear-gradient(to top, #d97706, #fbbf24)' : 'linear-gradient(to top, #dc2626, #f87171)'))};"
-                      ></div>
+              return `
+                <div class="relative w-full">
+                  <!-- 1. Cloud % Header Row -->
+                  <div class="grid gap-1 sm:gap-2 mb-1" style="grid-template-columns: repeat(${N}, minmax(0, 1fr));">
+                    ${hw.map(h => {
+                      const isPeak = h.isPeakHour || (state.forecast?.bestWindow?.peakHour?.hr === h.hr);
+                      const inBlock = h.inBestBlock || isPeak;
+                      return `
+                        <div class="text-center">
+                          <span class="text-[10px] sm:text-xs font-semibold ${isPeak ? 'text-amber-300 font-bold' : (inBlock ? 'text-emerald-300 font-semibold' : (h.cloud <= 20 ? 'text-emerald-400' : (h.cloud <= 55 ? 'text-[#58a6ff]' : 'text-[#8b949e]')))}">
+                            ${isPeak ? '★ ' : ''}${h.cloud <= 5 ? '0%' : `${h.cloud}%`}
+                          </span>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+
+                  <!-- 2. Clarity Bars with Super-imposed Moon Altitude Curve -->
+                  <div class="relative w-full h-24 sm:h-28 my-1">
+                    <!-- Background Clarity Bars Grid -->
+                    <div class="w-full h-full grid gap-1 sm:gap-2" style="grid-template-columns: repeat(${N}, minmax(0, 1fr));">
+                      ${hw.map((h, i) => {
+                        const isPeak = h.isPeakHour || (state.forecast?.bestWindow?.peakHour?.hr === h.hr);
+                        const inBlock = h.inBestBlock || isPeak;
+                        const pt = pts[i];
+                        return `
+                          <div class="relative flex justify-center h-full group cursor-pointer" title="${h.label}: ${h.cloud}% clouds${h.score !== undefined ? `, Score: ${h.score}/100` : ''}${isPeak ? ' [★ Peak Hour]' : (inBlock ? ' [In Best Window]' : '')}${h.isDarkSky ? ' [True Dark Sky]' : ''}, ${state.tempUnit === 'F' ? `${h.tempF}°F (feels ${h.feelsLikeF}°F)` : `${h.tempC}°C (feels ${h.feelsLikeC}°C)`}, wind ${state.tempUnit === 'F' ? `${h.windSpeedMph} mph` : `${h.windSpeedKmh} km/h`}${h.moonAlt !== undefined ? `, Moon: ${h.moonAlt > 0 ? `${h.moonGlyph || '🌙'} ${Math.round(h.moonAlt)}° (${h.moonIllum || 0}% lit)` : `Below horizon (${Math.round(h.moonAlt)}°)`}` : ''}">
+                            <!-- Bar Container -->
+                            <div class="w-full max-w-[28px] h-full rounded-md relative flex flex-col justify-end p-0.5 border ${
+                              isPeak
+                                ? 'border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.35)] ring-1 ring-amber-400/60 bg-amber-400/[0.08]'
+                                : (inBlock
+                                    ? 'border-emerald-400/70 shadow-[0_0_8px_rgba(52,211,153,0.2)] bg-emerald-400/[0.06]'
+                                    : (h.isDarkSky ? 'border-[#58a6ff]/40 bg-[#58a6ff]/10' : 'border-transparent bg-white/[0.04]'))
+                            }">
+                              <div
+                                class="w-full rounded-sm transition-all duration-500"
+                                style="height: ${Math.max(8, h.clarity)}%; background: ${h.clarity >= 80 ? 'linear-gradient(to top, #059669, #34d399)' : (h.clarity >= 50 ? 'linear-gradient(to top, #2563eb, #60a5fa)' : (h.clarity >= 25 ? 'linear-gradient(to top, #d97706, #fbbf24)' : 'linear-gradient(to top, #dc2626, #f87171)'))};"
+                              ></div>
+                            </div>
+
+                            <!-- Moon Node & Label Overlay -->
+                            ${h.moonAlt !== undefined ? (
+                              h.moonAlt > 0 ? `
+                                <div class="absolute pointer-events-none z-10" style="top: ${pt.y.toFixed(1)}%; left: 50%; transform: translate(-50%, -50%);">
+                                  <span class="block w-2.5 h-2.5 rounded-full bg-amber-300 ring-2 ring-[#0d1117] shadow-[0_0_6px_#fde047]"></span>
+                                  <span class="absolute left-1/2 -translate-x-1/2 ${pt.y < 25 ? 'top-full mt-1' : 'bottom-full mb-1'} text-[9.5px] font-mono font-bold text-amber-200 leading-none drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] whitespace-nowrap">
+                                    ${Math.round(h.moonAlt)}°
+                                  </span>
+                                </div>
+                              ` : `
+                                <div class="absolute pointer-events-none z-10" style="top: ${pt.y.toFixed(1)}%; left: 50%; transform: translate(-50%, -50%);">
+                                  <span class="block w-1.5 h-1.5 rounded-full bg-[#6e7681] opacity-60"></span>
+                                </div>
+                              `
+                            ) : ''}
+                          </div>
+                        `;
+                      }).join('')}
                     </div>
 
-                    <!-- Hour label -->
-                    <span class="text-[10px] sm:text-xs font-medium ${isPeak ? 'text-amber-300 font-bold' : (inBlock ? 'text-emerald-300 font-semibold' : 'text-[#8b949e]')}">
-                      <span class="sm:hidden">${h.labelCompact}</span>
-                      <span class="hidden sm:inline">${h.label}</span>
-                    </span>
+                    <!-- Continuous Moon Altitude Curve SVG Overlay -->
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none overflow-visible" viewBox="0 0 1000 100" preserveAspectRatio="none">
+                      <defs>
+                        <filter id="moonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#fde047" flood-opacity="0.6"/>
+                        </filter>
+                      </defs>
 
-                    <!-- Hourly Temperature -->
-                    <span class="text-[10px] sm:text-[11px] font-mono font-medium ${h.tempC <= 0 ? 'text-sky-300' : 'text-[#8b949e]'}">
-                      ${state.tempUnit === 'F' ? `${h.tempF}°` : `${h.tempC}°`}
-                    </span>
+                      <!-- Dashed Horizon Line (0° altitude) -->
+                      <line x1="0" y1="75" x2="1000" y2="75" stroke="#484f58" stroke-dasharray="4 4" stroke-width="1.2" opacity="0.8" />
+                      <text x="6" y="71" font-size="8" fill="#8b949e" font-family="ui-monospace, monospace" font-weight="600" opacity="0.8">0° HORIZON</text>
 
-                    <!-- Moon Altitude & Phase Pill -->
-                    ${h.moonAlt !== undefined && h.moonAlt > 0 ? `
-                      <div class="flex items-center justify-center gap-0.5 text-[8.5px] sm:text-[9.5px] font-mono leading-none text-amber-200/90 bg-amber-400/[0.08] border border-amber-400/25 px-0.5 py-0.5 rounded shadow-sm w-full max-w-[28px]" title="Moon ${h.moonGlyph || '🌙'}: ${h.moonIllum || 0}% illuminated at ${h.moonAlt}° altitude">
-                        <span class="text-[8px] sm:text-[9px] leading-none">${h.moonGlyph || '🌙'}</span>
-                        <span class="font-medium">${Math.round(h.moonAlt)}°</span>
-                      </div>
-                    ` : `
-                      <div class="flex items-center justify-center text-[9px] sm:text-[10px] font-mono text-[#484f58] py-0.5 w-full max-w-[28px]" title="Moon below horizon (${h.moonAlt !== undefined ? `${Math.round(h.moonAlt)}°` : 'down'})">
-                        <span class="opacity-40">—</span>
-                      </div>
-                    `}
+                      <!-- Smooth Continuous Curve -->
+                      <path d="${curvePath}" fill="none" stroke="#fde047" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#moonGlow)"/>
+                    </svg>
                   </div>
-                `;
-              }).join('')}
-            </div>
+
+                  <!-- 3. Hour Labels & Temperatures Row -->
+                  <div class="grid gap-1 sm:gap-2 mt-1.5" style="grid-template-columns: repeat(${N}, minmax(0, 1fr));">
+                    ${hw.map(h => {
+                      const isPeak = h.isPeakHour || (state.forecast?.bestWindow?.peakHour?.hr === h.hr);
+                      const inBlock = h.inBestBlock || isPeak;
+                      return `
+                        <div class="flex flex-col items-center gap-0.5 text-center cursor-pointer group" title="${h.label}: ${h.cloud}% clouds">
+                          <span class="text-[10px] sm:text-xs font-medium ${isPeak ? 'text-amber-300 font-bold' : (inBlock ? 'text-emerald-300 font-semibold' : 'text-[#8b949e]')}">
+                            <span class="sm:hidden">${h.labelCompact}</span>
+                            <span class="hidden sm:inline">${h.label}</span>
+                          </span>
+                          <span class="text-[10px] sm:text-[11px] font-mono font-medium ${h.tempC <= 0 ? 'text-sky-300' : 'text-[#8b949e]'}">
+                            ${state.tempUnit === 'F' ? `${h.tempF}°` : `${h.tempC}°`}
+                          </span>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+
+                  <!-- Mobile Legend -->
+                  <div class="flex items-center justify-between text-[10px] text-[#8b949e] mt-2 pt-2 border-t border-[#30363d]/40 sm:hidden">
+                    <span>🟩 Best Window · ⭐ Peak</span>
+                    <span class="text-amber-300 font-medium">── 🌙 Moon Track</span>
+                  </div>
+                </div>
+              `;
+            })()}
           ` : `
             <div class="py-10 text-center text-sm text-[#8b949e]">
               ${state.loading ? 'Calculating observing window…' : 'Forecast data currently unavailable offline'}

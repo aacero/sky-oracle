@@ -14,9 +14,9 @@ describe('Lightweight i18n Engine', () => {
     setLocale('en');
   });
 
-  it('supports en, es, pt, de, fr', () => {
+  it('supports en, es, pt, de, fr, it, ja', () => {
     const codes = SUPPORTED_LOCALES.map(l => l.code);
-    expect(codes).toEqual(['en', 'es', 'pt', 'de', 'fr']);
+    expect(codes).toEqual(['en', 'es', 'pt', 'de', 'fr', 'it', 'ja']);
   });
 
   it('translates basic keys with English default', () => {
@@ -61,6 +61,18 @@ describe('Lightweight i18n Engine', () => {
     expect(t('verdict.clear')).toBe('Dégagé — excellent pour observer');
     expect(t('planets.mars')).toBe('Mars');
     expect(t('moon.phase.full_moon')).toBe('Pleine Lune');
+
+    setLocale('it');
+    expect(getLocale()).toBe('it');
+    expect(t('verdict.clear')).toBe("Sereno — ideale per l'osservazione");
+    expect(t('planets.mars')).toBe('Marte');
+    expect(t('moon.phase.full_moon')).toBe('Luna Piena');
+
+    setLocale('ja');
+    expect(getLocale()).toBe('ja');
+    expect(t('verdict.clear')).toBe('快晴 — 絶好の天体観測日和');
+    expect(t('planets.mars')).toBe('火星');
+    expect(t('moon.phase.full_moon')).toBe('満月（望）');
 
     unsubscribe();
   });
