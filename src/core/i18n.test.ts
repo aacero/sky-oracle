@@ -73,8 +73,25 @@ describe('Lightweight i18n Engine', () => {
     expect(t('verdict.clear')).toBe('快晴 — 絶好の天体観測日和');
     expect(t('planets.mars')).toBe('火星');
     expect(t('moon.phase.full_moon')).toBe('満月（望）');
+    expect(t('app.privacy_badge')).toBe('プライバシー重視の天体観測');
 
     unsubscribe();
+  });
+
+  it('translates privacy badge across all locales', () => {
+    const expected: Record<string, string> = {
+      en: 'Privacy-Preserving Astronomy',
+      es: 'Astronomía con Privacidad Garantizada',
+      pt: 'Astronomia com Privacidade',
+      de: 'Datenschutzfreundliche Astronomie',
+      fr: 'Astronomie Respectueuse de la Vie Privée',
+      it: 'Astronomia a Tutela della Privacy',
+      ja: 'プライバシー重視の天体観測'
+    };
+    for (const [loc, text] of Object.entries(expected)) {
+      setLocale(loc as any);
+      expect(t('app.privacy_badge')).toBe(text);
+    }
   });
 
   it('falls back to English when a key does not exist in target locale', () => {

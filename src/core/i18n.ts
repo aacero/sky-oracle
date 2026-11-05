@@ -31,6 +31,7 @@ const en: TranslationDictionary = {
   'moon.altitude_track': "Moon Altitude Track",
 // App Shell & Navigation
   'app.tagline': 'Stargazing forecast, ephemeris & planet guide',
+  'app.privacy_badge': 'Privacy-Preserving Astronomy',
   'app.offline': 'Offline',
   'app.detecting_location': 'Detecting location...',
   'app.use_gps': 'Use current GPS location',
@@ -224,6 +225,7 @@ const es: TranslationDictionary = {
   'moon.altitude_track': "Trayectoria de Altitud Lunar",
 // App Shell & Navigation
   'app.tagline': 'Pronóstico astronómico, efemérides y guía planetaria',
+  'app.privacy_badge': 'Astronomía con Privacidad Garantizada',
   'app.offline': 'Sin conexión',
   'app.detecting_location': 'Detectando ubicación...',
   'app.use_gps': 'Usar ubicación GPS actual',
@@ -417,6 +419,7 @@ const pt: TranslationDictionary = {
   'moon.altitude_track': "Trajetória de Altitude Lunar",
 // App Shell & Navigation
   'app.tagline': 'Previsão astronômica, efemérides e guia planetário',
+  'app.privacy_badge': 'Astronomia com Privacidade',
   'app.offline': 'Offline',
   'app.detecting_location': 'Detectando localização...',
   'app.use_gps': 'Usar localização GPS atual',
@@ -610,6 +613,7 @@ const de: TranslationDictionary = {
   'moon.altitude_track': "Mondhöhenverlauf",
 // App Shell & Navigation
   'app.tagline': 'Astronomische Vorhersage, Ephemeriden & Planetenführer',
+  'app.privacy_badge': 'Datenschutzfreundliche Astronomie',
   'app.offline': 'Offline',
   'app.detecting_location': 'Standort wird ermittelt...',
   'app.use_gps': 'Aktuellen GPS-Standort verwenden',
@@ -803,6 +807,7 @@ const fr: TranslationDictionary = {
   'moon.altitude_track': "Trajectoire d'Altitude Lunaire",
 // App Shell & Navigation
   'app.tagline': 'Prévisions astronomiques, éphémérides et guide des planètes',
+  'app.privacy_badge': 'Astronomie Respectueuse de la Vie Privée',
   'app.offline': 'Hors ligne',
   'app.detecting_location': 'Localisation en cours...',
   'app.use_gps': 'Utiliser la position GPS actuelle',
@@ -994,7 +999,8 @@ const fr: TranslationDictionary = {
 
 const it: TranslationDictionary = {
   'moon.altitude_track': "Traiettoria Altitudine Lunare",
-'app.tagline': "Previsioni per l'osservazione celeste e planetario",
+  'app.tagline': "Previsioni per l'osservazione celeste e planetario",
+  'app.privacy_badge': "Astronomia a Tutela della Privacy",
   'app.offline': "Offline",
   'app.detecting_location': "Rilevamento posizione...",
   'app.use_gps': "Usa posizione GPS attuale",
@@ -1168,7 +1174,8 @@ const it: TranslationDictionary = {
 
 const ja: TranslationDictionary = {
   'moon.altitude_track': "月の高度推移",
-'app.tagline': "天体観測予報＆プラネタリウム",
+  'app.tagline': "天体観測予報＆プラネタリウム",
+  'app.privacy_badge': "プライバシー重視の天体観測",
   'app.offline': "オフライン",
   'app.detecting_location': "現在地を取得中...",
   'app.use_gps': "GPS現在地を使用",

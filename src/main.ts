@@ -843,7 +843,7 @@ function render() {
           <!-- Quick Stats Pill -->
           <div class="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-[#30363d]/60 gap-1 text-xs">
             <span class="text-[#8b949e]">Last Updated: ${state.forecast ? formatTime(state.forecast.lastUpdated) : '—'}</span>
-            <span class="text-[#56d4dd] font-medium">100% Offline Astronomy</span>
+            <span class="text-[#56d4dd] font-medium">${t('app.privacy_badge')}</span>
           </div>
         </div>
 
