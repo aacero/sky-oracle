@@ -131,15 +131,7 @@ jobs:
             if (!java.includes("setDecorFitsSystemWindows")) {
               java = java.replace(
                 "super.onCreate(savedInstanceState);",
-                `super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            getWindow().setDecorFitsSystemWindows(false);
-            android.view.WindowInsetsController insetsController = getWindow().getInsetsController();
-            if (insetsController != null) {
-                insetsController.hide(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
-                insetsController.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-            }
-        }`
+                "super.onCreate(savedInstanceState);\\n        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {\\n            getWindow().setDecorFitsSystemWindows(false);\\n            android.view.WindowInsetsController insetsController = getWindow().getInsetsController();\\n            if (insetsController != null) {\\n                insetsController.hide(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());\\n                insetsController.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);\\n            }\\n        }"
               );
               fs.writeFileSync(launcherPath, java);
               console.log("Patched LauncherActivity.java with edge-to-edge immersive window.");
