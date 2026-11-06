@@ -122,7 +122,7 @@ jobs:
             console.log("Cleaned deprecated bar color meta-data from AndroidManifest.xml");
           }
 
-          // 2. Enable Android 11+ (API 30+) edge-to-edge window fitting in LauncherActivity.java
+          // 2. Enable Android 11+ (API 30+) edge-to-edge immersive window in LauncherActivity.java
           const pkgId = require("./android/twa-manifest.json").packageId;
           const pkgPath = pkgId.replace(/\./g, "/");
           const launcherPath = `app/src/main/java/${pkgPath}/LauncherActivity.java`;
@@ -131,10 +131,18 @@ jobs:
             if (!java.includes("setDecorFitsSystemWindows")) {
               java = java.replace(
                 "super.onCreate(savedInstanceState);",
-                "super.onCreate(savedInstanceState);\n        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {\n            getWindow().setDecorFitsSystemWindows(false);\n        }"
+                `super.onCreate(savedInstanceState);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(false);
+            android.view.WindowInsetsController insetsController = getWindow().getInsetsController();
+            if (insetsController != null) {
+                insetsController.hide(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
+                insetsController.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        }`
               );
               fs.writeFileSync(launcherPath, java);
-              console.log("Patched LauncherActivity.java with edge-to-edge window fitting.");
+              console.log("Patched LauncherActivity.java with edge-to-edge immersive window.");
             }
           }
           '

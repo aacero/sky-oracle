@@ -774,6 +774,17 @@ function render() {
           <button id="btnRefresh" title="${t('app.refresh')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition cursor-pointer shrink-0 ${state.loading ? 'animate-spin text-[#58a6ff]' : ''}">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
           </button>
+
+          <!-- Fullscreen Toggle Button -->
+          <button id="btnToggleFullscreen" title="${document.fullscreenElement ? t('app.fullscreen_exit') : t('app.fullscreen_enter')}" aria-label="${document.fullscreenElement ? t('app.fullscreen_exit') : t('app.fullscreen_enter')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition cursor-pointer shrink-0">
+            ${document.fullscreenElement ? `
+              <!-- Exit Fullscreen (Compress) -->
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9L4 4m0 0h5m-5 0v5m6 6l5 5m0 0h-5m5 0v-5m-6-6l5-5m0 0h-5m5 0v5m-6 6l-5 5m0 0h5m-5 0v-5"/></svg>
+            ` : `
+              <!-- Enter Fullscreen (Expand) -->
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+            `}
+          </button>
         </div>
       </div>
     </header>
@@ -2296,6 +2307,27 @@ function attachEventHandlers() {
     render();
   });
 
+  // Toggle Fullscreen
+  document.getElementById('btnToggleFullscreen')?.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if ((document.documentElement as any).webkitRequestFullscreen) {
+          await (document.documentElement as any).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Fullscreen toggle failed:', err);
+    }
+  });
+
   // Install PWA
   document.getElementById('btnInstallPwa')?.addEventListener('click', async () => {
     if (state.installPrompt) {
@@ -2681,6 +2713,14 @@ window.addEventListener('resize', () => {
   if (state.selectedPlanet) {
     drawPlanetStarfield();
   }
+});
+
+document.addEventListener('fullscreenchange', () => {
+  render();
+});
+
+document.addEventListener('webkitfullscreenchange', () => {
+  render();
 });
 
 // ── App Startup ─────────────────────────────────────────────────────────────

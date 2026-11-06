@@ -4,7 +4,11 @@
   "description": "Astronomical observing forecast, solar twilights, moon phase, and naked-eye planet ephemeris.",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
   "orientation": "any",
   "background_color": "#0d1117",
   "theme_color": "#0d1117",
