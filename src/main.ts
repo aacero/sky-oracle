@@ -745,17 +745,13 @@ function render() {
           </button>
         </div>
 
-        <!-- Utility Toolbar Group (Tour, Lang, Unit, Refresh): Non-wrapping flex group -->
+        <!-- Utility Toolbar Group (Lang, Unit, Refresh, Fullscreen): Non-wrapping flex group -->
         <div class="flex items-center justify-between xs:justify-start gap-1.5 shrink-0">
           ${state.installPrompt ? `
             <button id="btnInstallPwa" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 text-xs font-semibold transition cursor-pointer shrink-0">
               <span>📲</span><span class="hidden md:inline">${t('app.install_app')}</span>
             </button>
           ` : ''}
-
-          <button id="btnOpenTour" title="${t('app.tour_tooltip')}" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 hover:text-white transition cursor-pointer shrink-0">
-            <span>💡</span><span class="hidden md:inline">${t('app.tour')}</span>
-          </button>
 
           <!-- Language Selector -->
           <div class="relative shrink-0">
@@ -861,10 +857,20 @@ function render() {
             ` : ''}
           </div>
 
-          <!-- Quick Stats Pill -->
-          <div class="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-[#30363d]/60 gap-1 text-xs">
-            <span class="text-[#8b949e]">Last Updated: ${state.forecast ? formatTime(state.forecast.lastUpdated) : '—'}</span>
-            <span class="text-[#56d4dd] font-medium">${t('app.privacy_badge')}</span>
+          <!-- Quick Stats & Tour Action -->
+          <div class="flex flex-col sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-[#30363d]/60 gap-2 text-xs shrink-0">
+            <div class="flex items-center sm:flex-col sm:items-end justify-between w-full sm:w-auto gap-1 text-xs">
+              <span class="text-[#8b949e]">Last Updated: ${state.forecast ? formatTime(state.forecast.lastUpdated) : '—'}</span>
+              <span class="text-[#56d4dd] font-medium">${t('app.privacy_badge')}</span>
+            </div>
+            <button
+              id="btnOpenTour"
+              title="${t('app.tour_tooltip')}"
+              class="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-500/10 hover:from-amber-500/30 hover:to-amber-500/20 border border-amber-400/40 hover:border-amber-400/70 text-xs font-bold text-amber-300 hover:text-white transition cursor-pointer shadow-sm active:scale-95"
+            >
+              <span class="text-sm">💡</span>
+              <span>${t('app.tour_guide')}</span>
+            </button>
           </div>
         </div>
 
@@ -1001,84 +1007,12 @@ function render() {
         </div>
       </section>
 
-      <!-- 2-Column Responsive Cards Grid -->
+      <!-- Moon & Sun Ephemeris Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        <!-- Solar System Targets Card -->
-        <section class="rounded-2xl p-5 sm:p-6 bg-[#161b22] border border-[#30363d] shadow-lg flex flex-col justify-between">
+        <!-- Moon Phase Card -->
+        <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg flex flex-col justify-between">
           <div>
-            <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d] flex-wrap gap-2">
-              <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
-                <span>🪐</span> ${t('planets.title').toUpperCase()}
-              </h3>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20" title="Targets in amber text are up all night or well-positioned in the evening sky">
-                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  Amber = Evening / Night Viewable
-                </span>
-              </div>
-            </div>
-
-            <!-- Discovery Callout Banner -->
-            <div class="flex items-center justify-between p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-sky-500/10 to-transparent border border-amber-500/25 text-xs text-[#cbd5e1]">
-              <div class="flex items-center gap-2">
-                <span class="text-base">💡</span>
-                <span><strong>Tap any target below</strong> to launch its interactive 10° eyepiece, live horizon & time scrubber.</span>
-              </div>
-              <button id="btnOpenTourFromList" class="shrink-0 text-[11px] font-bold text-amber-300 hover:text-white hover:underline transition ml-2 cursor-pointer">
-                Tour ➔
-              </button>
-            </div>
-
-            <div class="flex flex-col gap-2.5">
-              ${getSolarSystemTargets(state).map(p => {
-                const isPrime = p.status.includes('Up all night') || p.status.includes('Evening') || (p.key === 'moon' && (state.moon?.isUp ?? false));
-                return `
-                  <div
-                    role="button"
-                    tabindex="0"
-                    data-planet="${p.key}"
-                    class="btnPlanetCard flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-[#30363d]/50 hover:border-amber-400/40 transition cursor-pointer group"
-                    title="${t('planets.view_starfield')} (${t('planets.' + p.key) || p.name})"
-                  >
-                    <div class="flex items-center gap-3">
-                      <span class="text-xl ${isPrime ? 'text-amber-400' : 'text-[#e6edf3]'} font-bold w-6 text-center group-hover:scale-110 transition-transform">${p.symbol}</span>
-                      <div>
-                        <div class="flex items-center gap-2">
-                          <span class="font-bold text-sm text-[#e6edf3] group-hover:text-amber-300 transition-colors">${t('planets.' + p.key) || p.name}</span>
-                          <!-- Plain-text Constellation badge -->
-                          <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
-                            ${p.constellation}
-                          </span>
-                        </div>
-                        <span class="text-xs font-medium ${isPrime ? 'text-amber-400' : 'text-[#8b949e]'}">
-                          ${formatLocalizedPlanetStatus(p)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                      <div class="text-right text-xs text-[#8b949e]">
-                        ${p.set ? `<div>${t('planets.set')} ${formatTime(p.set)}</div>` : ''}
-                        ${p.rise ? `<div>${t('planets.rise')} ${formatTime(p.rise)}</div>` : ''}
-                      </div>
-                      <div class="flex items-center gap-1 text-[#8b949e] group-hover:text-amber-400 transition-colors pl-1">
-                        <span class="text-[11px] font-bold hidden sm:inline opacity-70 group-hover:opacity-100 transition-opacity">10° Field</span>
-                        <span class="text-sm">🔭</span>
-                      </div>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        </section>
-
-        <!-- Moon Phase & Twilight Timeline Column -->
-        <div class="flex flex-col gap-6">
-
-          <!-- Moon Phase Card -->
-          <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg">
             <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d]">
               <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
                 <span>🌙</span> ${t('moon.title').toUpperCase()}
@@ -1129,30 +1063,32 @@ function render() {
                 <span>NEW</span>
               </div>
             </div>
+          </div>
 
-            <!-- Rise / Set / Next Dates Grid -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3 pt-3 border-t border-[#30363d]/60 text-xs">
-              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.rises')}</span>
-                <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.rise || null)}</span>
-              </div>
-              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.sets')}</span>
-                <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.set || null)}</span>
-              </div>
-              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.next_new')}</span>
-                <span class="text-sm font-bold text-[#58a6ff]">${formatShortDate(state.moon?.nextNew || null)}</span>
-              </div>
-              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.next_full')}</span>
-                <span class="text-sm font-bold text-amber-300">${formatShortDate(state.moon?.nextFull || null)}</span>
-              </div>
+          <!-- Rise / Set / Next Dates Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pt-3 border-t border-[#30363d]/60 text-xs">
+            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+              <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.rises')}</span>
+              <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.rise || null)}</span>
             </div>
-          </section>
+            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+              <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.sets')}</span>
+              <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.set || null)}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+              <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.next_new')}</span>
+              <span class="text-sm font-bold text-[#58a6ff]">${formatShortDate(state.moon?.nextNew || null)}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
+              <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.next_full')}</span>
+              <span class="text-sm font-bold text-amber-300">${formatShortDate(state.moon?.nextFull || null)}</span>
+            </div>
+          </div>
+        </section>
 
-          <!-- Sun & Twilight Events Card -->
-          <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg">
+        <!-- Sun & Twilight Events Card -->
+        <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg flex flex-col justify-between">
+          <div>
             <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d]">
               <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
                 <span>☀️</span> ${t('sun.title').toUpperCase()}
@@ -1186,13 +1122,81 @@ function render() {
                 <span class="text-sm font-bold text-amber-300">${formatTime(state.sunEvents?.sunrise || null)}</span>
               </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <!-- Meteor Showers Card -->
-          ${renderMeteorShowerCard()}
-
-        </div>
       </div>
+
+      <!-- Solar System Targets Card -->
+      <section class="rounded-2xl p-5 sm:p-6 bg-[#161b22] border border-[#30363d] shadow-lg">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d] flex-wrap gap-2">
+          <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
+            <span>🪐</span> ${t('planets.title').toUpperCase()}
+          </h3>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20" title="Targets in amber text are up all night or well-positioned in the evening sky">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              Amber = Evening / Night Viewable
+            </span>
+          </div>
+        </div>
+
+        <!-- Discovery Callout Banner -->
+        <div class="flex items-center justify-between p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-sky-500/10 to-transparent border border-amber-500/25 text-xs text-[#cbd5e1]">
+          <div class="flex items-center gap-2">
+            <span class="text-base">💡</span>
+            <span><strong>Tap any target below</strong> to launch its interactive 10° eyepiece, live horizon & time scrubber.</span>
+          </div>
+          <button id="btnOpenTourFromList" class="shrink-0 text-[11px] font-bold text-amber-300 hover:text-white hover:underline transition ml-2 cursor-pointer">
+            Tour ➔
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          ${getSolarSystemTargets(state).map(p => {
+            const isPrime = p.status.includes('Up all night') || p.status.includes('Evening') || (p.key === 'moon' && (state.moon?.isUp ?? false));
+            return `
+              <div
+                role="button"
+                tabindex="0"
+                data-planet="${p.key}"
+                class="btnPlanetCard flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-[#30363d]/50 hover:border-amber-400/40 transition cursor-pointer group"
+                title="${t('planets.view_starfield')} (${t('planets.' + p.key) || p.name})"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="text-xl ${isPrime ? 'text-amber-400' : 'text-[#e6edf3]'} font-bold w-6 text-center group-hover:scale-110 transition-transform">${p.symbol}</span>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-sm text-[#e6edf3] group-hover:text-amber-300 transition-colors">${t('planets.' + p.key) || p.name}</span>
+                      <!-- Plain-text Constellation badge -->
+                      <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
+                        ${p.constellation}
+                      </span>
+                    </div>
+                    <span class="text-xs font-medium ${isPrime ? 'text-amber-400' : 'text-[#8b949e]'}">
+                      ${formatLocalizedPlanetStatus(p)}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <div class="text-right text-xs text-[#8b949e]">
+                    ${p.set ? `<div>${t('planets.set')} ${formatTime(p.set)}</div>` : ''}
+                    ${p.rise ? `<div>${t('planets.rise')} ${formatTime(p.rise)}</div>` : ''}
+                  </div>
+                  <div class="flex items-center gap-1 text-[#8b949e] group-hover:text-amber-400 transition-colors pl-1">
+                    <span class="text-[11px] font-bold hidden sm:inline opacity-70 group-hover:opacity-100 transition-opacity">10° Field</span>
+                    <span class="text-sm">🔭</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </section>
+
+      <!-- Meteor Showers Card -->
+      ${renderMeteorShowerCard()}
     </main>
 
     <!-- Footer -->
@@ -2242,6 +2246,7 @@ function attachEventHandlers() {
     render();
   };
   document.getElementById('btnOpenTour')?.addEventListener('click', openTour);
+  document.getElementById('btnOpenTourHero')?.addEventListener('click', openTour);
   document.getElementById('btnOpenTourFromList')?.addEventListener('click', openTour);
 
   const closeTour = () => {

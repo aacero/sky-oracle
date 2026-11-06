@@ -94,6 +94,22 @@ describe('Lightweight i18n Engine', () => {
     }
   });
 
+  it('translates tour guide CTA across all locales', () => {
+    const expected: Record<string, string> = {
+      en: 'Tour: Interactive Guide',
+      es: 'Guía: Tour interactivo',
+      pt: 'Guia: Tour interativo',
+      de: 'Tour: Interaktive Anleitung',
+      fr: 'Visite: Guide interactif',
+      it: 'Tour: Guida interattiva',
+      ja: 'ツアー：操作ガイド'
+    };
+    for (const [loc, text] of Object.entries(expected)) {
+      setLocale(loc as any);
+      expect(t('app.tour_guide')).toBe(text);
+    }
+  });
+
   it('falls back to English when a key does not exist in target locale', () => {
     setLocale('fr');
     // nonexistent key
