@@ -1802,7 +1802,6 @@ function renderPlanetModal(): string {
             ${isRadiant ? '50° Naked Eye' : (state.starfieldAperture === 'circular' ? `${fovDeg}° Circular Eyepiece` : `${fovDeg}° Sensor Frame`)}
           </div>
         </div>
-        </div>
 
         <!-- Scrollable Modal Body: Unified scroll, zero overlap -->
         <div class="planet-modal-body p-3 sm:p-4">
@@ -2192,9 +2191,6 @@ function renderPlanetModal(): string {
 
           </div>
         </div>
-
-      </div>
-    </div>
 
       </div>
     </div>
