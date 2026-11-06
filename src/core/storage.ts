@@ -8,9 +8,14 @@ export interface SavedLocation {
   lon: number;
 }
 
-const STORAGE_KEY_LOCATION = 'sky_tonight_location';
-const STORAGE_KEY_RECENTS = 'sky_tonight_recents';
-const STORAGE_KEY_UNIT = 'sky_tonight_temp_unit';
+const STORAGE_KEY_LOCATION = 'skyoracle_location';
+const STORAGE_KEY_RECENTS = 'skyoracle_recents';
+const STORAGE_KEY_UNIT = 'skyoracle_temp_unit';
+
+// Legacy storage keys preserved for seamless migration of existing users
+const LEGACY_KEY_LOCATION = 'sky_tonight_location';
+const LEGACY_KEY_RECENTS = 'sky_tonight_recents';
+const LEGACY_KEY_UNIT = 'sky_tonight_temp_unit';
 
 // Default to St. Augustine, FL
 export const DEFAULT_LOCATION: SavedLocation = {
@@ -19,15 +24,31 @@ export const DEFAULT_LOCATION: SavedLocation = {
   lon: -81.3124
 };
 
+/**
+ * Escapes HTML special characters in external or user-provided strings
+ * before interpolating into template literals or attributes.
+ */
+export function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function loadTempUnit(): 'F' | 'C' {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_UNIT);
+    const raw = localStorage.getItem(STORAGE_KEY_UNIT) || localStorage.getItem(LEGACY_KEY_UNIT);
     if (raw === 'F' || raw === 'C') return raw;
   } catch {}
-  if (typeof navigator !== 'undefined' && navigator.language && navigator.language.includes('US')) {
-    return 'F';
+  if (typeof navigator !== 'undefined' && navigator.language) {
+    if (navigator.language.toUpperCase().includes('US')) {
+      return 'F';
+    }
+    return 'C';
   }
-  return 'F'; // Default to Fahrenheit for US-centric stargazing, 1-tap togglable
+  return 'F';
 }
 
 export function saveTempUnit(unit: 'F' | 'C'): void {
@@ -38,7 +59,7 @@ export function saveTempUnit(unit: 'F' | 'C'): void {
 
 export function loadLocation(): SavedLocation {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_LOCATION);
+    const raw = localStorage.getItem(STORAGE_KEY_LOCATION) || localStorage.getItem(LEGACY_KEY_LOCATION);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (typeof parsed.lat === 'number' && typeof parsed.lon === 'number') {
@@ -58,7 +79,7 @@ export function saveLocation(loc: SavedLocation): void {
 
 export function loadRecents(): SavedLocation[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_RECENTS);
+    const raw = localStorage.getItem(STORAGE_KEY_RECENTS) || localStorage.getItem(LEGACY_KEY_RECENTS);
     if (raw) {
       return JSON.parse(raw);
     }

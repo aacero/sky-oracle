@@ -9,6 +9,19 @@ const mainFilePath = path.resolve(__dirname, '../main.ts');
 const mainSrc = fs.readFileSync(mainFilePath, 'utf8');
 const sourceFile = ts.createSourceFile('src/main.ts', mainSrc, ts.ScriptTarget.Latest, true);
 
+const uiDirPath = path.resolve(__dirname, '../ui');
+const uiSourceFiles: ts.SourceFile[] = fs.existsSync(uiDirPath)
+  ? fs
+      .readdirSync(uiDirPath)
+      .filter(f => f.endsWith('.ts'))
+      .map(f => {
+        const full = path.resolve(uiDirPath, f);
+        return ts.createSourceFile(`src/ui/${f}`, fs.readFileSync(full, 'utf8'), ts.ScriptTarget.Latest, true);
+      })
+  : [];
+
+const allSourceFiles: ts.SourceFile[] = [sourceFile, ...uiSourceFiles];
+
 // ── AST & Template Extraction Utilities ─────────────────────────────────────
 
 function findFunction(name: string): ts.FunctionDeclaration | null {
@@ -19,7 +32,10 @@ function findFunction(name: string): ts.FunctionDeclaration | null {
     }
     ts.forEachChild(node, visit);
   }
-  visit(sourceFile);
+  for (const sf of allSourceFiles) {
+    visit(sf);
+    if (result) break;
+  }
   return result;
 }
 
@@ -61,12 +77,14 @@ function reconstructHtml(node: ts.TemplateExpression | ts.NoSubstitutionTemplate
       if (trueHtml || falseHtml) {
         exprHtml = trueHtml + (trueHtml && falseHtml ? '\n' : '') + falseHtml;
       } else {
-        const text = expr.whenFalse.getText(sourceFile) || expr.whenTrue.getText(sourceFile);
+        const sf = expr.getSourceFile();
+        const text = expr.whenFalse.getText(sf) || expr.whenTrue.getText(sf);
         const m = text.match(/t\(['"]([^'"]+)['"]\)/);
         if (m) exprHtml = t(m[1] as any);
       }
     } else if (ts.isCallExpression(expr)) {
-      const text = expr.getText(sourceFile);
+      const sf = expr.getSourceFile();
+      const text = expr.getText(sf);
       if (text.includes('renderMeteorShowerCard')) {
         const meteorNode = findFunction('renderMeteorShowerCard');
         if (meteorNode) {

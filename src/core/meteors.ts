@@ -458,6 +458,7 @@ export function createRadiantPlanetInfo(
     rise,
     set,
     status: finalStatus,
+    visibilityCode: 'radiant',
     constellation: shower.constellation,
     ecLon: 0,
     ra: shower.radiant.ra,

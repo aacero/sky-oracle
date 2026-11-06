@@ -53,6 +53,8 @@ export interface BestObservingWindow {
   label: string;
 }
 
+export type VerdictCode = 'clear' | 'partly_cloudy' | 'mostly_cloudy' | 'overcast';
+
 export interface ObservingForecast {
   hourlyWindow: ObservingHour[];
   avgCloud: number;
@@ -71,6 +73,7 @@ export interface ObservingForecast {
   dewRiskLabel: string;
   windSpeedMph: number;
   windSpeedKmh: number;
+  verdictCode: VerdictCode;
   verdict: string;
   verdictEmoji: string;
   verdictAccent: string;
@@ -296,8 +299,21 @@ export async function fetchCloudForecast(
   return parseCloudPayload(data, lat, lon, refDate);
 }
 
+export interface OpenMeteoForecastPayload {
+  utc_offset_seconds?: number;
+  timezone?: string;
+  hourly?: {
+    time?: string[];
+    cloud_cover?: number[];
+    temperature_2m?: number[];
+    apparent_temperature?: number[];
+    dew_point_2m?: number[];
+    wind_speed_10m?: number[];
+  };
+}
+
 export function parseCloudPayload(
-  data: any,
+  data: OpenMeteoForecastPayload | null | undefined,
   lat: number,
   lon: number,
   refDate: Date = new Date()
@@ -548,23 +564,28 @@ export function parseCloudPayload(
   };
 
   const avgCloud = Math.round(sum / (win.length || 1));
+  let verdictCode: VerdictCode = 'clear';
   let verdict = "Clear — great for observing";
   let verdictEmoji = "🌟";
   let verdictAccent = "#3fb950"; // Green / Success
 
   if (avgCloud <= 25) {
+    verdictCode = 'clear';
     verdict = "Clear — great for observing";
     verdictEmoji = "🌟";
     verdictAccent = "#3fb950";
   } else if (avgCloud <= 55) {
+    verdictCode = 'partly_cloudy';
     verdict = "Partly cloudy — gaps to peek through";
     verdictEmoji = "⛅";
     verdictAccent = "#58a6ff"; // Blue
   } else if (avgCloud <= 80) {
+    verdictCode = 'mostly_cloudy';
     verdict = "Mostly cloudy — limited windows";
     verdictEmoji = "🌥️";
     verdictAccent = "#d29922"; // Yellow/Gold
   } else {
+    verdictCode = 'overcast';
     verdict = "Overcast — skywatching unlikely";
     verdictEmoji = "☁️";
     verdictAccent = "#f85149"; // Red
@@ -595,6 +616,7 @@ export function parseCloudPayload(
     dewRiskLabel,
     windSpeedMph: currentHour.windSpeedMph,
     windSpeedKmh: currentHour.windSpeedKmh,
+    verdictCode,
     verdict,
     verdictEmoji,
     verdictAccent,
@@ -604,14 +626,23 @@ export function parseCloudPayload(
   };
 }
 
+interface OpenMeteoGeocodingItem {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  country?: string;
+  admin1?: string;
+}
+
 export async function searchCities(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 2) return [];
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query.trim())}&count=5&language=en&format=json`;
 
   const resp = await fetch(url);
   if (!resp.ok) return [];
-  const data = await resp.json();
-  return (data.results || []).map((r: any) => ({
+  const data: { results?: OpenMeteoGeocodingItem[] } = await resp.json();
+  return (data.results || []).map((r) => ({
     id: r.id,
     name: r.name,
     latitude: r.latitude,

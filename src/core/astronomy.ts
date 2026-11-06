@@ -34,6 +34,17 @@ export interface MoonInfo {
   isUp?: boolean;     // true if altitude >= 0.125 deg
 }
 
+export type PlanetVisibilityCode =
+  | 'up_all_night'
+  | 'evening'
+  | 'morning'
+  | 'sets_only'
+  | 'below_horizon'
+  | 'circumpolar'
+  | 'moon'
+  | 'solar'
+  | 'radiant';
+
 export interface PlanetInfo {
   key: string;
   name: string;
@@ -41,6 +52,7 @@ export interface PlanetInfo {
   rise: Date | null;
   set: Date | null;
   status: string;
+  visibilityCode?: PlanetVisibilityCode;
   constellation: string;
   ecLon: number;
   ra: number;
@@ -537,6 +549,7 @@ export function calculatePlanetRiseSet(
       rise: null,
       set: null,
       status: "Below horizon",
+      visibilityCode: 'below_horizon',
       constellation: cInfo.name,
       ecLon: eq.ecLon,
       ra: eq.ra,
@@ -551,6 +564,7 @@ export function calculatePlanetRiseSet(
       rise: null,
       set: null,
       status: "Circumpolar",
+      visibilityCode: 'circumpolar',
       constellation: cInfo.name,
       ecLon: eq.ecLon,
       ra: eq.ra,
@@ -569,14 +583,19 @@ export function calculatePlanetRiseSet(
   const rH = riseDate.getHours();
   const sH = setDate.getHours();
   let stat = "";
+  let visibilityCode: PlanetVisibilityCode = 'sets_only';
   if (rH >= 17 && rH <= 22 && (sH >= 4 && sH <= 9)) {
     stat = "Up all night";
+    visibilityCode = 'up_all_night';
   } else if (sH >= 18 && sH <= 23) {
     stat = "Evening · sets " + formatTime(setDate);
+    visibilityCode = 'evening';
   } else if (rH >= 1 && rH <= 6) {
     stat = "Morning · rises " + formatTime(riseDate);
+    visibilityCode = 'morning';
   } else {
     stat = "Sets " + formatTime(setDate);
+    visibilityCode = 'sets_only';
   }
 
   return {
@@ -586,6 +605,7 @@ export function calculatePlanetRiseSet(
     rise: riseDate,
     set: setDate,
     status: stat,
+    visibilityCode,
     constellation: cInfo.name,
     ecLon: eq.ecLon,
     ra: eq.ra,
@@ -623,6 +643,7 @@ export function calculateMoonPlanetInfo(
     rise: mRiseSet.rise,
     set: mRiseSet.set,
     status: stat,
+    visibilityCode: 'moon',
     constellation: cInfo.name,
     ecLon: mCoords.ecLon,
     ra: mCoords.ra,
@@ -647,6 +668,7 @@ export function calculateSunPlanetInfo(
     rise: sEvents?.sunrise ?? null,
     set: sEvents?.sunset ?? null,
     status: 'Daylight / Solar',
+    visibilityCode: 'solar',
     constellation: cInfo.name,
     ecLon: sCoords.ecLon,
     ra: sCoords.ra,

@@ -6,7 +6,8 @@ import {
   SUPPORTED_LOCALES,
   onLocaleChange,
   formatLocalizedDate,
-  formatLocalizedTime
+  formatLocalizedTime,
+  TranslationKey
 } from './i18n.ts';
 
 describe('Lightweight i18n Engine', () => {
@@ -112,8 +113,8 @@ describe('Lightweight i18n Engine', () => {
 
   it('falls back to English when a key does not exist in target locale', () => {
     setLocale('fr');
-    // nonexistent key
-    expect(t('unknown.nonexistent_key')).toBe('unknown.nonexistent_key');
+    // nonexistent key (cast to test runtime fallback behavior)
+    expect(t('unknown.nonexistent_key' as unknown as TranslationKey)).toBe('unknown.nonexistent_key');
   });
 
   it('formats dates and times using the locale', () => {

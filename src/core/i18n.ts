@@ -25,9 +25,7 @@ export const SUPPORTED_LOCALES: LocaleOption[] = [
 
 const STORAGE_KEY = 'skyoracle_locale';
 
-type TranslationDictionary = Record<string, string>;
-
-const en: TranslationDictionary = {
+const en = {
   'moon.altitude_track': "Moon Altitude Track",
 // App Shell & Navigation
   'app.tagline': 'Stargazing forecast, ephemeris & planet guide',
@@ -222,7 +220,24 @@ const en: TranslationDictionary = {
   'starfield.naked_eye_window_short': "Naked Eye Sky Window",
   'starfield.scale_fist': "10° (Fist at arm's length)",
   'starfield.naked_eye_short': "Naked Eye Window",
+  'verdict.dark_sky_active': "DARK SKY ACTIVE",
+  'app.last_updated': "Last Updated",
+  'moon.age_label': "Age",
+  'moon.days': "days",
+  'moon.altitude_label': "Altitude",
+  'moon.above_horizon': "Above Horizon",
+  'moon.below_horizon': "Below Horizon",
+  'moon.dso_impact': "Deep sky impact",
+  'moon.dso_minimal': "Minimal (Faint DSOs visible)",
+  'moon.dso_moderate': "Moderate wash out",
+  'moon.lunar_cycle': "LUNAR CYCLE",
+  'sun.local_solar_times': "Local Solar Times",
+  'planets.amber_badge': "Amber = Evening / Night Viewable",
+  'planets.discovery_prompt': "Tap any target below to launch its interactive 10° eyepiece, live horizon & time scrubber.",
 };
+
+export type TranslationKey = keyof typeof en;
+type TranslationDictionary = Record<TranslationKey, string>;
 
 const es: TranslationDictionary = {
   'moon.altitude_track': "Trayectoria de Altitud Lunar",
@@ -419,6 +434,20 @@ const es: TranslationDictionary = {
   'starfield.naked_eye_window_short': "Ventana a Simple Vista",
   'starfield.scale_fist': "10° (Puño a brazo extendido)",
   'starfield.naked_eye_short': "Ventana a Simple Vista",
+  'verdict.dark_sky_active': "CIELO OSCURO ACTIVO",
+  'app.last_updated': "Última actualización",
+  'moon.age_label': "Edad",
+  'moon.days': "días",
+  'moon.altitude_label': "Altitud",
+  'moon.above_horizon': "Sobre el horizonte",
+  'moon.below_horizon': "Bajo el horizonte",
+  'moon.dso_impact': "Impacto en cielo profundo",
+  'moon.dso_minimal': "Mínimo (Objetos débiles visibles)",
+  'moon.dso_moderate': "Brillo lunar moderado",
+  'moon.lunar_cycle': "CICLO LUNAR",
+  'sun.local_solar_times': "Horas solares locales",
+  'planets.amber_badge': "Ámbar = Visible al atardecer / noche",
+  'planets.discovery_prompt': "Toca cualquier objetivo para abrir su ocular interactivo de 10°, horizonte en vivo y línea de tiempo.",
 };
 
 const pt: TranslationDictionary = {
@@ -616,6 +645,20 @@ const pt: TranslationDictionary = {
   'starfield.naked_eye_window_short': "Janela a Olho Nu",
   'starfield.scale_fist': "10° (Punho a braço estendido)",
   'starfield.naked_eye_short': "Janela a Olho Nu",
+  'verdict.dark_sky_active': "CÉU ESCURO ATIVO",
+  'app.last_updated': "Última atualização",
+  'moon.age_label': "Idade",
+  'moon.days': "dias",
+  'moon.altitude_label': "Altitude",
+  'moon.above_horizon': "Acima do horizonte",
+  'moon.below_horizon': "Abaixo do horizonte",
+  'moon.dso_impact': "Impacto no céu profundo",
+  'moon.dso_minimal': "Mínimo (Objetos tênues visíveis)",
+  'moon.dso_moderate': "Ofuscamento lunar moderado",
+  'moon.lunar_cycle': "CICLO LUNAR",
+  'sun.local_solar_times': "Horários solares locais",
+  'planets.amber_badge': "Âmbar = Visível à noite / entardecer",
+  'planets.discovery_prompt': "Toque em qualquer alvo abaixo para abrir a ocular interativa de 10°, horizonte ao vivo e controle de tempo.",
 };
 
 const de: TranslationDictionary = {
@@ -813,6 +856,20 @@ const de: TranslationDictionary = {
   'starfield.naked_eye_window_short': "Freisicht-Himmelsfenster",
   'starfield.scale_fist': "10° (Faust bei ausgestrecktem Arm)",
   'starfield.naked_eye_short': "Freisichtfenster",
+  'verdict.dark_sky_active': "DUNKLER HIMMEL AKTIV",
+  'app.last_updated': "Zuletzt aktualisiert",
+  'moon.age_label': "Alter",
+  'moon.days': "Tage",
+  'moon.altitude_label': "Höhe",
+  'moon.above_horizon': "Über dem Horizont",
+  'moon.below_horizon': "Unter dem Horizont",
+  'moon.dso_impact': "Deep-Sky-Einfluss",
+  'moon.dso_minimal': "Minimal (Schwache DSOs sichtbar)",
+  'moon.dso_moderate': "Mäßige Aufhellung",
+  'moon.lunar_cycle': "MONDZYKLUS",
+  'sun.local_solar_times': "Lokale Sonnenzeiten",
+  'planets.amber_badge': "Bernstein = Abends / Nachts sichtbar",
+  'planets.discovery_prompt': "Tippe auf ein Ziel unten, um das interaktive 10°-Okular, den Live-Horizont und den Zeitregler zu öffnen.",
 };
 
 const fr: TranslationDictionary = {
@@ -1010,6 +1067,20 @@ const fr: TranslationDictionary = {
   'starfield.naked_eye_window_short': "Fenêtre à l'Œil Nu",
   'starfield.scale_fist': "10° (Poing à bout de bras)",
   'starfield.naked_eye_short': "Fenêtre à l'Œil Nu",
+  'verdict.dark_sky_active': "CIEL NOIR ACTIF",
+  'app.last_updated': "Dernière mise à jour",
+  'moon.age_label': "Âge",
+  'moon.days': "jours",
+  'moon.altitude_label': "Altitude",
+  'moon.above_horizon': "Au-dessus de l'horizon",
+  'moon.below_horizon': "Sous l'horizon",
+  'moon.dso_impact': "Impact ciel profond",
+  'moon.dso_minimal': "Minimal (Objets faibles visibles)",
+  'moon.dso_moderate': "Voile lunaire modéré",
+  'moon.lunar_cycle': "CYCLE LUNAIRE",
+  'sun.local_solar_times': "Heures solaires locales",
+  'planets.amber_badge': "Ambre = Visible le soir / la nuit",
+  'planets.discovery_prompt': "Touchez une cible ci-dessous pour ouvrir l'oculaire interactif 10°, l'horizon en direct et le curseur temporel.",
 };
 
 const it: TranslationDictionary = {
@@ -1188,6 +1259,20 @@ const it: TranslationDictionary = {
   'starfield.naked_eye_window_short': "Finestra a Occhio Nudo",
   'starfield.scale_fist': "10° (Pugno a braccio teso)",
   'starfield.naked_eye_short': "Finestra a Occhio Nudo",
+  'verdict.dark_sky_active': "CIELO BUIO ATTIVO",
+  'app.last_updated': "Ultimo aggiornamento",
+  'moon.age_label': "Età",
+  'moon.days': "giorni",
+  'moon.altitude_label': "Altitudine",
+  'moon.above_horizon': "Sopra l'orizzonte",
+  'moon.below_horizon': "Sotto l'orizzonte",
+  'moon.dso_impact': "Impatto cielo profondo",
+  'moon.dso_minimal': "Minimo (DSO deboli visibili)",
+  'moon.dso_moderate': "Disturbo lunare moderato",
+  'moon.lunar_cycle': "CICLO LUNARE",
+  'sun.local_solar_times': "Orari solari locali",
+  'planets.amber_badge': "Ambra = Visibile di sera / notte",
+  'planets.discovery_prompt': "Tocca qualsiasi obiettivo qui sotto per aprire l'oculare interattivo da 10°, l'orizzonte dal vivo e il cursore temporale.",
 };
 
 const ja: TranslationDictionary = {
@@ -1366,6 +1451,20 @@ const ja: TranslationDictionary = {
   'starfield.naked_eye_window_short': "肉眼スカイウィンドウ",
   'starfield.scale_fist': "10°（腕を伸ばした拳の幅）",
   'starfield.naked_eye_short': "肉眼ウィンドウ",
+  'verdict.dark_sky_active': "暗夜時間帯（観測中）",
+  'app.last_updated': "最終更新",
+  'moon.age_label': "月齢",
+  'moon.days': "日",
+  'moon.altitude_label': "高度",
+  'moon.above_horizon': "地平線上",
+  'moon.below_horizon': "地平線下",
+  'moon.dso_impact': "星雲・星団への影響",
+  'moon.dso_minimal': "最小（淡い天体も観測可）",
+  'moon.dso_moderate': "中程度（月明かりあり）",
+  'moon.lunar_cycle': "朔望周期（月の満ち欠け）",
+  'sun.local_solar_times': "現地の太陽・薄明時刻",
+  'planets.amber_badge': "琥珀色 ＝ 夕方・夜間に好条件",
+  'planets.discovery_prompt': "天体をタップすると、10°アイピース星図・地平線・時間スライダーが開きます。",
 };
 
 const DICTIONARIES: Record<Locale, TranslationDictionary> = {
@@ -1429,7 +1528,7 @@ export function onLocaleChange(listener: (locale: Locale) => void): () => void {
 /**
  * Translate a semantic key with optional interpolated parameters {param}
  */
-export function t(key: string, params?: Record<string, string | number>): string {
+export function t(key: TranslationKey, params?: Record<string, string | number>): string {
   const dict = DICTIONARIES[currentLocale] || DICTIONARIES.en;
   let text = dict[key] || DICTIONARIES.en[key] || key;
 

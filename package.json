@@ -10,9 +10,6 @@
     "preview": "vite preview",
     "test": "vitest run"
   },
-  "dependencies": {
-    "lucide": "^1.16.0"
-  },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
     "happy-dom": "^21.0.4",
