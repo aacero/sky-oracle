@@ -1682,31 +1682,28 @@ export function renderStarfield(
 
   // 8. Cardinal Directions & Orientation Indicators
   // Natural perspective:
-  //   Top: ZENITH (UP)
-  //   Bottom: NADIR (DOWN) or HORIZON (DOWN)
+  //   Top: ▲ ZENITH
+  //   Bottom: ▼ NADIR (DOWN) or ▼ HORIZON (DOWN)
   //   Rim pip: celestial North indicator 'N'
   // North-Up: N top, S bottom, E left, W right
   // South-Up: S top, N bottom, W left, E right
   if (showCompass) {
     if (orientation === 'natural') {
-      ctx.font = 'bold 10.5px monospace';
+      ctx.font = 'bold 10px monospace';
       ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
       ctx.lineWidth = 3;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      const zenithText = t('starfield.zenith_up');
+      const zenithText = '▲ ZENITH';
       ctx.strokeText(zenithText, cx, 6);
       ctx.fillStyle = '#38bdf8'; // Sky blue
       ctx.fillText(zenithText, cx, 6);
 
       ctx.textBaseline = 'bottom';
-      const groundLabel = isPlanetBelow ? 'NADIR (DOWN)' : `${t('starfield.horizon')} (DOWN)`;
-      const facingText = horizonParams
-        ? `${groundLabel} · ${horizonParams.planetAzCompass} (${horizonParams.planetAzDeg.toFixed(0)}°)`
-        : groundLabel;
-      ctx.strokeText(facingText, cx, cssHeight - 5);
+      const groundLabel = isPlanetBelow ? '▼ NADIR' : '▼ HORIZON';
+      ctx.strokeText(groundLabel, cx, cssHeight - 5);
       ctx.fillStyle = 'rgba(226, 232, 240, 0.90)';
-      ctx.fillText(facingText, cx, cssHeight - 5);
+      ctx.fillText(groundLabel, cx, cssHeight - 5);
 
       // Celestial North pip along the perimeter rim
       const pipR = (cssWidth / 2) - 13;
@@ -1750,34 +1747,34 @@ export function renderStarfield(
   }
 
   // 9. Corner Scale & HUD Overlays
-  // Top-left: FOV & Orientation badge
+  // Top-left: FOV & Orientation badge (compact, never collides with center Zenith)
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
   ctx.lineWidth = 3;
   const isRadiant = planet.key.startsWith('radiant_');
   const radiusDeg = fovDeg / 2;
   const radiusText = radiusDeg.toFixed(1).replace(/\.0$/, '');
   const fovText = isRadiant
-    ? `${fovDeg.toFixed(0)}° Naked Eye`
-    : `${fovDeg.toFixed(0)}° ${aperture === 'circular' ? `FOV (${radiusText}° r)` : `× ${fovDeg.toFixed(0)}° Frame`}`;
-  ctx.strokeText(fovText, 10, 10);
+    ? `${fovDeg.toFixed(0)}° Eye`
+    : `${fovDeg.toFixed(0)}° ${aperture === 'circular' ? `FOV (${radiusText}° r)` : `× ${fovDeg.toFixed(0)}°`}`;
+  ctx.strokeText(fovText, 8, 8);
   ctx.fillStyle = isRadiant ? '#38bdf8' : '#e2e8f0';
-  ctx.fillText(fovText, 10, 10);
+  ctx.fillText(fovText, 8, 8);
 
-  ctx.font = 'bold 10px monospace';
-  const orientText = orientation === 'natural'
-    ? (fieldRot.isOverhead ? 'ZENITH UP · OVERHEAD LOCK' : t('starfield.orient_natural'))
-    : (orientation === 'southUp' ? t('starfield.orient_south_up') : t('starfield.orient_north_up'));
+  ctx.font = 'bold 9.5px monospace';
+  const orientShort = orientation === 'natural'
+    ? (fieldRot.isOverhead ? 'Overhead' : `👁️ ${t('starfield.orient_natural').replace(/\s*\([^)]*\)/, '').trim()}`)
+    : (orientation === 'southUp' ? `🧭 ${t('starfield.orient_south_up').replace(/\s*\([^)]*\)/, '').trim()}` : `🧭 ${t('starfield.orient_north_up').replace(/\s*\([^)]*\)/, '').trim()}`);
   const orientColor = orientation === 'natural'
     ? (fieldRot.isOverhead ? '#f59e0b' : '#34d399')
     : (orientation === 'southUp' ? '#38bdf8' : '#cbd5e1');
-  ctx.strokeText(orientText, 10, 25);
+  ctx.strokeText(orientShort, 8, 23);
   ctx.fillStyle = orientColor;
-  ctx.fillText(orientText, 10, 25);
+  ctx.fillText(orientShort, 8, 23);
 
-  // Top-right: Planet altitude & Sun separation
+  // Top-right: Planet altitude & Sun separation (compact, never collides with center Zenith)
   const sunBody = options.otherBodies?.find(b => b.type === 'sun');
   const sunSeparationDeg = sunBody
     ? angularSeparationDeg(planet.ra, planet.dec, sunBody.ra, sunBody.dec)
@@ -1786,27 +1783,27 @@ export function renderStarfield(
   if (horizonParams) {
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
-    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.strokeStyle = 'rgba(2, 6, 17, 0.95)';
     ctx.lineWidth = 3;
     const altDeg = horizonParams.planetAltDeg;
     const sign = altDeg >= 0 ? '+' : '';
-    const altText = `Alt: ${sign}${altDeg.toFixed(1)}°${altDeg < 0 ? ' (Below)' : ''}`;
-    ctx.strokeText(altText, cssWidth - 10, 10);
+    const altText = `Alt: ${sign}${altDeg.toFixed(1)}°${altDeg < 0 ? ' (v)' : ''}`;
+    ctx.strokeText(altText, cssWidth - 8, 8);
     ctx.fillStyle = altDeg >= 0 ? '#34d399' : '#f87171';
-    ctx.fillText(altText, cssWidth - 10, 10);
+    ctx.fillText(altText, cssWidth - 8, 8);
 
-    ctx.font = 'bold 10px monospace';
-    const facingHudText = `Facing: ${horizonParams.planetAzDeg.toFixed(0)}° ${horizonParams.planetAzCompass}`;
-    ctx.strokeText(facingHudText, cssWidth - 10, 25);
+    ctx.font = 'bold 9.5px monospace';
+    const facingHudText = `${horizonParams.planetAzCompass} (${horizonParams.planetAzDeg.toFixed(0)}°)`;
+    ctx.strokeText(facingHudText, cssWidth - 8, 23);
     ctx.fillStyle = '#38bdf8';
-    ctx.fillText(facingHudText, cssWidth - 10, 25);
+    ctx.fillText(facingHudText, cssWidth - 8, 23);
 
     if (sunSeparationDeg !== undefined && sunSeparationDeg < 30.0 && !inFieldBodies.some(b => b.type === 'sun')) {
-      const sunSepText = `☀️ Sun: ${sunSeparationDeg.toFixed(1)}° away`;
-      ctx.strokeText(sunSepText, cssWidth - 10, 40);
+      const sunSepText = `☀️ Sun: ${sunSeparationDeg.toFixed(1)}°`;
+      ctx.strokeText(sunSepText, cssWidth - 8, 38);
       ctx.fillStyle = '#f59e0b';
-      ctx.fillText(sunSepText, cssWidth - 10, 40);
+      ctx.fillText(sunSepText, cssWidth - 8, 38);
     }
   }
 

@@ -689,6 +689,16 @@ function render() {
   const root = document.getElementById('app');
   if (!root) return;
 
+  // Prevent background page scrolling ("double scroll" bug) when any modal is open
+  const isAnyModalOpen = Boolean(state.selectedPlanet || state.searchOpen || state.tourModalOpen);
+  if (isAnyModalOpen) {
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('overflow-hidden', 'modal-open');
+  } else {
+    document.body.style.overflow = '';
+    document.body.classList.remove('overflow-hidden', 'modal-open');
+  }
+
   const now = new Date();
   const isDarkSkyNow = Boolean(
     state.sunEvents?.astroDusk &&
@@ -1676,36 +1686,43 @@ function renderPlanetModal(): string {
   }
 
   return `
-    <div id="planetModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-fade-in">
+    <div id="planetModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-fade-in overscroll-contain">
       <div class="planet-modal-content bg-[#161b22] border border-[#30363d] rounded-2xl w-full shadow-2xl flex flex-col overflow-hidden animate-scale-up">
         
-        <!-- Header: Sticky / fixed at top -->
-        <div class="flex items-center justify-between p-3.5 sm:p-4 border-b border-[#30363d] bg-black/25 shrink-0">
-          <div class="flex items-center gap-3">
-            <span class="text-3xl font-bold w-8 text-center drop-shadow" style="color: ${pColors.fill}">${p.symbol}</span>
-            <div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-lg font-bold text-[#e6edf3]">${p.name}</h3>
-                <span class="px-2 py-0.5 rounded text-xs font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
+        <!-- Header Row 1: Target Identity, Status Badges & Dedicated Close Button (Never overflows) -->
+        <div class="flex items-center justify-between p-3 sm:p-4 border-b border-[#30363d] bg-black/35 shrink-0 gap-2">
+          <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <span class="text-2xl sm:text-3xl font-bold w-7 sm:w-8 text-center shrink-0 drop-shadow" style="color: ${pColors.fill}">${p.symbol}</span>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 class="text-base sm:text-lg font-bold text-[#e6edf3] leading-snug">${p.name}</h3>
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30 shrink-0">
                   ${p.constellation}
                 </span>
                 ${isRadiant ? `
-                  <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                  <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 shrink-0">
                     ${t('meteors.radiant_label')}
                   </span>
                 ` : ''}
-                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isPrime ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30' : 'bg-slate-700/30 text-slate-300 border border-slate-700/50'}">
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isPrime ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30' : 'bg-slate-700/30 text-slate-300 border border-slate-700/50'} shrink-0">
                   ${p.status}
                 </span>
-                <span id="modalPlanetAltBadge" class="px-2 py-0.5 rounded text-[11px] font-bold ${isAboveHorizon ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}">
+                <span id="modalPlanetAltBadge" class="px-2 py-0.5 rounded text-[11px] font-bold ${isAboveHorizon ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'} shrink-0">
                   Alt: ${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° · Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass} (${isAboveHorizon ? 'Above' : 'Below'})
                 </span>
               </div>
-              <p class="text-xs ${isRadiant ? 'text-sky-300/90 font-medium' : 'text-[#8b949e]'} mt-0.5">${isRadiant ? `${t('starfield.naked_eye_window', { fov: fovDeg.toFixed(0) })} · ${p.constellation}` : (state.starfieldAperture === 'circular' ? `${fovDeg}° Circular Eyepiece (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° Radius)` : `${fovDeg}° × ${fovDeg}° Sensor Frame`)}</p>
+              <p class="text-xs ${isRadiant ? 'text-sky-300/90 font-medium' : 'text-[#8b949e]'} mt-0.5 truncate">${isRadiant ? `${t('starfield.naked_eye_window', { fov: fovDeg.toFixed(0) })} · ${p.constellation}` : (state.starfieldAperture === 'circular' ? `${fovDeg}° Circular Eyepiece (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° Radius)` : `${fovDeg}° × ${fovDeg}° Sensor Frame`)}</p>
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
+          <button id="btnClosePlanetModal" class="p-2 rounded-xl text-[#8b949e] hover:text-white bg-white/5 hover:bg-white/10 border border-[#30363d] transition cursor-pointer shrink-0 active:scale-95" aria-label="${t('modal.close')}" title="${t('modal.close')}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <!-- Header Row 2: Optical Controls Sub-Toolbar (Full width, auto-wrapping, zero cell collision) -->
+        <div class="px-3 py-2 bg-[#090d16]/95 border-b border-[#30363d]/70 flex items-center justify-start sm:justify-between gap-1.5 flex-wrap shrink-0">
+          <div class="flex items-center gap-1.5 flex-wrap">
             <!-- Constellation Stick Lines Toggle Button -->
             <button
               id="btnToggleConstellationLines"
@@ -1756,7 +1773,7 @@ function renderPlanetModal(): string {
               }"
               title="Click to cycle orientation: Natural (Zenith Up / Level Horizon) → North Up → South Up"
             >
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="9"/>
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v4m0 10v4m-9-9h4m10 0h4"/>
               </svg>
@@ -1768,11 +1785,12 @@ function renderPlanetModal(): string {
                   : `🧭 ${t('starfield.orient_north_up').split('(')[0].trim()}`
               }</span>
             </button>
-
-            <button id="btnClosePlanetModal" class="p-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/10 transition cursor-pointer" aria-label="${t('modal.close')}">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
           </div>
+
+          <div class="text-[11px] text-[#8b949e] font-mono hidden md:block">
+            ${isRadiant ? '50° Naked Eye' : (state.starfieldAperture === 'circular' ? `${fovDeg}° Circular Eyepiece` : `${fovDeg}° Sensor Frame`)}
+          </div>
+        </div>
         </div>
 
         <!-- Scrollable Modal Body: Unified scroll, zero overlap -->
@@ -1841,25 +1859,25 @@ function renderPlanetModal(): string {
 
               <!-- Coordinates & Telemetry Chip Bar -->
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 bg-black/30 rounded-xl border border-[#30363d]/60 text-xs">
-                <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('modal.ra')}</span>
-                  <span class="font-bold text-[#e6edf3] text-sm">${formatRa(coords.ra)}</span>
-                  <span class="text-[10px] text-[#8b949e] block font-mono">(${coords.ra.toFixed(2)}°)</span>
+                <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40 min-w-0">
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block truncate">${t('modal.ra')}</span>
+                  <span class="font-bold text-[#e6edf3] text-sm truncate block">${formatRa(coords.ra)}</span>
+                  <span class="text-[10px] text-[#8b949e] block font-mono truncate">(${coords.ra.toFixed(2)}°)</span>
                 </div>
-                <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('modal.dec')}</span>
-                  <span class="font-bold text-[#e6edf3] text-sm">${formatDec(coords.dec)}</span>
-                  <span class="text-[10px] text-[#8b949e] block font-mono">(${coords.dec >= 0 ? '+' : ''}${coords.dec.toFixed(2)}°)</span>
+                <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40 min-w-0">
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block truncate">${t('modal.dec')}</span>
+                  <span class="font-bold text-[#e6edf3] text-sm truncate block">${formatDec(coords.dec)}</span>
+                  <span class="text-[10px] text-[#8b949e] block font-mono truncate">(${coords.dec >= 0 ? '+' : ''}${coords.dec.toFixed(2)}°)</span>
                 </div>
-                <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('starfield.horizon')}</span>
-                  <span id="chipPlanetAlt" class="font-bold ${isAboveHorizon ? 'text-emerald-400' : 'text-rose-400'} text-sm">${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° Alt</span>
-                  <span id="chipPlanetAz" class="text-[10px] text-sky-300 block font-mono font-medium">Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass}</span>
+                <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40 min-w-0">
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block truncate">${t('starfield.horizon')}</span>
+                  <span id="chipPlanetAlt" class="font-bold ${isAboveHorizon ? 'text-emerald-400' : 'text-rose-400'} text-sm truncate block">${isAboveHorizon ? '+' : ''}${planetAlt.toFixed(1)}° Alt</span>
+                  <span id="chipPlanetAz" class="text-[10px] text-sky-300 block font-mono font-medium truncate">Facing ${hp.planetAzDeg.toFixed(0)}° ${hp.planetAzCompass}</span>
                 </div>
-                <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${isRadiant ? t('meteors.radiant_label') : t('starfield.title')}</span>
-                  <span class="font-bold ${isRadiant ? 'text-sky-300' : 'text-amber-300'} text-sm">${isRadiant ? `${fovDeg}° Naked Eye` : (state.starfieldAperture === 'circular' ? `${fovDeg}° ◯ (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `${fovDeg}° ▢ Sensor`)}</span>
-                  <span class="text-[10px] text-[#8b949e] block">${isRadiant ? 'Constellation Window' : (state.starfieldAperture === 'circular' ? `${t('starfield.eyepiece')} (Mag ≤ 6.0)` : `${t('starfield.sensor')} (Mag ≤ 6.0)`)}</span>
+                <div class="p-2 rounded-xl bg-white/[0.02] border border-[#30363d]/40 min-w-0">
+                  <span class="text-[10px] uppercase font-bold text-[#8b949e] block truncate">${isRadiant ? t('meteors.radiant_label') : t('starfield.title')}</span>
+                  <span class="font-bold ${isRadiant ? 'text-sky-300' : 'text-amber-300'} text-sm truncate block">${isRadiant ? `${fovDeg}° Naked Eye` : (state.starfieldAperture === 'circular' ? `${fovDeg}° ◯ (${(fovDeg / 2).toFixed(1).replace(/\.0$/, '')}° r)` : `${fovDeg}° ▢ Sensor`)}</span>
+                  <span class="text-[10px] text-[#8b949e] block truncate">${isRadiant ? 'Constellation Window' : (state.starfieldAperture === 'circular' ? `${t('starfield.eyepiece')} (Mag ≤ 6.0)` : `${t('starfield.sensor')} (Mag ≤ 6.0)`)}</span>
                 </div>
               </div>
 
@@ -2067,47 +2085,47 @@ function renderPlanetModal(): string {
                   </div>
 
                   <div class="grid grid-cols-2 gap-2 text-xs">
-                    <div class="p-2 rounded-xl bg-black/40 border border-white/5">
-                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('starfield.angular_separation')}</span>
-                      <span class="font-bold text-sky-300 text-sm font-mono">
+                    <div class="p-2 rounded-xl bg-black/40 border border-white/5 min-w-0">
+                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block leading-tight truncate">${t('starfield.angular_separation')}</span>
+                      <span class="font-bold text-sky-300 text-sm font-mono block mt-0.5 truncate">
                         ${state.starfieldSelectedTarget.separationDeg < 1.0
                           ? `${(state.starfieldSelectedTarget.separationDeg * 60).toFixed(1)}' (${(state.starfieldSelectedTarget.separationDeg * 3600).toFixed(0)}")`
                           : `${state.starfieldSelectedTarget.separationDeg.toFixed(2)}°`
                         }
                       </span>
-                      <span class="text-[10px] text-[#8b949e] block">from ${p.name} center</span>
+                      <span class="text-[10px] text-[#8b949e] block truncate mt-0.5">from ${p.name} center</span>
                     </div>
 
-                    <div class="p-2 rounded-xl bg-black/40 border border-white/5">
-                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('starfield.bearing')}</span>
-                      <span class="font-bold text-sky-300 text-sm font-mono">
+                    <div class="p-2 rounded-xl bg-black/40 border border-white/5 min-w-0">
+                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block leading-tight truncate">${t('starfield.bearing')}</span>
+                      <span class="font-bold text-sky-300 text-sm font-mono block mt-0.5 truncate">
                         ${state.starfieldSelectedTarget.bearingDeg.toFixed(0)}° (${state.starfieldSelectedTarget.bearingCompass})
                       </span>
-                      <span class="text-[10px] text-[#8b949e] block">from North through East</span>
+                      <span class="text-[10px] text-[#8b949e] block truncate mt-0.5">from North through East</span>
                     </div>
 
-                    <div class="p-2 rounded-xl bg-black/40 border border-white/5">
-                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">${t('modal.magnitude')}</span>
-                      <span class="font-bold text-[#e6edf3] text-sm font-mono">
+                    <div class="p-2 rounded-xl bg-black/40 border border-white/5 min-w-0">
+                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block leading-tight truncate">${t('modal.magnitude')}</span>
+                      <span class="font-bold text-[#e6edf3] text-sm font-mono block mt-0.5 truncate">
                         ${state.starfieldSelectedTarget.mag !== undefined
                           ? `${state.starfieldSelectedTarget.mag >= 0 ? '+' : ''}${state.starfieldSelectedTarget.mag.toFixed(2)}`
                           : '—'
                         }
                       </span>
-                      <span class="text-[10px] text-[#8b949e] block">${state.starfieldSelectedTarget.mag !== undefined && state.starfieldSelectedTarget.mag <= 3 ? 'Bright Naked-Eye' : state.starfieldSelectedTarget.mag !== undefined && state.starfieldSelectedTarget.mag <= 6 ? 'Faint / Binocular' : 'Solar System'}</span>
+                      <span class="text-[10px] text-[#8b949e] block truncate mt-0.5">${state.starfieldSelectedTarget.mag !== undefined && state.starfieldSelectedTarget.mag <= 3 ? 'Bright Naked-Eye' : state.starfieldSelectedTarget.mag !== undefined && state.starfieldSelectedTarget.mag <= 6 ? 'Faint / Binocular' : 'Solar System'}</span>
                     </div>
 
-                    <div class="p-2 rounded-xl bg-black/40 border border-white/5">
-                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block">Classification / Color</span>
+                    <div class="p-2 rounded-xl bg-black/40 border border-white/5 min-w-0">
+                      <span class="text-[10px] uppercase font-bold text-[#8b949e] block leading-tight truncate">Classification / Color</span>
                       ${state.starfieldSelectedTarget.bv !== undefined ? `
-                        <div class="flex items-center gap-1.5 mt-0.5">
+                        <div class="flex items-center gap-1.5 mt-0.5 min-w-0">
                           <span class="w-2.5 h-2.5 rounded-full inline-block shrink-0 shadow-sm" style="background-color: ${bvToSpectralClass(state.starfieldSelectedTarget.bv).color}"></span>
-                          <span class="font-bold text-[#e6edf3] text-xs">${bvToSpectralClass(state.starfieldSelectedTarget.bv).type}</span>
+                          <span class="font-bold text-[#e6edf3] text-xs truncate">${bvToSpectralClass(state.starfieldSelectedTarget.bv).type}</span>
                         </div>
-                        <span class="text-[10px] text-[#8b949e] block truncate">${bvToSpectralClass(state.starfieldSelectedTarget.bv).desc}</span>
+                        <span class="text-[10px] text-[#8b949e] block truncate mt-0.5">${bvToSpectralClass(state.starfieldSelectedTarget.bv).desc}</span>
                       ` : `
-                        <span class="font-bold text-[#e6edf3] text-xs capitalize">${state.starfieldSelectedTarget.type}</span>
-                        <span class="text-[10px] text-[#8b949e] block">Solar System Body</span>
+                        <span class="font-bold text-[#e6edf3] text-xs capitalize block mt-0.5 truncate">${state.starfieldSelectedTarget.type}</span>
+                        <span class="text-[10px] text-[#8b949e] block truncate mt-0.5">Solar System Body</span>
                       `}
                     </div>
                   </div>

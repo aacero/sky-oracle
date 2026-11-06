@@ -48,16 +48,33 @@
   animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Body Scroll Lock & Modal Overlays */
+body.modal-open,
+body.overflow-hidden {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+#planetModalOverlay,
+#searchModalOverlay,
+#tourModalOverlay {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
 /* Starfield Planet Modal Responsive 3-Area Grid */
 .planet-modal-content {
   max-width: 32rem; /* 512px (max-w-lg) */
   max-height: 94vh;
+  overscroll-behavior: contain;
 }
 
 .planet-modal-body {
   flex: 1 1 0%;
   overflow-y: auto;
   min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .planet-modal-grid {
