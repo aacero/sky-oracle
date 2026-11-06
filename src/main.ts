@@ -2246,7 +2246,6 @@ function attachEventHandlers() {
     render();
   };
   document.getElementById('btnOpenTour')?.addEventListener('click', openTour);
-  document.getElementById('btnOpenTourHero')?.addEventListener('click', openTour);
   document.getElementById('btnOpenTourFromList')?.addEventListener('click', openTour);
 
   const closeTour = () => {
