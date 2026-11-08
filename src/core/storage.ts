@@ -8,9 +8,14 @@ export interface SavedLocation {
   lon: number;
 }
 
+export type DraggableCardId = 'moon' | 'sun' | 'planets' | 'meteors';
+
+export const DEFAULT_CARD_ORDER: DraggableCardId[] = ['moon', 'sun', 'planets', 'meteors'];
+
 const STORAGE_KEY_LOCATION = 'skyoracle_location';
 const STORAGE_KEY_RECENTS = 'skyoracle_recents';
 const STORAGE_KEY_UNIT = 'skyoracle_temp_unit';
+const STORAGE_KEY_CARD_ORDER = 'skyoracle_card_order';
 
 // Legacy storage keys preserved for seamless migration of existing users
 const LEGACY_KEY_LOCATION = 'sky_tonight_location';
@@ -94,5 +99,28 @@ function addToRecents(loc: SavedLocation): void {
     );
     recents.unshift(loc);
     localStorage.setItem(STORAGE_KEY_RECENTS, JSON.stringify(recents.slice(0, 5)));
+  } catch {}
+}
+
+export function loadCardOrder(): DraggableCardId[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CARD_ORDER);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (
+        Array.isArray(parsed) &&
+        parsed.length === DEFAULT_CARD_ORDER.length &&
+        DEFAULT_CARD_ORDER.every(id => parsed.includes(id))
+      ) {
+        return parsed as DraggableCardId[];
+      }
+    }
+  } catch {}
+  return [...DEFAULT_CARD_ORDER];
+}
+
+export function saveCardOrder(order: DraggableCardId[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_CARD_ORDER, JSON.stringify(order));
   } catch {}
 }

@@ -1,6 +1,7 @@
 import { formatShortDate } from '../core/astronomy.ts';
 import { t } from '../core/i18n.ts';
 import { MeteorCardData } from '../core/meteors.ts';
+import { renderDragHandle } from './dashboard-cards.ts';
 
 export function renderMeteorShowerCard(m: MeteorCardData | null): string {
   if (!m) return '';
@@ -10,9 +11,10 @@ export function renderMeteorShowerCard(m: MeteorCardData | null): string {
   const next = m.nextUpcomingShower;
 
   return `
-    <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg">
+    <section data-card-id="meteors" class="md:col-span-2 rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg relative">
       <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d] flex-wrap gap-2">
-        <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
+        <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-1.5">
+          ${renderDragHandle('meteors')}
           <span>☄️</span> ${t('meteors.title').toUpperCase()}
         </h3>
         <div class="flex items-center gap-2">

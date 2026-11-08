@@ -9,7 +9,10 @@ import {
   loadLocation,
   saveLocation,
   loadRecents,
-  DEFAULT_LOCATION
+  loadCardOrder,
+  saveCardOrder,
+  DEFAULT_LOCATION,
+  DEFAULT_CARD_ORDER
 } from './storage.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -90,6 +93,24 @@ describe('Storage, HTML Escaping & Hygiene Invariants', () => {
       const tokyo = { place: 'Tokyo, Japan', lat: 35.6762, lon: 139.6503 };
       store.set('sky_tonight_location', JSON.stringify(tokyo));
       expect(loadLocation()).toEqual(tokyo);
+    });
+  });
+
+  describe('loadCardOrder() & saveCardOrder()', () => {
+    it('returns DEFAULT_CARD_ORDER when empty and persists custom card order', () => {
+      expect(loadCardOrder()).toEqual(DEFAULT_CARD_ORDER);
+
+      const customOrder = ['planets', 'sun', 'moon', 'meteors'] as const;
+      saveCardOrder([...customOrder]);
+      expect(loadCardOrder()).toEqual([...customOrder]);
+    });
+
+    it('falls back to DEFAULT_CARD_ORDER if stored array is incomplete or corrupted', () => {
+      store.set('skyoracle_card_order', JSON.stringify(['moon', 'sun']));
+      expect(loadCardOrder()).toEqual(DEFAULT_CARD_ORDER);
+
+      store.set('skyoracle_card_order', 'not-valid-json');
+      expect(loadCardOrder()).toEqual(DEFAULT_CARD_ORDER);
     });
   });
 

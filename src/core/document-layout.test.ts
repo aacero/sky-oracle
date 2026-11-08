@@ -4,6 +4,7 @@ import * as path from 'path';
 import ts from 'typescript';
 import { Window } from 'happy-dom';
 import { t } from './i18n.ts';
+import { renderDraggableDashboardCards } from '../ui/dashboard-cards.ts';
 
 const mainFilePath = path.resolve(__dirname, '../main.ts');
 const mainSrc = fs.readFileSync(mainFilePath, 'utf8');
@@ -85,7 +86,23 @@ function reconstructHtml(node: ts.TemplateExpression | ts.NoSubstitutionTemplate
     } else if (ts.isCallExpression(expr)) {
       const sf = expr.getSourceFile();
       const text = expr.getText(sf);
-      if (text.includes('renderMeteorShowerCard')) {
+      if (text.includes('renderDraggableDashboardCards')) {
+        const cardFns = ['renderMoonCard', 'renderSunCard', 'renderPlanetsCard', 'renderMeteorShowerCard'];
+        exprHtml = cardFns
+          .map(fnName => {
+            const fn = findFunction(fnName);
+            if (!fn) return '';
+            const tpls = getTemplateNodes(fn);
+            return tpls.length > 0 ? reconstructHtml(tpls[0]) : '';
+          })
+          .join('\n');
+      } else if (text.includes('renderDragHandle')) {
+        const fn = findFunction('renderDragHandle');
+        if (fn) {
+          const tpls = getTemplateNodes(fn);
+          if (tpls.length > 0) exprHtml = reconstructHtml(tpls[0]);
+        }
+      } else if (text.includes('renderMeteorShowerCard')) {
         const meteorNode = findFunction('renderMeteorShowerCard');
         if (meteorNode) {
           const tpls = getTemplateNodes(meteorNode);
@@ -208,6 +225,17 @@ describe('Document Structure & Layout Regressions', () => {
       expect(validateStrictHtmlBalance(html, 'renderMeteorShowerCard()')).toBe(true);
     });
 
+    it('validates renderMoonCard(), renderSunCard(), and renderPlanetsCard() have 100% balanced HTML tags', () => {
+      for (const fnName of ['renderMoonCard', 'renderSunCard', 'renderPlanetsCard']) {
+        const fnNode = findFunction(fnName);
+        expect(fnNode, `${fnName} not found`).not.toBeNull();
+        const tpls = getTemplateNodes(fnNode!);
+        expect(tpls.length).toBeGreaterThan(0);
+        const html = reconstructHtml(tpls[0]);
+        expect(validateStrictHtmlBalance(html, `${fnName}()` )).toBe(true);
+      }
+    });
+
     it('validates renderSearchModal() has 100% balanced HTML tags', () => {
       const fnNode = findFunction('renderSearchModal');
       expect(fnNode).not.toBeNull();
@@ -264,8 +292,8 @@ describe('Document Structure & Layout Regressions', () => {
     });
   });
 
-  describe('Main Page Card Order Invariants', () => {
-    it('enforces the exact card order: Hero Verdict -> Moon & Sun -> Solar System Targets -> Meteor Showers', () => {
+  describe('Main Page Card Order & Independent Draggable Cards Invariants', () => {
+    it('enforces the default card order: Hero Verdict (pinned) -> Moon -> Sun -> Solar System Targets -> Meteor Showers', () => {
       const fnNode = findFunction('render')!;
       const html = reconstructHtml(getTemplateNodes(fnNode)[0]);
       const win = new Window();
@@ -275,27 +303,86 @@ describe('Document Structure & Layout Regressions', () => {
       expect(main).not.toBeNull();
       const mainChildren = Array.from(main!.children);
 
-      // Section 0: Hero Verdict & Observing Window
+      // Section 0: Hero Verdict & Observing Window (pinned on top, no drag handle)
       const heroSection = mainChildren[0];
       expect(heroSection.tagName.toLowerCase()).toBe('section');
       expect(heroSection.textContent).toMatch(/OBSERVING WINDOW|TONIGHT/i);
+      expect(heroSection.getAttribute('data-card-id')).toBeNull();
+      expect(heroSection.querySelector('.card-drag-handle')).toBeNull();
 
-      // Section 1: 2-column Moon & Sun ephemeris grid
-      const ephemerisGrid = mainChildren[1];
-      expect(ephemerisGrid.tagName.toLowerCase()).toBe('div');
-      expect(ephemerisGrid.className).toContain('grid');
-      const ephemerisCards = ephemerisGrid.querySelectorAll('section');
-      expect(ephemerisCards.length).toBe(2);
+      // Section 1: Moon Ephemeris card (independently draggable)
+      const moonSection = mainChildren[1];
+      expect(moonSection.tagName.toLowerCase()).toBe('section');
+      expect(moonSection.getAttribute('data-card-id')).toBe('moon');
+      expect(moonSection.querySelector('.card-drag-handle')).not.toBeNull();
 
-      // Section 2: Solar System Targets card (Planet Table)
-      const planetSection = mainChildren[2];
+      // Section 2: Sun & Twilight card (independently draggable)
+      const sunSection = mainChildren[2];
+      expect(sunSection.tagName.toLowerCase()).toBe('section');
+      expect(sunSection.getAttribute('data-card-id')).toBe('sun');
+      expect(sunSection.querySelector('.card-drag-handle')).not.toBeNull();
+
+      // Section 3: Solar System Targets card (Planet Table, independently draggable)
+      const planetSection = mainChildren[3];
       expect(planetSection.tagName.toLowerCase()).toBe('section');
+      expect(planetSection.getAttribute('data-card-id')).toBe('planets');
       expect(planetSection.textContent).toMatch(/SOLAR SYSTEM TARGETS/i);
+      expect(planetSection.querySelector('.card-drag-handle')).not.toBeNull();
 
-      // Section 3: Meteor Showers card
-      const meteorSection = mainChildren[3];
+      // Section 4: Meteor Showers card (independently draggable)
+      const meteorSection = mainChildren[4];
       expect(meteorSection.tagName.toLowerCase()).toBe('section');
+      expect(meteorSection.getAttribute('data-card-id')).toBe('meteors');
       expect(meteorSection.textContent).toMatch(/METEOR SHOWERS/i);
+      expect(meteorSection.querySelector('.card-drag-handle')).not.toBeNull();
+    });
+
+    it('dynamically reorders the 4 draggable cards and adapts Moon/Sun column spans when separated', () => {
+      const dummyMeteor = {
+        primaryShower: null,
+        otherActiveShowers: [],
+        nextUpcomingShower: null
+      };
+
+      // Case 1: Moon and Sun separated by Planets -> both Moon and Sun expand to md:col-span-2
+      const separatedHtml = renderDraggableDashboardCards(
+        ['moon', 'planets', 'sun', 'meteors'],
+        null,
+        null,
+        [],
+        dummyMeteor
+      );
+      const winSep = new Window();
+      winSep.document.body.innerHTML = separatedHtml;
+      const sepSections = Array.from(winSep.document.querySelectorAll('section[data-card-id]'));
+      expect(sepSections.map(s => s.getAttribute('data-card-id'))).toEqual([
+        'moon',
+        'planets',
+        'sun',
+        'meteors'
+      ]);
+      expect(sepSections[0].className).toContain('md:col-span-2');
+      expect(sepSections[2].className).toContain('md:col-span-2');
+
+      // Case 2: Sun and Moon adjacent (swapped) -> both use md:col-span-1 side-by-side
+      const adjacentHtml = renderDraggableDashboardCards(
+        ['planets', 'sun', 'moon', 'meteors'],
+        null,
+        null,
+        [],
+        dummyMeteor
+      );
+      const winAdj = new Window();
+      winAdj.document.body.innerHTML = adjacentHtml;
+      const adjSections = Array.from(winAdj.document.querySelectorAll('section[data-card-id]'));
+      expect(adjSections.map(s => s.getAttribute('data-card-id'))).toEqual([
+        'planets',
+        'sun',
+        'moon',
+        'meteors'
+      ]);
+      expect(adjSections[1].className).toContain('md:col-span-1');
+      expect(adjSections[2].className).toContain('md:col-span-1');
     });
   });
 

@@ -234,6 +234,7 @@ const en = {
   'sun.local_solar_times': "Local Solar Times",
   'planets.amber_badge': "Amber = Evening / Night Viewable",
   'planets.discovery_prompt': "Tap any target below to launch its interactive 10° eyepiece, live horizon & time scrubber.",
+  'app.drag_to_reorder': "Drag to reorder card",
 };
 
 export type TranslationKey = keyof typeof en;
@@ -448,6 +449,7 @@ const es: TranslationDictionary = {
   'sun.local_solar_times': "Horas solares locales",
   'planets.amber_badge': "Ámbar = Visible al atardecer / noche",
   'planets.discovery_prompt': "Toca cualquier objetivo para abrir su ocular interactivo de 10°, horizonte en vivo y línea de tiempo.",
+  'app.drag_to_reorder': "Arrastrar para reordenar tarjeta",
 };
 
 const pt: TranslationDictionary = {
@@ -659,6 +661,7 @@ const pt: TranslationDictionary = {
   'sun.local_solar_times': "Horários solares locais",
   'planets.amber_badge': "Âmbar = Visível à noite / entardecer",
   'planets.discovery_prompt': "Toque em qualquer alvo abaixo para abrir a ocular interativa de 10°, horizonte ao vivo e controle de tempo.",
+  'app.drag_to_reorder': "Arraste para reordenar o cartão",
 };
 
 const de: TranslationDictionary = {
@@ -870,6 +873,7 @@ const de: TranslationDictionary = {
   'sun.local_solar_times': "Lokale Sonnenzeiten",
   'planets.amber_badge': "Bernstein = Abends / Nachts sichtbar",
   'planets.discovery_prompt': "Tippe auf ein Ziel unten, um das interaktive 10°-Okular, den Live-Horizont und den Zeitregler zu öffnen.",
+  'app.drag_to_reorder': "Ziehen zum Neuordnen der Karte",
 };
 
 const fr: TranslationDictionary = {
@@ -1081,6 +1085,7 @@ const fr: TranslationDictionary = {
   'sun.local_solar_times': "Heures solaires locales",
   'planets.amber_badge': "Ambre = Visible le soir / la nuit",
   'planets.discovery_prompt': "Touchez une cible ci-dessous pour ouvrir l'oculaire interactif 10°, l'horizon en direct et le curseur temporel.",
+  'app.drag_to_reorder': "Glisser pour réorganiser la carte",
 };
 
 const it: TranslationDictionary = {
@@ -1273,6 +1278,7 @@ const it: TranslationDictionary = {
   'sun.local_solar_times': "Orari solari locali",
   'planets.amber_badge': "Ambra = Visibile di sera / notte",
   'planets.discovery_prompt': "Tocca qualsiasi obiettivo qui sotto per aprire l'oculare interattivo da 10°, l'orizzonte dal vivo e il cursore temporale.",
+  'app.drag_to_reorder': "Trascina per riordinare la scheda",
 };
 
 const ja: TranslationDictionary = {
@@ -1465,6 +1471,7 @@ const ja: TranslationDictionary = {
   'sun.local_solar_times': "現地の太陽・薄明時刻",
   'planets.amber_badge': "琥珀色 ＝ 夕方・夜間に好条件",
   'planets.discovery_prompt': "天体をタップすると、10°アイピース星図・地平線・時間スライダーが開きます。",
+  'app.drag_to_reorder': "ドラッグしてカードを並べ替え",
 };
 
 const DICTIONARIES: Record<Locale, TranslationDictionary> = {

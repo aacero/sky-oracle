@@ -7,7 +7,6 @@ import {
   sunPosition,
   getMoonCoordinates,
   formatTime,
-  formatShortDate,
   SunEvents,
   MoonInfo,
   PlanetInfo
@@ -25,8 +24,11 @@ import {
   saveLocation,
   loadTempUnit,
   saveTempUnit,
+  loadCardOrder,
+  saveCardOrder,
   escapeHtml,
-  SavedLocation
+  SavedLocation,
+  DraggableCardId
 } from './core/storage.ts';
 
 import {
@@ -64,18 +66,13 @@ import {
 
 import { drawMoonCanvas } from './ui/moon-canvas.ts';
 import {
-  getLocalizedPlanetName,
   getLocalizedVerdict,
   getLocalizedDewRisk,
-  getLocalizedMoonPhase,
-  getLocalizedMoonDirection,
-  isPrimePlanetTarget,
-  formatLocalizedPlanetStatus,
   getLocalizedObservingDate,
   getMoonAltitudeY,
   generateSmoothCurvePath
 } from './ui/i18n-formatters.ts';
-import { renderMeteorShowerCard } from './ui/meteor-card.ts';
+import { renderDraggableDashboardCards, attachCardDragHandlers } from './ui/dashboard-cards.ts';
 import { renderSearchResultsList, renderSearchModal } from './ui/search-modal.ts';
 import { getTourSlides, renderTourModal } from './ui/tour-modal.ts';
 
@@ -124,6 +121,7 @@ interface AppState {
   installPrompt: BeforeInstallPromptEvent | null;
   tourModalOpen: boolean;
   tourSlideIndex: number;
+  cardOrder: DraggableCardId[];
 }
 
 const initialLoc = loadLocation();
@@ -153,7 +151,8 @@ const state: AppState = {
   searchLoading: false,
   installPrompt: null,
   tourModalOpen: false,
-  tourSlideIndex: 0
+  tourSlideIndex: 0,
+  cardOrder: loadCardOrder()
 };
 
 // ── PWA Install Prompt Listener ─────────────────────────────────────────────
@@ -608,10 +607,10 @@ function render() {
     ` : ''}
 
     <!-- Main Content -->
-    <main class="flex-1 py-6 flex flex-col gap-6">
+    <main class="flex-1 py-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
 
-      <!-- Hero Verdict & Observing Summary Card -->
-      <section class="rounded-2xl p-5 sm:p-6 bg-[#161b22] border border-[#30363d] relative overflow-hidden shadow-xl" style="border-left: 6px solid ${state.forecast?.verdictAccent || '#58a6ff'};">
+      <!-- Hero Verdict & Observing Summary Card (Pinned on Top) -->
+      <section class="md:col-span-2 rounded-2xl p-5 sm:p-6 bg-[#161b22] border border-[#30363d] relative overflow-hidden shadow-xl" style="border-left: 6px solid ${state.forecast?.verdictAccent || '#58a6ff'};">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div class="flex items-center gap-2 mb-2 flex-wrap">
@@ -829,197 +828,14 @@ function render() {
         </div>
       </section>
 
-      <!-- Moon & Sun Ephemeris Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        <!-- Moon Phase Card -->
-        <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d]">
-              <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
-                <span>🌙</span> ${t('moon.title').toUpperCase()}
-              </h3>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 text-[#58a6ff] border border-[#58a6ff]/30">
-                  ${getLocalizedMoonDirection(state.moon?.phaseDirection)}
-                </span>
-                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-400 border border-amber-400/30">
-                  ${t('moon.illum', { pct: state.moon?.illum || 0 })}
-                </span>
-              </div>
-            </div>
-
-            <!-- Top Row: Moon Canvas + Details -->
-            <div class="flex items-center justify-between gap-4">
-              <div class="flex items-center gap-4">
-                <canvas id="moonCanvas" width="180" height="180" class="w-20 h-20 sm:w-24 sm:h-24 shrink-0 drop-shadow-[0_0_14px_rgba(251,191,36,0.3)]"></canvas>
-                <div>
-                  <h4 class="text-lg font-bold text-[#e6edf3]">${getLocalizedMoonPhase(state.moon?.name)}</h4>
-                  <p class="text-xs text-[#8b949e] mt-0.5">
-                    ${t('moon.age_label')}: <span class="text-white font-medium">${state.moon?.age.toFixed(1) || '0'} ${t('moon.days')}</span> · ${getLocalizedMoonDirection(state.moon?.phaseDirection)}
-                  </p>
-                  <p class="text-xs text-[#8b949e] mt-0.5">
-                    ${t('moon.altitude_label')}: <span class="${(state.moon?.isUp ?? false) ? 'text-emerald-400' : 'text-[#8b949e]'} font-medium">
-                      ${state.moon?.altitude !== undefined ? `${state.moon.altitude > 0 ? '+' : ''}${state.moon.altitude.toFixed(1)}° (${state.moon.isUp ? t('moon.above_horizon') : t('moon.below_horizon')})` : '—'}
-                    </span>
-                  </p>
-                  <p class="text-xs text-[#8b949e] mt-0.5">
-                    ${t('moon.dso_impact')}: <span class="${(state.moon?.illum || 0) < 30 ? 'text-emerald-400' : 'text-amber-400'} font-medium">${(state.moon?.illum || 0) < 30 ? t('moon.dso_minimal') : t('moon.dso_moderate')}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Lunar Cycle Progress Bar -->
-            <div class="mt-4 pt-3 border-t border-[#30363d]/60">
-              <div class="flex justify-between items-center text-[10px] font-bold text-[#8b949e] tracking-wider uppercase mb-1.5">
-                <span>${t('moon.lunar_cycle')}</span>
-                <span>${Math.round((state.moon?.cyclePos || 0) * 100)}%</span>
-              </div>
-              <div class="w-full h-2 rounded-full bg-[#21262d] overflow-hidden relative">
-                <div class="h-full bg-gradient-to-r from-amber-400/80 to-amber-300 rounded-full transition-all duration-500" style="width: ${Math.max(2, Math.min(100, Math.round((state.moon?.cyclePos || 0) * 100)))}%"></div>
-              </div>
-              <div class="flex justify-between text-[10px] text-[#8b949e] font-semibold mt-1">
-                <span>NEW</span>
-                <span>FULL</span>
-                <span>NEW</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Rise / Set / Next Dates Grid -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pt-3 border-t border-[#30363d]/60 text-xs">
-            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-              <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.rises')}</span>
-              <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.rise || null)}</span>
-            </div>
-            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-              <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.sets')}</span>
-              <span class="text-sm font-bold text-amber-300">${formatTime(state.moon?.set || null)}</span>
-            </div>
-            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-              <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.next_new')}</span>
-              <span class="text-sm font-bold text-[#58a6ff]">${formatShortDate(state.moon?.nextNew || null)}</span>
-            </div>
-            <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-              <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('moon.next_full')}</span>
-              <span class="text-sm font-bold text-amber-300">${formatShortDate(state.moon?.nextFull || null)}</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- Sun & Twilight Events Card -->
-        <section class="rounded-2xl p-5 bg-[#161b22] border border-[#30363d] shadow-lg flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d]">
-              <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
-                <span>☀️</span> ${t('sun.title').toUpperCase()}
-              </h3>
-              <span class="text-xs text-[#8b949e]">${t('sun.local_solar_times')}</span>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('sun.sunset')} (-0.8°)</span>
-                <span class="text-sm font-bold text-amber-300">${formatTime(state.sunEvents?.sunset || null)}</span>
-              </div>
-              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('sun.civil_dusk')} (-6°)</span>
-                <span class="text-sm font-bold text-sky-300">${formatTime(state.sunEvents?.civilDusk || null)}</span>
-              </div>
-              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('sun.nautical_dusk')} (-12°)</span>
-                <span class="text-sm font-bold text-indigo-300">${formatTime(state.sunEvents?.nauticalDusk || null)}</span>
-              </div>
-              <div class="p-2.5 rounded-xl bg-[#58a6ff]/10 border border-[#58a6ff]/40">
-                <span class="text-[#58a6ff] block text-[10px] uppercase font-bold">🌌 ${t('sun.astro_dusk')} (-18°)</span>
-                <span class="text-sm font-bold text-[#58a6ff]">${formatTime(state.sunEvents?.astroDusk || null)}</span>
-              </div>
-              <div class="p-2.5 rounded-xl bg-[#58a6ff]/10 border border-[#58a6ff]/40">
-                <span class="text-[#58a6ff] block text-[10px] uppercase font-bold">🌅 ${t('sun.astro_dawn')} (-18°)</span>
-                <span class="text-sm font-bold text-[#58a6ff]">${formatTime(state.sunEvents?.astroDawn || null)}</span>
-              </div>
-              <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
-                <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('sun.sunrise')} (-0.8°)</span>
-                <span class="text-sm font-bold text-amber-300">${formatTime(state.sunEvents?.sunrise || null)}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-      </div>
-
-      <!-- Solar System Targets Card -->
-      <section class="rounded-2xl p-5 sm:p-6 bg-[#161b22] border border-[#30363d] shadow-lg">
-        <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#30363d] flex-wrap gap-2">
-          <h3 class="text-sm font-bold tracking-wider uppercase text-[#8b949e] flex items-center gap-2">
-            <span>🪐</span> ${t('planets.title').toUpperCase()}
-          </h3>
-          <div class="flex items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20" title="${t('planets.amber_badge')}">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-              ${t('planets.amber_badge')}
-            </span>
-          </div>
-        </div>
-
-        <!-- Discovery Callout Banner -->
-        <div class="flex items-center justify-between p-2.5 mb-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-sky-500/10 to-transparent border border-amber-500/25 text-xs text-[#cbd5e1]">
-          <div class="flex items-center gap-2">
-            <span class="text-base">💡</span>
-            <span>${t('planets.discovery_prompt')}</span>
-          </div>
-          <button id="btnOpenTourFromList" class="shrink-0 text-[11px] font-bold text-amber-300 hover:text-white hover:underline transition ml-2 cursor-pointer">
-            ${t('app.tour')} ➔
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          ${getSolarSystemTargets(state).map(p => {
-            const isPrime = isPrimePlanetTarget(p, state.moon);
-            const localizedName = getLocalizedPlanetName(p.key, p.name);
-            return `
-              <div
-                role="button"
-                tabindex="0"
-                data-planet="${p.key}"
-                class="btnPlanetCard flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-[#30363d]/50 hover:border-amber-400/40 transition cursor-pointer group"
-                title="${t('planets.view_starfield')} (${localizedName})"
-              >
-                <div class="flex items-center gap-3">
-                  <span class="text-xl ${isPrime ? 'text-amber-400' : 'text-[#e6edf3]'} font-bold w-6 text-center group-hover:scale-110 transition-transform">${p.symbol}</span>
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <span class="font-bold text-sm text-[#e6edf3] group-hover:text-amber-300 transition-colors">${localizedName}</span>
-                      <!-- Plain-text Constellation badge -->
-                      <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#56d4dd]/15 text-[#56d4dd] border border-[#56d4dd]/30">
-                        ${p.constellation}
-                      </span>
-                    </div>
-                    <span class="text-xs font-medium ${isPrime ? 'text-amber-400' : 'text-[#8b949e]'}">
-                      ${formatLocalizedPlanetStatus(p, state.moon)}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-3">
-                  <div class="text-right text-xs text-[#8b949e]">
-                    ${p.set ? `<div>${t('planets.set')} ${formatTime(p.set)}</div>` : ''}
-                    ${p.rise ? `<div>${t('planets.rise')} ${formatTime(p.rise)}</div>` : ''}
-                  </div>
-                  <div class="flex items-center gap-1 text-[#8b949e] group-hover:text-amber-400 transition-colors pl-1">
-                    <span class="text-[11px] font-bold hidden sm:inline opacity-70 group-hover:opacity-100 transition-opacity">10° Field</span>
-                    <span class="text-sm">🔭</span>
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </section>
-
-      <!-- Meteor Showers Card -->
-      ${renderMeteorShowerCard(state.meteors)}
+      <!-- Independently Draggable Dashboard Cards (Moon, Sun, Planets, Meteors) -->
+      ${renderDraggableDashboardCards(
+        state.cardOrder,
+        state.moon,
+        state.sunEvents,
+        getSolarSystemTargets(state),
+        state.meteors
+      )}
     </main>
 
     <!-- Footer -->
@@ -1614,6 +1430,15 @@ function renderPlanetModal(): string {
 }
 
 function attachEventHandlers() {
+  attachCardDragHandlers(
+    () => state.cardOrder,
+    (newOrder) => {
+      state.cardOrder = newOrder;
+      saveCardOrder(newOrder);
+      render();
+    }
+  );
+
   const selectCity = (el: HTMLElement) => {
     const place = el.getAttribute('data-place') || 'Custom Location';
     const lat = parseFloat(el.getAttribute('data-lat') || '0');
