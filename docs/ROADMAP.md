@@ -43,6 +43,10 @@ Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical 
 - Constant 5-character string lengths stabilize column alignment across twilight, lunar, and planetary ephemeris tables without UI jitter.
 - Hourly observing timeline displays `HH:00` (e.g. `19:00`, `20:00`) on desktop and `HHh` (e.g. `19h`, `20h`) on compact mobile views to cleanly distinguish hour timestamps from temperature values.
 
+### Independently Draggable Dashboard Cards (v1.0.21)
+- Kept the **Hero Verdict & Observing Window** card pinned at the top of `<main>` while making **Moon Ephemeris** (`moon`), **Sun & Twilight** (`sun`), **Solar System Targets** (`planets`), and **Meteor Showers** (`meteors`) independently reorderable via a 6-dot drag handle (`⠿`) using unified `PointerEvents` (touch + mouse) and keyboard arrow keys (`Alt+ArrowUp` / `Alt+ArrowDown`).
+- Adaptive 2-column grid layout automatically pairs `moon` and `sun` side-by-side (`md:col-span-1`) when adjacent and expands them to full width (`md:col-span-2`) when separated, persisting custom card order in `localStorage` (`skyoracle_card_order`).
+
 ---
 
 ## 3. Android 15 Edge-to-Edge & API Compatibility [Resolved in v1.0.18 & v1.0.19]
@@ -64,7 +68,22 @@ Expand SkyOracle's reach by localizing all user-facing interfaces, astronomical 
 
 ---
 
-## 4. Upcoming Enhancements
+## 4. Upcoming Enhancements & TestCircle Feedback Roadmap
 
+### Priority 1: Android In-Process WebView Wrapper (Native Usage Timer & Seamless App Experience)
+- **Context (TestCircle Feedback)**: Testers using TestCircle (which relies on Android's `PACKAGE_USAGE_STATS` / `UsageStatsManager` permission to track foreground time in `com.lapsedacademics.skyoracle`) reported not receiving timer credit because a Trusted Web Activity (TWA) delegates rendering to an external browser process (`com.android.chrome`), and falls back to a visible Custom Tab if Digital Asset Links or the default browser does not support TWA.
+- **Planned Solution**: Replace the external Chrome TWA handoff in `LauncherActivity` with an **in-process Android `WebView`** (with `domStorageEnabled`, `javaScriptEnabled`, native Android Geolocation permission bridge, and dark edge-to-edge window styling) so the app runs 100% inside the `com.lapsedacademics.skyoracle` process while continuing to load live OTA updates from `https://aacero.github.io/sky-oracle/`.
+
+### Priority 2: Beginner-Friendly Interactive Onboarding Tutorial
+- **Context (TestCircle Feedback)**: Several testers noted that while astronomy enthusiasts love the information density, beginners can find the telemetry intimidating at first glance and requested a clearer interactive tutorial explaining deep-sky observing windows, custom location setup, and how to read the sky charts.
+- **Planned Solution**:
+  - Upgrade the onboarding tour (`src/ui/tour-modal.ts`) into an interactive, step-by-step guided walkthrough that highlights live UI sections (Observing Verdict & Dark Sky Window, Location Picker & GPS, Planetary Starfield Eyepiece, and Draggable Cards).
+  - Add concise plain-language "What does this mean?" explanations for astronomical terms (Astro Dusk, ZHR, Altitude/Azimuth, Moon Interference).
+
+### Priority 3: Interactive Starfield Zoom Controls
+- **Context (TestCircle Feedback)**: Testers requested the ability to zoom in and out on the interactive starfield view.
+- **Planned Solution**: Add smooth zoom controls (`+` / `-` buttons, pinch-to-zoom gesture support, and quick FOV presets such as `2°` high-power view, `10°` finder/binocular view, and `50°` naked-eye window) to `src/core/starfield.ts`.
+
+### Priority 4: Catalog & Notification Enhancements
 - **Deep-Sky Object (DSO) Catalog Expansion**: Add Messier objects (M31, M42, M45) to the interactive starfield telescope view.
-- **Meteor Shower Peak Alerts**: Browser notification reminders for peak nights of major showers.
+- **Meteor Shower Peak Alerts**: Browser/app notification reminders for peak nights of major showers.
