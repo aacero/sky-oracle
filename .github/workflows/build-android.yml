@@ -74,6 +74,7 @@ jobs:
           SHA256_FP=$(keytool -list -v -keystore ./android.keystore -alias android -storepass "$KEY_PASS" | grep "SHA256:" | awk '{print $2}')
           echo "SHA256_FINGERPRINT=$SHA256_FP" >> $GITHUB_ENV
 
+          PKG_ID=$(node -p "require('./android/twa-manifest.json').packageId")
           APP_VER=$(node -p "require('./android/twa-manifest.json').appVersion")
           APP_CODE=$(node -p "require('./android/twa-manifest.json').appVersionCode")
 
@@ -81,7 +82,7 @@ jobs:
           ==================================================
           SkyOracle — Google Play Android Bundle Build
           ==================================================
-          Package ID: com.lapsedacademics.skyoracle
+          Package ID: $PKG_ID
           Version Name: $APP_VER
           Version Code: $APP_CODE
           Web App URL: https://aacero.github.io/sky-oracle/
@@ -98,7 +99,7 @@ jobs:
           EOF
 
           echo "### 🚀 Android Build Information" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package ID**: \`com.lapsedacademics.skyoracle\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package ID**: \`$PKG_ID\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: \`$APP_VER ($APP_CODE)\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Target PWA**: https://aacero.github.io/sky-oracle/" >> $GITHUB_STEP_SUMMARY
           echo "- **Upload Keystore SHA-256**: \`$SHA256_FP\`" >> $GITHUB_STEP_SUMMARY

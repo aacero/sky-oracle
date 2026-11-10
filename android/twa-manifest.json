@@ -1,5 +1,5 @@
 {
-  "packageId": "com.lapsedacademics.skyoracle",
+  "packageId": "com.lapsedacademics.skytonight",
   "host": "aacero.github.io",
   "name": "SkyOracle: Stargazing Forecast",
   "launcherName": "SkyOracle",
@@ -20,7 +20,7 @@
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionCode": 9,
+  "appVersionCode": 10,
   "appVersion": "1.0.22",
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://aacero.github.io/sky-oracle/manifest.json",
