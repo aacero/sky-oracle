@@ -74,13 +74,16 @@ jobs:
           SHA256_FP=$(keytool -list -v -keystore ./android.keystore -alias android -storepass "$KEY_PASS" | grep "SHA256:" | awk '{print $2}')
           echo "SHA256_FINGERPRINT=$SHA256_FP" >> $GITHUB_ENV
 
+          APP_VER=$(node -p "require('./android/twa-manifest.json').appVersion")
+          APP_CODE=$(node -p "require('./android/twa-manifest.json').appVersionCode")
+
           cat << EOF > BUILD_INFO.txt
           ==================================================
           SkyOracle — Google Play Android Bundle Build
           ==================================================
           Package ID: com.lapsedacademics.skyoracle
-          Version Name: 1.0.18
-          Version Code: 5
+          Version Name: $APP_VER
+          Version Code: $APP_CODE
           Web App URL: https://aacero.github.io/sky-oracle/
           Signing Key Alias: android
           Upload Keystore SHA-256 Fingerprint:
@@ -96,48 +99,24 @@ jobs:
 
           echo "### 🚀 Android Build Information" >> $GITHUB_STEP_SUMMARY
           echo "- **Package ID**: \`com.lapsedacademics.skyoracle\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: \`$APP_VER ($APP_CODE)\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Target PWA**: https://aacero.github.io/sky-oracle/" >> $GITHUB_STEP_SUMMARY
           echo "- **Upload Keystore SHA-256**: \`$SHA256_FP\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Build Web Application Bundle for Offline Packaging
+        run: |
+          npm ci
+          npm run build
 
       - name: Scaffold & Update Android Project
         run: |
           npx -y @bubblewrap/cli update --skipVersionUpgrade --manifest ./android/twa-manifest.json
 
-      - name: Apply Android 15 Edge-to-Edge Compatibility
+      - name: Bundle Offline Web Assets & Configure In-Process WebView Activity
         run: |
-          node -e '
-          const fs = require("fs");
-
-          // 1. Remove deprecated status and navigation bar color parameters from AndroidManifest.xml
-          const manifestPath = "app/src/main/AndroidManifest.xml";
-          if (fs.existsSync(manifestPath)) {
-            let xml = fs.readFileSync(manifestPath, "utf8");
-            xml = xml.replace(/<meta-data\b[^>]*\/>/g, (tag) => {
-              if (/STATUS_BAR_COLOR|NAVIGATION_BAR_COLOR|NAVIGATION_BAR_DIVIDER_COLOR/.test(tag)) {
-                return "";
-              }
-              return tag;
-            });
-            fs.writeFileSync(manifestPath, xml);
-            console.log("Cleaned deprecated bar color meta-data from AndroidManifest.xml");
-          }
-
-          // 2. Enable Android 11+ (API 30+) edge-to-edge window fitting in LauncherActivity.java
-          const pkgId = require("./android/twa-manifest.json").packageId;
-          const pkgPath = pkgId.replace(/\./g, "/");
-          const launcherPath = `app/src/main/java/${pkgPath}/LauncherActivity.java`;
-          if (fs.existsSync(launcherPath)) {
-            let java = fs.readFileSync(launcherPath, "utf8");
-            if (!java.includes("setDecorFitsSystemWindows")) {
-              java = java.replace(
-                "super.onCreate(savedInstanceState);",
-                "super.onCreate(savedInstanceState);\n        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {\n            getWindow().setDecorFitsSystemWindows(false);\n        }"
-              );
-              fs.writeFileSync(launcherPath, java);
-              console.log("Patched LauncherActivity.java with edge-to-edge window fitting.");
-            }
-          }
-          '
+          mkdir -p app/src/main/assets/webapp
+          cp -r dist/* app/src/main/assets/webapp/
+          node ./android/patch-webview.cjs
 
       - name: Build Android App Bundle (.aab) & APK
         run: |

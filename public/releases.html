@@ -64,13 +64,37 @@
           <p class="meta" style="margin: 0.25rem 0 0 0;">SkyOracle: Stargazing Forecast & Ephemeris</p>
         </div>
         <div style="display: flex; gap: 0.5rem;">
-          <span class="badge badge-green">v1.0.21 Active</span>
+          <span class="badge badge-green">v1.0.22 Active</span>
           <a href="./" class="badge">Back to App 🔭</a>
         </div>
       </div>
 
-      <!-- Release v1.0.21 -->
+      <!-- Release v1.0.22 -->
       <div class="release-card" style="border-left: 4px solid #34d399;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <h2 style="margin: 0; border: none; padding: 0;">Version 1.0.22 (Build 9)</h2>
+          <span class="meta">November 2026</span>
+        </div>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-top: 0.25rem;">
+          Native in-process Android WebView packaging, independently draggable dashboard cards, and mobile layout enhancements.
+        </p>
+
+        <h3>📱 Native In-Process Android App Experience</h3>
+        <ul>
+          <li><strong>100% Native Process Execution:</strong> Replaced external browser TWA handoff with an in-process Android WebView host so usage timers and system app switchers attribute 100% of foreground session time directly to SkyOracle.</li>
+          <li><strong>Bundled Offline Assets + OTA Updates:</strong> Packaged full application assets inside the Android bundle for instant cold offline launches while maintaining seamless over-the-air updates when online.</li>
+          <li><strong>In-App Navigation & Immersive Fullscreen:</strong> Privacy Policy and Release Notes open directly inside the app window with 1-tap back navigation, and the Fullscreen toggle controls native Android system bars.</li>
+        </ul>
+
+        <h3>⠿ Independently Draggable Dashboard Cards</h3>
+        <ul>
+          <li><strong>Custom Card Ordering:</strong> Drag and reorder Moon Ephemeris, Sun &amp; Twilight, Solar System Targets, and Meteor Showers via their 6-dot grip handles (touch, mouse, or keyboard arrows) while keeping the Hero Verdict pinned on top.</li>
+          <li><strong>Adaptive Grid &amp; Persistence:</strong> Automatically pairs Moon and Sun side-by-side on tablet/desktop when adjacent and saves custom layout order in local storage.</li>
+        </ul>
+      </div>
+
+      <!-- Release v1.0.21 -->
+      <div class="release-card" style="margin-top: 1.5rem;">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <h2 style="margin: 0; border: none; padding: 0;">Version 1.0.21 (Build 8)</h2>
           <span class="meta">November 2026</span>

@@ -97,7 +97,7 @@ export function renderMeteorShowerCard(m: MeteorCardData | null): string {
               <span class="text-[10px] text-sky-400 group-hover:text-sky-300 font-semibold flex items-center gap-0.5">🔭 10°</span>
             </div>
             <span class="text-sm font-bold text-[#56d4dd] group-hover:text-white transition-colors">${primary.peakRadiantAltitudeTonight > 0 ? `${primary.peakRadiantAltitudeTonight}° max` : 'Below 0°'}</span>
-            <span class="text-[10px] text-[#8b949e] block mt-0.5 truncate" title="${primary.bestViewingNote}">${primary.bestViewingNote}</span>
+            <span class="text-[10px] text-[#8b949e] block mt-0.5 leading-snug" title="${primary.bestViewingNote}">${primary.bestViewingNote}</span>
           </div>
 
           <!-- Moon Interference -->
@@ -106,14 +106,14 @@ export function renderMeteorShowerCard(m: MeteorCardData | null): string {
             <span class="text-sm font-bold ${primary.moonImpact.level === 'minimal' ? 'text-emerald-400' : (primary.moonImpact.level === 'moderate' ? 'text-[#58a6ff]' : 'text-amber-400')}">
               ${primary.moonImpact.level === 'minimal' ? 'Dark Sky' : (primary.moonImpact.level === 'moderate' ? 'Moderate' : 'Washout')}
             </span>
-            <span class="text-[10px] text-[#8b949e] block mt-0.5 truncate" title="${primary.moonImpact.summary}">${primary.moonImpact.summary}</span>
+            <span class="text-[10px] text-[#8b949e] block mt-0.5 leading-snug" title="${primary.moonImpact.summary}">${primary.moonImpact.summary}</span>
           </div>
 
           <!-- Speed & Origin -->
           <div class="p-2.5 rounded-xl bg-white/[0.02] border border-[#30363d]/40">
             <span class="text-[#8b949e] block text-[10px] uppercase font-bold">${t('meteors.velocity')}</span>
             <span class="text-sm font-bold text-white">${primary.shower.velocityKmS} km/s</span>
-            <span class="text-[10px] text-[#8b949e] block mt-0.5 truncate" title="${primary.shower.parentBody}">${primary.shower.parentBody}</span>
+            <span class="text-[10px] text-[#8b949e] block mt-0.5 leading-snug" title="${primary.shower.parentBody}">${primary.shower.parentBody}</span>
           </div>
         </div>
 

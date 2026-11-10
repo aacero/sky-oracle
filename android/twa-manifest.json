@@ -20,11 +20,11 @@
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionCode": 8,
-  "appVersion": "1.0.21",
+  "appVersionCode": 9,
+  "appVersion": "1.0.22",
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://aacero.github.io/sky-oracle/manifest.json",
-  "fallbackType": "customtabs",
+  "fallbackType": "webview",
   "features": {
     "locationDelegation": {
       "enabled": true

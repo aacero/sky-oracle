@@ -76,7 +76,7 @@ import { renderDraggableDashboardCards, attachCardDragHandlers } from './ui/dash
 import { renderSearchResultsList, renderSearchModal } from './ui/search-modal.ts';
 import { getTourSlides, renderTourModal } from './ui/tour-modal.ts';
 
-export const APP_VERSION = '1.0.21';
+export const APP_VERSION = '1.0.22';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -90,6 +90,17 @@ interface WebkitFullscreenDocument extends Document {
 
 interface WebkitFullscreenElement extends HTMLElement {
   webkitRequestFullscreen?: () => Promise<void> | void;
+}
+
+interface SkyOracleAndroidBridge {
+  setFullscreen: (enable: boolean) => void;
+  isFullscreen?: () => boolean;
+}
+
+declare global {
+  interface Window {
+    SkyOracleAndroid?: SkyOracleAndroidBridge;
+  }
 }
 
 // ── Application State ───────────────────────────────────────────────────────
@@ -122,6 +133,7 @@ interface AppState {
   tourModalOpen: boolean;
   tourSlideIndex: number;
   cardOrder: DraggableCardId[];
+  nativeFullscreen: boolean;
 }
 
 const initialLoc = loadLocation();
@@ -152,8 +164,14 @@ const state: AppState = {
   installPrompt: null,
   tourModalOpen: false,
   tourSlideIndex: 0,
-  cardOrder: loadCardOrder()
+  cardOrder: loadCardOrder(),
+  nativeFullscreen: false
 };
+
+function isAppFullscreen(): boolean {
+  const doc = document as WebkitFullscreenDocument;
+  return Boolean(state.nativeFullscreen || doc.fullscreenElement || doc.webkitFullscreenElement);
+}
 
 // ── PWA Install Prompt Listener ─────────────────────────────────────────────
 
@@ -422,21 +440,44 @@ function updateStarfieldLiveScrub() {
 async function fetchIpLocation(): Promise<SavedLocation | null> {
   try {
     const res = await fetch('https://ipwho.is/');
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.success && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
-      const place = [data.city, data.region_code || data.region, data.country_code || data.country]
-        .filter(Boolean)
-        .join(', ');
-      return {
-        place: place || 'My Location',
-        lat: Math.round(data.latitude * 10000) / 10000,
-        lon: Math.round(data.longitude * 10000) / 10000
-      };
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+        const place = [data.city, data.region_code || data.region, data.country_code || data.country]
+          .filter(Boolean)
+          .join(', ');
+        return {
+          place: place || 'My Location',
+          lat: Math.round(data.latitude * 10000) / 10000,
+          lon: Math.round(data.longitude * 10000) / 10000
+        };
+      }
     }
   } catch (err) {
     console.warn('IP geolocation lookup failed:', err);
   }
+
+  try {
+    const res2 = await fetch('https://get.geojs.io/v1/ip/geo.json');
+    if (res2.ok) {
+      const data2 = await res2.json();
+      const lat = parseFloat(data2.latitude);
+      const lon = parseFloat(data2.longitude);
+      if (!isNaN(lat) && !isNaN(lon)) {
+        const place = [data2.city, data2.region, data2.country_code]
+          .filter(Boolean)
+          .join(', ');
+        return {
+          place: place || 'My Location',
+          lat: Math.round(lat * 10000) / 10000,
+          lon: Math.round(lon * 10000) / 10000
+        };
+      }
+    }
+  } catch (err2) {
+    console.warn('Secondary IP geolocation lookup failed:', err2);
+  }
+
   return null;
 }
 
@@ -527,8 +568,6 @@ function render() {
             SkyOracle
             <a
               href="./releases.html"
-              target="_blank"
-              rel="noopener noreferrer"
               title="View release notes & changelog"
               class="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#58a6ff]/15 hover:bg-[#58a6ff]/25 text-[#58a6ff] hover:text-white border border-[#58a6ff]/30 hover:border-[#58a6ff]/60 font-mono transition cursor-pointer inline-flex items-center gap-1"
             >
@@ -581,8 +620,8 @@ function render() {
           </button>
 
           <!-- Fullscreen Toggle Button -->
-          <button id="btnToggleFullscreen" title="${document.fullscreenElement ? t('app.fullscreen_exit') : t('app.fullscreen_enter')}" aria-label="${document.fullscreenElement ? t('app.fullscreen_exit') : t('app.fullscreen_enter')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition cursor-pointer shrink-0">
-            ${document.fullscreenElement ? `
+          <button id="btnToggleFullscreen" title="${isAppFullscreen() ? t('app.fullscreen_exit') : t('app.fullscreen_enter')}" aria-label="${isAppFullscreen() ? t('app.fullscreen_exit') : t('app.fullscreen_enter')}" class="p-2 rounded-lg bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition cursor-pointer shrink-0">
+            ${isAppFullscreen() ? `
               <!-- Exit Fullscreen (Compress) -->
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9L4 4m0 0h5m-5 0v5m6 6l5 5m0 0h-5m5 0v-5m-6-6l5-5m0 0h-5m5 0v5m-6 6l-5 5m0 0h5m-5 0v-5"/></svg>
             ` : `
@@ -846,7 +885,7 @@ function render() {
         <span>·</span>
         <span>PWA Ready</span>
         <span>·</span>
-        <a href="./privacy.html" target="_blank" class="hover:text-[#58a6ff] transition underline">Privacy Policy</a>
+        <a href="./privacy.html" class="hover:text-[#58a6ff] transition underline">Privacy Policy</a>
       </div>
     </footer>
 
@@ -1553,6 +1592,13 @@ function attachEventHandlers() {
   // Toggle Fullscreen
   document.getElementById('btnToggleFullscreen')?.addEventListener('click', async () => {
     try {
+      if (window.SkyOracleAndroid && typeof window.SkyOracleAndroid.setFullscreen === 'function') {
+        state.nativeFullscreen = !state.nativeFullscreen;
+        window.SkyOracleAndroid.setFullscreen(state.nativeFullscreen);
+        render();
+        return;
+      }
+
       const doc = document as WebkitFullscreenDocument;
       const docEl = document.documentElement as WebkitFullscreenElement;
       if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
